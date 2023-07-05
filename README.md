@@ -1,3 +1,54 @@
+Tämä QGIS-repositorio (pelkkä master-haara) on forkattu Gispon omaa QGIS-kehitystä, harjoittelua ja bugikorjauksia varten.
+
+Tutustuminen kannattaa aloittaa kehittäjän oppaasta (https://docs.qgis.org/3.28/en/docs/developers_guide/index.html).
+
+#### Käyttöönotto tiedoston INSTALL.md:n ja kehittäjän oppaan ohjeita soveltaen (testattu Ubuntun versiolla 22.04):
+
+1. Päivitä riippuvuudet INSTALL.md:n kappaleen 3.3. mukaisesti.
+
+`sudo apt-get install ...`
+
+2. Asenna ccache (https://ccache.dev/). Ccache luo käännöksille välimuistin, jota käytetään nopeuttamaan uusia käännöksiä.
+
+`cd /usr/local/bin
+sudo ln -s /usr/bin/ccache gcc
+sudo ln -s /usr/bin/ccache g++`
+
+3. Kloonaa tämä repositorio.
+
+`git clone https://github.com/GispoCoding/QGIS.git`
+
+4. Aseta upstream-repositorioksi QGIS:n alkuperäinen repositorio.
+
+`git remote add upstream https://github.com/qgis/QGIS.git`
+
+5. Siirry build-master-kansioon.
+
+`cd build-master`
+
+6. Aseta projektin käännösasetukset ccmake-työkalulla. Kehitysversio kannattaa kääntää esim. kotihakemiston apps-kansioon, jotta vältetään mahdolliset ristiriidat usr-kansion Ubuntu-pakettien kanssa. Lisäksi debuggausta varten asetetaan Debug-vipu. Muuten kelpaavat oletusasetukset. Huomaathan, että komentoon kuuluu kaksi pistettä (..).
+
+`ccmake ..`
+
+`CMAKE_BUILD_TYPE *Debug`
+`CMAKE_INSTALL_PREFIX *${HOME}/apps`
+
+7. Käännä make-komennolla (X on käytettävien ytimien määrä).
+
+  `make -jX`
+
+8. Onnistuneen käännöksen jälkeen sovellus käynnistyy seuraavalla komennolla.
+
+`./output/bin/qgis`
+
+9. Asenna Qt Creator, jota käytetään ainakin toistaiseksi IDE:nä.
+
+`sudo apt install qtcreator`
+
+10. Qt Creatorissa avataan juuresta tiedosto CMakeLists.txt. Sovelluksen ajaminen, debuggaus jne. onnistuu oletusasetuksilla.
+
+---
+
 <img src="images/README-md/main_logo.png" width="300">
 
 [![Tests](https://github.com/qgis/QGIS/workflows/QGIS%20tests/badge.svg)](https://github.com/qgis/QGIS/actions/workflows/run-tests.yml?query=branch%3Amaster+event%3Apush)
