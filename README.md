@@ -47,6 +47,8 @@ sudo ln -s /usr/bin/ccache g++`
 
 10. Qt Creatorissa avataan juuresta tiedosto CMakeLists.txt. Sovelluksen ajaminen, debuggaus jne. onnistuu oletusasetuksilla.
 
+* QGIS-kehityksessä C++-koodin sisennykset ovat kahden välilyönnin levyisiä. Tämä kannattaa käydä asettamassa oletukseksi (Tools -> Options -> C++).
+
 #### Bugikorjaukset
 
 Bugikorjaukset tehdään ensin tähän repositorioon omiin haaroihinsa. Nimeä haara siten, että siitä selviää, mitä seikkaa ollaan ratkomassa, etuliitteeksi "fix_{SEIKAN_ID}_". Esim. `fix_49311_creating_topological_points_with_geometry_precision`.
