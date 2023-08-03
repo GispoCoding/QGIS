@@ -35,11 +35,13 @@ sudo ln -s /usr/bin/ccache g++`
 
 7. Käännä make-komennolla (X on käytettävien ytimien määrä).
 
-  `make -jX`
+`make -jX`
 
 8. Onnistuneen käännöksen jälkeen sovellus käynnistyy seuraavalla komennolla.
 
 `./output/bin/qgis`
+
+Seuraavat kohdat ovat tarpeellisia vain, jos olet tekemässä muutoksia lähdekoodiin.
 
 9. Asenna Qt Creator, jota käytetään ainakin toistaiseksi IDE:nä.
 
@@ -48,6 +50,12 @@ sudo ln -s /usr/bin/ccache g++`
 10. Qt Creatorissa avataan juuresta tiedosto CMakeLists.txt. Sovelluksen ajaminen, debuggaus jne. onnistuu oletusasetuksilla.
 
 * QGIS-kehityksessä C++-koodin sisennykset ovat kahden välilyönnin levyisiä. Tämä kannattaa käydä asettamassa oletukseksi (Tools -> Options -> C++).
+
+11. Koodin eheyden varmistamiseksi on syytä asettaa paikalliseen Git-repoon pre-commit hook, joka korjaa koodin QGIS:n koodikäytäntöjen mukaiseksi. Hookia varten scripts-kansiossa on skripti prepare_commit.sh, johon voidaan linkata suoraan. Skripti käyttää Artistic Style (astyle) -työkalua, joka on myös asennettava.
+
+`sudo apt install astyle`
+
+`ln -s ../../scripts/prepare_commit.sh .git/hooks/pre-commit`
 
 #### Bugikorjaukset
 
