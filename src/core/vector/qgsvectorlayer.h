@@ -78,6 +78,7 @@ class QgsAuxiliaryStorage;
 class QgsAuxiliaryLayer;
 class QgsGeometryOptions;
 class QgsStyleEntityVisitorInterface;
+class QgsVectorLayerSelectionProperties;
 class QgsVectorLayerTemporalProperties;
 class QgsFeatureRendererGenerator;
 class QgsVectorLayerElevationProperties;
@@ -665,6 +666,7 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
 
     QgsVectorDataProvider *dataProvider() FINAL;
     const QgsVectorDataProvider *dataProvider() const FINAL SIP_SKIP;
+    QgsMapLayerSelectionProperties *selectionProperties() override;
     QgsMapLayerTemporalProperties *temporalProperties() override;
     QgsMapLayerElevationProperties *elevationProperties() override;
     QgsAbstractProfileGenerator *createProfileGenerator( const QgsProfileRequest &request ) override SIP_FACTORY;
@@ -2933,13 +2935,9 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
     void clearEditBuffer();
 
     QgsConditionalLayerStyles *mConditionalStyles = nullptr;
-
-    //! Pointer to data provider derived from the abastract base class QgsDataProvider
     QgsVectorDataProvider *mDataProvider = nullptr;
-
-    //! Pointer to temporal properties
+    QgsVectorLayerSelectionProperties *mSelectionProperties = nullptr;
     QgsVectorLayerTemporalProperties *mTemporalProperties = nullptr;
-
     QgsVectorLayerElevationProperties *mElevationProperties = nullptr;
 
     //! The preview expression used to generate a human readable preview string for features

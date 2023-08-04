@@ -532,6 +532,10 @@ class CORE_EXPORT Qgis
     /**
      * \brief Flags controlling behavior of symbol layers
      *
+     * \note These differ from Qgis::SymbolLayerUserFlag in that Qgis::SymbolLayerFlag flags are used to reflect the inbuilt properties
+     * of a symbol layer type, whereas Qgis::SymbolLayerUserFlag are optional, user controlled flags which can be toggled
+     * for a symbol layer.
+     *
      * \since QGIS 3.22
      */
     enum class SymbolLayerFlag : int
@@ -542,6 +546,29 @@ class CORE_EXPORT Qgis
     //! Symbol layer flags
     Q_DECLARE_FLAGS( SymbolLayerFlags, SymbolLayerFlag )
     Q_FLAG( SymbolLayerFlags )
+
+    /**
+     * \brief User-specified flags controlling behavior of symbol layers.
+     *
+     * \note These differ from Qgis::SymbolLayerFlag in that Qgis::SymbolLayerFlag flags are used to reflect the inbuilt properties
+     * of a symbol layer type, whereas Qgis::SymbolLayerUserFlag are optional, user controlled flags which can be toggled
+     * for a symbol layer.
+     *
+     * \since QGIS 3.34
+     */
+    enum class SymbolLayerUserFlag : int
+    {
+      DisableSelectionRecoloring = 1 << 0, //!< If present, indicates that the symbol layer should not be recolored when rendering selected features
+    };
+    Q_ENUM( SymbolLayerUserFlag )
+
+    /**
+     * Symbol layer user flags.
+     *
+     * \since QGIS 3.34
+     */
+    Q_DECLARE_FLAGS( SymbolLayerUserFlags, SymbolLayerUserFlag )
+    Q_FLAG( SymbolLayerUserFlags )
 
     /**
      * Browser item types.
@@ -1162,6 +1189,19 @@ class CORE_EXPORT Qgis
     Q_ENUM( FieldMetadataProperty )
 
     /**
+     * Specifies how a selection should be rendered.
+     *
+     * \since QGIS 3.34
+     */
+    enum class SelectionRenderingMode : int
+    {
+      Default, //!< Use default symbol and selection colors
+      CustomColor, //!< Use default symbol with a custom selection color
+      CustomSymbol, //!< Use a custom symbol
+    };
+    Q_ENUM( SelectionRenderingMode )
+
+    /**
      * Specifies how a selection should be applied.
      *
      * \since QGIS 3.22
@@ -1577,6 +1617,31 @@ class CORE_EXPORT Qgis
     Q_DECLARE_FLAGS( DataProviderFlags, DataProviderFlag )
     Q_ENUM( DataProviderFlag )
     Q_FLAG( DataProviderFlags )
+
+    /**
+     * Coordinate reference system types.
+     *
+     * Contains a subset of Proj's PJ_TYPE enum, specifically the types which relate to CRS types.
+     *
+     * \since QGIS 3.34
+     */
+    enum class CrsType : int
+    {
+      Unknown, //!< Unknown type
+      Geodetic, //!< Geodetic CRS
+      Geocentric, //!< Geocentric CRS
+      Geographic2d, //!< 2D geographic CRS
+      Geographic3d, //!< 3D geopraphic CRS
+      Vertical, //!< Vertical CRS
+      Projected, //!< Projected CRS
+      Compound, //!< Compound (horizontal + vertical) CRS
+      Temporal, //!< Temporal CRS
+      Engineering, //!< Engineering CRS
+      Bound, //!< Bound CRS
+      Other, //!< Other type
+      DerivedProjected, //!< Derived projected CRS
+    };
+    Q_ENUM( CrsType )
 
     /**
      * Coordinate reference system axis directions.
@@ -3725,6 +3790,19 @@ class CORE_EXPORT Qgis
     Q_FLAG( TiledMeshProviderCapabilities )
 
     /**
+     * Tiled mesh bounding volume types.
+     *
+     * \since QGIS 3.34
+     */
+    enum class TiledMeshBoundingVolumeType
+    {
+      Region, //!< Region type
+      OrientedBox, //!< Oriented bounding box (rotated box)
+      Sphere, //!< Sphere
+    };
+    Q_ENUM( TiledMeshBoundingVolumeType )
+
+    /**
      * Identify search radius in mm
      * \since QGIS 2.3
      */
@@ -3844,6 +3922,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolRenderHints )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolPreviewFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolLayerFlags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolLayerUserFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::BrowserItemCapabilities )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SublayerQueryFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SublayerFlags )

@@ -337,9 +337,14 @@ set(QGIS_CORE_SRCS
   textrenderer/qgstextshadowsettings.cpp
 
   tiledmesh/qgscesiumtilesdataprovider.cpp
+  tiledmesh/qgscesiumutils.cpp
+  tiledmesh/qgstiledmeshboundingvolume.cpp
   tiledmesh/qgstiledmeshconnection.cpp
+  tiledmesh/qgstiledmeshdataitems.cpp
   tiledmesh/qgstiledmeshdataprovider.cpp
   tiledmesh/qgstiledmeshlayer.cpp
+  tiledmesh/qgstiledmeshlayerrenderer.cpp
+  tiledmesh/qgstiledmeshprovidermetadata.cpp
 
   sensor/qgssensormodel.cpp
   sensor/qgssensormanager.cpp
@@ -453,6 +458,7 @@ set(QGIS_CORE_SRCS
   qgsmaplayermodel.cpp
   qgsmaplayerproxymodel.cpp
   qgsmaplayerrenderer.cpp
+  qgsmaplayerselectionproperties.cpp
   qgsmaplayerserverproperties.cpp
   qgsmaplayerstore.cpp
   qgsmaplayerstyle.cpp
@@ -466,6 +472,7 @@ set(QGIS_CORE_SRCS
   qgsmapunitscale.cpp
   qgsmargins.cpp
   qgsmaskidprovider.cpp
+  qgsmatrix4x4.cpp
   qgsmbtiles.cpp
   qgsmaskpaintdevice.cpp
   qgsmessagelog.cpp
@@ -843,12 +850,14 @@ set(QGIS_CORE_SRCS
   geometry/qgsmultipoint.cpp
   geometry/qgsmultipolygon.cpp
   geometry/qgsmultisurface.cpp
+  geometry/qgsorientedbox3d.cpp
   geometry/qgspoint.cpp
   geometry/qgspolygon.cpp
   geometry/qgsquadrilateral.cpp
   geometry/qgsrectangle.cpp
   geometry/qgsreferencedgeometry.cpp
   geometry/qgsregularpolygon.cpp
+  geometry/qgssphere.cpp
   geometry/qgssurface.cpp
   geometry/qgstriangle.cpp
   geometry/qgsvertexid.cpp
@@ -903,6 +912,7 @@ set(QGIS_CORE_SRCS
   vector/qgsvectorlayerjoininfo.cpp
   vector/qgsvectorlayerprofilegenerator.cpp
   vector/qgsvectorlayerrenderer.cpp
+  vector/qgsvectorlayerselectionproperties.cpp
   vector/qgsvectorlayertemporalproperties.cpp
   vector/qgsvectorlayertools.cpp
   vector/qgsvectorlayerundocommand.cpp
@@ -1144,6 +1154,7 @@ set(QGIS_CORE_HDRS
   qgsmaplayerstyle.h
   qgsmaplayerstylemanager.h
   qgsmaplayerelevationproperties.h
+  qgsmaplayerselectionproperties.h
   qgsmaplayertemporalproperties.h
   qgsmaplayerutils.h
   qgsmapsettings.h
@@ -1155,6 +1166,7 @@ set(QGIS_CORE_HDRS
   qgsmargins.h
   qgsmaskidprovider.h
   qgsmaskpaintdevice.h
+  qgsmatrix4x4.h
   qgsmbtiles.h
   qgsmessagelog.h
   qgsmessageoutput.h
@@ -1426,12 +1438,14 @@ set(QGIS_CORE_HDRS
   geometry/qgsmultipoint.h
   geometry/qgsmultipolygon.h
   geometry/qgsmultisurface.h
+  geometry/qgsorientedbox3d.h
   geometry/qgspoint.h
   geometry/qgspolygon.h
   geometry/qgsquadrilateral.h
   geometry/qgsrectangle.h
   geometry/qgsreferencedgeometry.h
   geometry/qgsregularpolygon.h
+  geometry/qgssphere.h
   geometry/qgssurface.h
   geometry/qgstriangle.h
   geometry/qgsvertexid.h
@@ -1893,9 +1907,14 @@ set(QGIS_CORE_HDRS
   textrenderer/qgstextshadowsettings.h
 
   tiledmesh/qgscesiumtilesdataprovider.h
+  tiledmesh/qgscesiumutils.h
+  tiledmesh/qgstiledmeshboundingvolume.h
   tiledmesh/qgstiledmeshconnection.h
   tiledmesh/qgstiledmeshdataprovider.h
+  tiledmesh/qgstiledmeshdataitems.h
   tiledmesh/qgstiledmeshlayer.h
+  tiledmesh/qgstiledmeshlayerrenderer.h
+  tiledmesh/qgstiledmeshprovidermetadata.h
 
   sensor/qgssensormodel.h
   sensor/qgssensormanager.h
@@ -1936,6 +1955,7 @@ set(QGIS_CORE_HDRS
   vector/qgsvectorlayerjoininfo.h
   vector/qgsvectorlayerprofilegenerator.h
   vector/qgsvectorlayerrenderer.h
+  vector/qgsvectorlayerselectionproperties.h
   vector/qgsvectorlayertemporalproperties.h
   vector/qgsvectorlayertools.h
   vector/qgsvectorlayerundocommand.h

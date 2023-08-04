@@ -127,12 +127,15 @@ set(QGIS_APP_SRCS
   decorations/qgsdecorationscalebardialog.cpp
   decorations/qgsdecorationgrid.cpp
   decorations/qgsdecorationgriddialog.cpp
+  decorations/qgsdecorationoverlay.cpp
 
   pointcloud/qgspointcloudelevationpropertieswidget.cpp
   pointcloud/qgspointcloudlayerproperties.cpp
   pointcloud/qgspointcloudlayerstylewidget.cpp
 
   raster/qgsrasterelevationpropertieswidget.cpp
+
+  tiledmesh/qgstiledmeshlayerproperties.cpp
 
   vertextool/qgslockedfeature.cpp
   vertextool/qgsvertexeditor.cpp
@@ -537,6 +540,7 @@ target_include_directories(qgis_app PUBLIC
   ${CMAKE_SOURCE_DIR}/src/app/options
   ${CMAKE_SOURCE_DIR}/src/app/pointcloud
   ${CMAKE_SOURCE_DIR}/src/app/settings
+  ${CMAKE_SOURCE_DIR}/src/app/tiledmesh
   ${CMAKE_SOURCE_DIR}/src/app/vectortile
   ${CMAKE_SOURCE_DIR}/src/plugins
   ${CMAKE_SOURCE_DIR}/src/python

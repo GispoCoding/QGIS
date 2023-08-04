@@ -22,6 +22,7 @@
 #include "qgsactionmanager.h"
 #include "qgsjoindialog.h"
 #include "qgssldexportcontext.h"
+#include "qgsvectorlayerselectionproperties.h"
 #include "qgswmsdimensiondialog.h"
 #include "qgsapplication.h"
 #include "qgsattributeactiondialog.h"
@@ -247,6 +248,36 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   mBtnMetadata->setMenu( menuMetadata );
   buttonBox->addButton( mBtnMetadata, QDialogButtonBox::ResetRole );
 
+  mSelectionColorButton->setAllowOpacity( true );
+  mSelectionColorButton->setColorDialogTitle( tr( "Override Selection Color" ) );
+  if ( mCanvas )
+  {
+    mSelectionColorButton->setColor( mCanvas->selectionColor() );
+    mSelectionColorButton->setDefaultColor( mCanvas->selectionColor() );
+  }
+  connect( mRadioOverrideSelectionColor, &QRadioButton::toggled, mSelectionColorButton, &QWidget::setEnabled );
+  mSelectionColorButton->setEnabled( false );
+  connect( mRadioOverrideSelectionSymbol, &QRadioButton::toggled, mSelectionSymbolButton, &QWidget::setEnabled );
+  switch ( mLayer->geometryType() )
+  {
+
+    case Qgis::GeometryType::Point:
+      mSelectionSymbolButton->setSymbolType( Qgis::SymbolType::Marker );
+      break;
+    case Qgis::GeometryType::Line:
+      mSelectionSymbolButton->setSymbolType( Qgis::SymbolType::Line );
+      break;
+    case Qgis::GeometryType::Polygon:
+      mSelectionSymbolButton->setSymbolType( Qgis::SymbolType::Fill );
+      break;
+
+    case Qgis::GeometryType::Unknown:
+    case Qgis::GeometryType::Null:
+      break;
+  }
+  mSelectionSymbolButton->setEnabled( false );
+  mRadioDefaultSelectionColor->setChecked( true );
+
   syncToLayer();
 
   if ( mLayer->dataProvider() )
@@ -391,11 +422,6 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
                        mOptStackedWidget->indexOf( mOptsPage_Style ) );
   }
 
-  QString title = tr( "Layer Properties — %1" ).arg( mLayer->name() );
-  if ( !mLayer->styleManager()->isDefault( mLayer->styleManager()->currentStyle() ) )
-    title += QStringLiteral( " (%1)" ).arg( mLayer->styleManager()->currentStyle() );
-  restoreOptionsBaseUi( title );
-
   QList<QgsMapLayer *> dependencySources;
   const QSet<QgsMapLayerDependency> constDependencies = mLayer->dependencies();
   for ( const QgsMapLayerDependency &dep : constDependencies )
@@ -461,6 +487,8 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
 
 
   optionsStackedWidget_CurrentChanged( mOptStackedWidget->currentIndex() );
+
+  initialize();
 }
 
 void QgsVectorLayerProperties::toggleEditing()
@@ -500,7 +528,6 @@ void QgsVectorLayerProperties::removeSelectedMetadataUrl()
   mMetadataUrlModel->removeRow( selectedRows[0].row() );
 }
 
-// in raster props, this method is called sync()
 void QgsVectorLayerProperties::syncToLayer()
 {
   if ( !mSourceWidget )
@@ -562,6 +589,46 @@ void QgsVectorLayerProperties::syncToLayer()
   mSimplifyDrawingGroupBox->setChecked( simplifyMethod.simplifyHints() != QgsVectorSimplifyMethod::NoSimplification );
   mSimplifyDrawingSpinBox->setValue( simplifyMethod.threshold() );
   mSimplifyDrawingSpinBox->setClearValue( 1.0 );
+
+  QgsVectorLayerSelectionProperties *selectionProperties = qobject_cast< QgsVectorLayerSelectionProperties *>( mLayer->selectionProperties() );
+  if ( selectionProperties->selectionColor().isValid() )
+  {
+    mSelectionColorButton->setColor( selectionProperties->selectionColor() );
+  }
+  if ( QgsSymbol *symbol = selectionProperties->selectionSymbol() )
+  {
+    mSelectionSymbolButton->setSymbol( symbol->clone() );
+  }
+  switch ( selectionProperties->selectionRenderingMode() )
+  {
+    case Qgis::SelectionRenderingMode::Default:
+      mRadioDefaultSelectionColor->setChecked( true );
+      break;
+
+    case Qgis::SelectionRenderingMode::CustomColor:
+    {
+      if ( selectionProperties->selectionColor().isValid() )
+      {
+        mRadioOverrideSelectionColor->setChecked( true );
+      }
+      else
+      {
+        mRadioDefaultSelectionColor->setChecked( true );
+      }
+      break;
+    }
+
+    case Qgis::SelectionRenderingMode::CustomSymbol:
+      if ( selectionProperties->selectionSymbol() )
+      {
+        mRadioOverrideSelectionSymbol->setChecked( true );
+      }
+      else
+      {
+        mRadioDefaultSelectionColor->setChecked( true );
+      }
+      break;
+  }
 
   QString remark = QStringLiteral( " (%1)" ).arg( tr( "Not supported" ) );
   const QgsVectorDataProvider *provider = mLayer->dataProvider();
@@ -825,6 +892,28 @@ void QgsVectorLayerProperties::apply()
   {
     mLayer->renderer()->setForceRasterRender( mForceRasterCheckBox->isChecked() );
     mLayer->renderer()->setReferenceScale( mUseReferenceScaleGroupBox->isChecked() ? mReferenceScaleWidget->scale() : -1 );
+  }
+
+
+  QgsVectorLayerSelectionProperties *selectionProperties = qobject_cast< QgsVectorLayerSelectionProperties *>( mLayer->selectionProperties() );
+  if ( mSelectionColorButton->color() != mSelectionColorButton->defaultColor() )
+    selectionProperties->setSelectionColor( mSelectionColorButton->color() );
+  else
+    selectionProperties->setSelectionColor( QColor() );
+  if ( QgsSymbol *symbol = mSelectionSymbolButton->symbol() )
+    selectionProperties->setSelectionSymbol( symbol->clone() );
+
+  if ( mRadioOverrideSelectionSymbol->isChecked() )
+  {
+    selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::CustomSymbol );
+  }
+  else if ( mRadioOverrideSelectionColor->isChecked() )
+  {
+    selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::CustomColor );
+  }
+  else
+  {
+    selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::Default );
   }
 
   mLayer->setAutoRefreshInterval( mRefreshLayerIntervalSpinBox->value() * 1000.0 );

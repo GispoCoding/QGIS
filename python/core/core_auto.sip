@@ -109,6 +109,7 @@
 %Include auto_generated/qgsmaplayerstyle.sip
 %Include auto_generated/qgsmaplayerstylemanager.sip
 %Include auto_generated/qgsmaplayerelevationproperties.sip
+%Include auto_generated/qgsmaplayerselectionproperties.sip
 %Include auto_generated/qgsmaplayertemporalproperties.sip
 %Include auto_generated/qgsmaplayerutils.sip
 %Include auto_generated/qgsmapsettings.sip
@@ -120,6 +121,7 @@
 %Include auto_generated/qgsmargins.sip
 %Include auto_generated/qgsmaskidprovider.sip
 %Include auto_generated/qgsmaskpaintdevice.sip
+%Include auto_generated/qgsmatrix4x4.sip
 %Include auto_generated/qgsmessagelog.sip
 %Include auto_generated/qgsmessageoutput.sip
 %Include auto_generated/qgsmimedatautils.sip
@@ -345,12 +347,14 @@
 %Include auto_generated/geometry/qgsmultipoint.sip
 %Include auto_generated/geometry/qgsmultipolygon.sip
 %Include auto_generated/geometry/qgsmultisurface.sip
+%Include auto_generated/geometry/qgsorientedbox3d.sip
 %Include auto_generated/geometry/qgspoint.sip
 %Include auto_generated/geometry/qgspolygon.sip
 %Include auto_generated/geometry/qgsquadrilateral.sip
 %Include auto_generated/geometry/qgsrectangle.sip
 %Include auto_generated/geometry/qgsreferencedgeometry.sip
 %Include auto_generated/geometry/qgsregularpolygon.sip
+%Include auto_generated/geometry/qgssphere.sip
 %Include auto_generated/geometry/qgssurface.sip
 %Include auto_generated/geometry/qgstriangle.sip
 %Include auto_generated/geometry/qgsvertexid.sip
@@ -708,6 +712,8 @@
 %Include auto_generated/textrenderer/qgstextrenderer.sip
 %Include auto_generated/textrenderer/qgstextrendererutils.sip
 %Include auto_generated/textrenderer/qgstextshadowsettings.sip
+%Include auto_generated/tiledmesh/qgscesiumutils.sip
+%Include auto_generated/tiledmesh/qgstiledmeshboundingvolume.sip
 %Include auto_generated/tiledmesh/qgstiledmeshdataprovider.sip
 %Include auto_generated/tiledmesh/qgstiledmeshlayer.sip
 %Include auto_generated/sensor/qgssensormodel.sip
@@ -741,6 +747,7 @@
 %Include auto_generated/vector/qgsvectorlayerfeatureiterator.sip
 %Include auto_generated/vector/qgsvectorlayerjoinbuffer.sip
 %Include auto_generated/vector/qgsvectorlayerjoininfo.sip
+%Include auto_generated/vector/qgsvectorlayerselectionproperties.sip
 %Include auto_generated/vector/qgsvectorlayertemporalproperties.sip
 %Include auto_generated/vector/qgsvectorlayertools.sip
 %Include auto_generated/vector/qgsvectorlayerundocommand.sip

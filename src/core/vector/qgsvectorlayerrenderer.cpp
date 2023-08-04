@@ -15,7 +15,6 @@
 
 #include "qgsvectorlayerrenderer.h"
 
-
 #include "qgsmessagelog.h"
 #include "qgspallabeling.h"
 #include "qgsrenderer.h"
@@ -36,6 +35,7 @@
 #include "qgssettingsregistrycore.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsrenderedfeaturehandlerinterface.h"
+#include "qgsvectorlayerselectionproperties.h"
 #include "qgsvectorlayertemporalproperties.h"
 #include "qgsmapclippingutils.h"
 #include "qgsfeaturerenderergenerator.h"
@@ -53,6 +53,29 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   , mNoSetLayerExpressionContext( layer->customProperty( QStringLiteral( "_noset_layer_expression_context" ) ).toBool() )
 {
   std::unique_ptr< QgsFeatureRenderer > mainRenderer( layer->renderer() ? layer->renderer()->clone() : nullptr );
+
+  QgsVectorLayerSelectionProperties *selectionProperties = qobject_cast< QgsVectorLayerSelectionProperties * >( layer->selectionProperties() );
+  switch ( selectionProperties->selectionRenderingMode() )
+  {
+    case Qgis::SelectionRenderingMode::Default:
+      break;
+
+    case Qgis::SelectionRenderingMode::CustomColor:
+    {
+      // overwrite default selection color if layer has a specific selection color set
+      const QColor layerSelectionColor = selectionProperties->selectionColor();
+      if ( layerSelectionColor.isValid() )
+        context.setSelectionColor( layerSelectionColor );
+      break;
+    }
+
+    case Qgis::SelectionRenderingMode::CustomSymbol:
+    {
+      if ( QgsSymbol *selectionSymbol =  qobject_cast< QgsVectorLayerSelectionProperties * >( layer->selectionProperties() )->selectionSymbol() )
+        mSelectionSymbol.reset( selectionSymbol->clone() );
+      break;
+    }
+  }
 
   if ( !mainRenderer )
     return;
@@ -445,6 +468,9 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
     clipEngine->prepareGeometry();
   }
 
+  if ( mSelectionSymbol && isMainRenderer )
+    mSelectionSymbol->startRender( context, mFields );
+
   QgsFeature fet;
   while ( fit.nextFeature( fet ) )
   {
@@ -468,14 +494,24 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       if ( ! mNoSetLayerExpressionContext )
         context.expressionContext().setFeature( fet );
 
-      bool sel = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
-      bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || sel ) );
+      const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
+      bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
 
       // render feature
       bool rendered = false;
       if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
       {
-        rendered = renderer->renderFeature( fet, context, -1, sel, drawMarker );
+        if ( featureIsSelected && mSelectionSymbol )
+        {
+          // note: here we pass "false" for the selected argument, as we don't want to change
+          // the user's defined selection symbol colors or settings in any way
+          mSelectionSymbol->renderFeature( fet, context, -1, false, drawMarker );
+          rendered = renderer->willRenderFeature( fet, context );
+        }
+        else
+        {
+          rendered = renderer->renderFeature( fet, context, -1, featureIsSelected, drawMarker );
+        }
       }
       else
       {
@@ -536,6 +572,9 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
   }
 
   delete context.expressionContext().popScope();
+
+  if ( mSelectionSymbol && isMainRenderer )
+    mSelectionSymbol->stopRender( context );
 
   stopRenderer( renderer, nullptr );
 }
@@ -620,7 +659,7 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
     if ( renderer->orderByEnabled() )
     {
       QVector<QVariant> currentValues;
-      for ( auto const idx : orderByAttributeIdx )
+      for ( const int idx : std::as_const( orderByAttributeIdx ) )
       {
         currentValues.push_back( fet.attribute( idx ) );
       }
@@ -639,11 +678,13 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
 
     if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
     {
-      if ( !features.back().contains( sym ) )
+      QHash<QgsSymbol *, QList<QgsFeature> > &featuresBack = features.back();
+      auto featuresBackIt = featuresBack.find( sym );
+      if ( featuresBackIt == featuresBack.end() )
       {
-        features.back().insert( sym, QList<QgsFeature>() );
+        featuresBackIt = featuresBack.insert( sym, QList<QgsFeature>() );
       }
-      features.back()[sym].append( fet );
+      featuresBackIt->append( fet );
     }
 
     // new labeling engine
@@ -708,7 +749,7 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
     context.setFeatureClipGeometry( mClipFeatureGeom );
 
   // 2. draw features in correct order
-  for ( auto &featureLists : features )
+  for ( const QHash< QgsSymbol *, QList<QgsFeature> > &featureLists : features )
   {
     for ( int l = 0; l < levels.count(); l++ )
     {
@@ -723,7 +764,7 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
         }
         const int layer = item.layer();
         const QList<QgsFeature> &lst = featureLists[item.symbol()];
-        for ( auto fit = lst.begin(); fit != lst.end(); ++fit )
+        for ( const QgsFeature &feature : lst )
         {
           if ( context.renderingStopped() )
           {
@@ -731,16 +772,19 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
             return;
           }
 
-          const bool sel = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fit->id() );
+          const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( feature.id() );
+          if ( featureIsSelected && mSelectionSymbol )
+            continue; // defer rendering of selected symbols
+
           // maybe vertex markers should be drawn only during the last pass...
-          const bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || sel ) );
+          const bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
 
           if ( ! mNoSetLayerExpressionContext )
-            context.expressionContext().setFeature( *fit );
+            context.expressionContext().setFeature( feature );
 
           try
           {
-            renderer->renderFeature( *fit, context, layer, sel, drawMarker );
+            renderer->renderFeature( feature, context, layer, featureIsSelected, drawMarker );
 
             // as soon as first feature is rendered, we can start showing layer updates.
             // but if we are blocking render updates (so that a previously cached image is being shown), we wait
@@ -759,6 +803,37 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
         }
       }
     }
+  }
+
+  if ( mSelectionSymbol && !mSelectedFeatureIds.empty() && isMainRenderer && context.showSelection() )
+  {
+    mSelectionSymbol->startRender( context, mFields );
+
+    for ( const QHash< QgsSymbol *, QList<QgsFeature> > &featureLists : features )
+    {
+      for ( auto it = featureLists.constBegin(); it != featureLists.constEnd(); ++it )
+      {
+        const QList<QgsFeature> &lst = it.value();
+        for ( const QgsFeature &feature : lst )
+        {
+          if ( context.renderingStopped() )
+          {
+            break;
+          }
+
+          const bool featureIsSelected = mSelectedFeatureIds.contains( feature.id() );
+          if ( !featureIsSelected )
+            continue;
+
+          const bool drawMarker = mDrawVertexMarkers && context.drawEditingInformation();
+          // note: here we pass "false" for the selected argument, as we don't want to change
+          // the user's defined selection symbol colors or settings in any way
+          mSelectionSymbol->renderFeature( feature, context, -1, false, drawMarker );
+        }
+      }
+    }
+
+    mSelectionSymbol->stopRender( context );
   }
 
   stopRenderer( renderer, selRenderer );

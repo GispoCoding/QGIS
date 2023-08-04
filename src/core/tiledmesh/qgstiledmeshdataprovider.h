@@ -23,6 +23,8 @@
 #include "qgsdataprovider.h"
 #include "qgis.h"
 
+class QgsAbstractTiledMeshNodeBoundingVolume;
+
 /**
  * \ingroup core
  * \brief Base class for data providers for QgsTiledMeshLayer
@@ -43,9 +45,50 @@ class CORE_EXPORT QgsTiledMeshDataProvider: public QgsDataProvider
     ~QgsTiledMeshDataProvider() override;
 
     /**
+     * Copy constructor.
+     */
+    QgsTiledMeshDataProvider( const QgsTiledMeshDataProvider &other );
+
+    /**
+     * QgsTiledMeshDataProvider cannot be assigned.
+     */
+    QgsTiledMeshDataProvider &operator=( const QgsTiledMeshDataProvider &other ) = delete;
+
+    /**
      * Returns flags containing the supported capabilities for the data provider.
      */
     virtual Qgis::TiledMeshProviderCapabilities capabilities() const;
+
+    /**
+     * Returns a clone of the data provider.
+     */
+    virtual QgsTiledMeshDataProvider *clone() const = 0 SIP_FACTORY;
+
+    /**
+     * Returns metadata in a format suitable for feeding directly
+     * into a subset of the GUI properties "Metadata" tab.
+     */
+    virtual QString htmlMetadata() const;
+
+    /**
+     * Returns the original coordinate reference system for the tiled mesh data.
+     *
+     * This may differ from the QgsDataProvider::crs(), which is the best CRS representation
+     * for the data provider for 2D use.
+     *
+     * \warning Care must be taken to ensure that meshCrs() is used instead of crs() whenever
+     * transforming bounding volumes or geometries associated with the provider.
+     */
+    virtual const QgsCoordinateReferenceSystem meshCrs() const = 0;
+
+    /**
+     * Returns the bounding volume for the data provider.
+     *
+     * This corresponds to the root node bounding volume.
+     *
+     * \warning Coordinates in the returned volume are in the meshCrs() reference system, not the QgsDataProvider::crs() system.
+     */
+    virtual const QgsAbstractTiledMeshNodeBoundingVolume *boundingVolume() const = 0;
 
 };
 

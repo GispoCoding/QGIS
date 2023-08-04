@@ -303,6 +303,11 @@ QgsPostgresProvider::QgsPostgresProvider( QString const &uri, const ProviderOpti
 
   mLayerMetadata.setType( QStringLiteral( "dataset" ) );
   mLayerMetadata.setCrs( crs() );
+
+  // Constructor is called in another thread than the thread where the provider will live,
+  // so we disconnect the DB, connection will be done later in the provider thread when needed
+  if ( flags.testFlag( QgsDataProvider::ParallelThreadLoading ) )
+    disconnectDb();
 }
 
 QgsPostgresProvider::~QgsPostgresProvider()
@@ -320,7 +325,13 @@ QgsAbstractFeatureSource *QgsPostgresProvider::featureSource() const
 
 QgsPostgresConn *QgsPostgresProvider::connectionRO() const
 {
-  return mTransaction ? mTransaction->connection() : mConnectionRO;
+  if ( mTransaction )
+    return mTransaction->connection();
+
+  if ( !mConnectionRO )
+    mConnectionRO = QgsPostgresConn::connectDb( mUri, true, true, false, !mReadFlags.testFlag( QgsDataProvider::SkipCredentialsRequest ) );
+
+  return mConnectionRO;
 }
 
 void QgsPostgresProvider::setListening( bool isListening )
@@ -3887,7 +3898,7 @@ QgsRectangle QgsPostgresProvider::extent() const
                         quotedValue( mSchemaName ),
                         quotedValue( mTableName ),
                         quotedValue( mGeometryColumn ) );
-            result = mConnectionRO->LoggedPQexec( "QgsPostgresProvider", sql );
+            result = connectionRO()->LoggedPQexec( "QgsPostgresProvider", sql );
             if ( result.PQresultStatus() == PGRES_TUPLES_OK && result.PQntuples() == 1 && !result.PQgetisnull( 0, 0 ) )
             {
               ext = result.PQgetvalue( 0, 0 );
@@ -5177,7 +5188,6 @@ QList<QgsRelation> QgsPostgresProvider::discoverRelations( const QgsVectorLayer 
     return result;
   }
 
-  int nbFound = 0;
   QList<QString> refTableFound;
   for ( int row = 0; row < sqlResult.PQntuples(); ++row )
   {
@@ -5196,10 +5206,10 @@ QList<QgsRelation> QgsPostgresProvider::discoverRelations( const QgsVectorLayer 
     }
     const QString refColumn = sqlResult.PQgetvalue( row, 4 );
     const QString position = sqlResult.PQgetvalue( row, 5 );
-    if ( ( position == QLatin1String( "1" ) ) || ( nbFound == 0 ) || ( !refTableFound.contains( refTable ) ) )
+    const QList<QgsVectorLayer *> foundLayers = searchLayers( layers, mUri.connectionInfo( false ), refSchema, refTable );
+    if ( ( position == QLatin1String( "1" ) ) || ( !refTableFound.contains( refTable ) ) )
     {
       // first reference field => try to find if we have layers for the referenced table
-      const QList<QgsVectorLayer *> foundLayers = searchLayers( layers, mUri.connectionInfo( false ), refSchema, refTable );
       const auto constFoundLayers = foundLayers;
       for ( const QgsVectorLayer *foundLayer : constFoundLayers )
       {
@@ -5212,7 +5222,6 @@ QList<QgsRelation> QgsPostgresProvider::discoverRelations( const QgsVectorLayer 
         if ( relation.isValid() )
         {
           result.append( relation );
-          ++nbFound;
           refTableFound.append( refTable );
         }
         else
@@ -5224,14 +5233,14 @@ QList<QgsRelation> QgsPostgresProvider::discoverRelations( const QgsVectorLayer 
     else
     {
       // multi reference field => add the field pair to all the referenced layers found
-      const QList<QgsVectorLayer *> foundLayers = searchLayers( layers, mUri.connectionInfo( false ), refSchema, refTable );
-      for ( int i = 0; i < nbFound; ++i )
+      const int resultSize = result.size();
+      for ( int i = 0; i < resultSize; ++i )
       {
         for ( const QgsVectorLayer *foundLayer : foundLayers )
         {
-          if ( result[result.size() - 1 - i].referencedLayerId() == foundLayer->id() )
+          if ( result[resultSize - 1 - i].referencedLayerId() == foundLayer->id() )
           {
-            result[result.size() - 1 - i].addFieldPair( fkColumn, refColumn );
+            result[resultSize - 1 - i].addFieldPair( fkColumn, refColumn );
           }
         }
       }

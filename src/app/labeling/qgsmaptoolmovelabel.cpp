@@ -260,8 +260,24 @@ void QgsMapToolMoveLabel::cadCanvasPressEvent( QgsMapMouseEvent *e )
       }
 
       const bool isCurvedOrLine = mCurrentLabel.settings.placement == Qgis::LabelPlacement::Curved || mCurrentLabel.settings.placement == Qgis::LabelPlacement::PerimeterCurved || mCurrentLabel.settings.placement == Qgis::LabelPlacement::Line;
+      const bool isMovableUsingPoint = labelMoveable( vlayer, mCurrentLabel.settings, xCol, yCol, pointCol );
+      const bool isMovableUsingLineAnchor = labelAnchorPercentMovable( vlayer, mCurrentLabel.settings, lineAnchorPercentCol, lineAnchorClippingCol, lineAnchorTypeCol, lineAnchorTextPointCol );
 
-      if ( isCurvedOrLine && !mCurrentLabel.pos.isDiagram && ! labelAnchorPercentMovable( vlayer, mCurrentLabel.settings, lineAnchorPercentCol, lineAnchorClippingCol, lineAnchorTypeCol, lineAnchorTextPointCol ) )
+      bool useLineAnchor = false;
+      // cloned branches are intentional here for improved readability
+      // NOLINTBEGIN(bugprone-branch-clone)
+      if ( isCurvedOrLine )
+      {
+        if ( isMovableUsingLineAnchor )
+          useLineAnchor = true;
+        else if ( isMovableUsingPoint )
+          useLineAnchor = false;
+        else
+          useLineAnchor = true;
+      }
+      // NOLINTEND(bugprone-branch-clone)
+
+      if ( useLineAnchor && !mCurrentLabel.pos.isDiagram && !isMovableUsingLineAnchor )
       {
         QgsPalIndexes indexes;
         if ( createAuxiliaryFields( indexes ) )
@@ -303,7 +319,7 @@ void QgsMapToolMoveLabel::cadCanvasPressEvent( QgsMapMouseEvent *e )
         //lineAnchorTextPointCol = indexes[ QgsPalLayerSettings::LineAnchorTextPoint];
 
       }
-      else if ( !mCurrentLabel.pos.isDiagram && !labelMoveable( vlayer, mCurrentLabel.settings, xCol, yCol, pointCol ) )
+      else if ( !mCurrentLabel.pos.isDiagram && !isMovableUsingPoint )
       {
         if ( mCurrentLabel.settings.dataDefinedProperties().isActive( QgsPalLayerSettings::PositionPoint ) )
         {
@@ -601,7 +617,7 @@ void QgsMapToolMoveLabel::cadCanvasPressEvent( QgsMapMouseEvent *e )
             int rCol;
             if ( currentLabelDataDefinedRotation( defRot, rSuccess, rCol ) )
             {
-              const double labelRot = mCurrentLabel.pos.rotation * 180 / M_PI;
+              const double labelRot = mCurrentLabel.pos.rotation;
               vlayer->changeAttributeValue( mCurrentLabel.pos.featureId, rCol, labelRot );
             }
           }

@@ -26,7 +26,7 @@
 
 class QString;
 class QRectF;
-class QgsBox3d;
+class QgsBox3D;
 #include "qgspointxy.h"
 
 
@@ -36,7 +36,7 @@ class QgsBox3d;
  *
  * QgsRectangle is used to store a rectangle when double values are required.
  * Examples are storing a layer extent or the current view extent of a map
- * \see QgsBox3d
+ * \see QgsBox3D
  */
 class CORE_EXPORT QgsRectangle
 {
@@ -479,7 +479,8 @@ class CORE_EXPORT QgsRectangle
     bool isNull() const
     {
       // rectangle created QgsRectangle() or with rect.setMinimal() ?
-      return ( qgsDoubleNear( mXmin, 0.0 ) && qgsDoubleNear( mXmax, 0.0 ) && qgsDoubleNear( mYmin, 0.0 ) && qgsDoubleNear( mYmax, 0.0 ) ) ||
+      return ( std::isnan( mXmin )  && std::isnan( mXmax ) && std::isnan( mYmin ) && std::isnan( mYmin ) ) ||
+             ( qgsDoubleNear( mXmin, 0.0 ) && qgsDoubleNear( mXmax, 0.0 ) && qgsDoubleNear( mYmin, 0.0 ) && qgsDoubleNear( mYmax, 0.0 ) ) ||
              ( qgsDoubleNear( mXmin, std::numeric_limits<double>::max() ) && qgsDoubleNear( mYmin, std::numeric_limits<double>::max() ) &&
                qgsDoubleNear( mXmax, -std::numeric_limits<double>::max() ) && qgsDoubleNear( mYmax, -std::numeric_limits<double>::max() ) );
     }
@@ -583,7 +584,7 @@ class CORE_EXPORT QgsRectangle
      * \a zMin and \a zMax z values.
      * \since QGIS 3.0
      */
-    QgsBox3d toBox3d( double zMin, double zMax ) const;
+    QgsBox3D toBox3d( double zMin, double zMax ) const;
 
     //! Allows direct construction of QVariants from rectangles.
     operator QVariant() const

@@ -15,13 +15,11 @@
 
 #include "qgspointcloudlayerproperties.h"
 #include "qgshelp.h"
-#include "qgsmaplayerstylemanager.h"
 #include "qgsmaplayerstyleguiutils.h"
 #include "qgspointcloudlayer.h"
 #include "qgsgui.h"
 #include "qgsapplication.h"
 #include "qgsmetadatawidget.h"
-#include "qgsmaplayerconfigwidgetfactory.h"
 #include "qgsmaplayerconfigwidget.h"
 #include "qgspointcloudattributemodel.h"
 #include "qgsdatumtransformdialog.h"
@@ -80,7 +78,6 @@ QgsPointCloudLayerProperties::QgsPointCloudLayerProperties( QgsPointCloudLayer *
                        mOptStackedWidget->indexOf( mOptsPage_Information ) );
   }
 
-  QString title = tr( "Layer Properties - %1" ).arg( mLayer->name() );
   mBtnStyle = new QPushButton( tr( "Style" ) );
   QMenu *menuStyle = new QMenu( this );
   menuStyle->addAction( tr( "Load Style…" ), this, &QgsPointCloudLayerProperties::loadStyleFromFile );
@@ -135,9 +132,7 @@ QgsPointCloudLayerProperties::QgsPointCloudLayerProperties( QgsPointCloudLayer *
     mStatisticsCalculationWarningLabel->setHidden( state != QgsPointCloudLayer::PointCloudStatisticsCalculationState::Calculated );
   } );
 
-  if ( !mLayer->styleManager()->isDefault( mLayer->styleManager()->currentStyle() ) )
-    title += QStringLiteral( " (%1)" ).arg( mLayer->styleManager()->currentStyle() );
-  restoreOptionsBaseUi( title );
+  initialize();
 }
 
 void QgsPointCloudLayerProperties::apply()

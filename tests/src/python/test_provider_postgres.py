@@ -70,7 +70,8 @@ from qgis.core import (
     QgsSettingsTree
 )
 from qgis.gui import QgsAttributeForm, QgsGui
-from qgis.testing import start_app, unittest
+import unittest
+from qgis.testing import start_app, QgisTestCase
 
 from providertestbase import ProviderTestCase
 from utilities import compareWkt, unitTestDataPath
@@ -79,7 +80,7 @@ QGISAPP = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
+class TestPyQgsPostgresProvider(QgisTestCase, ProviderTestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -2526,7 +2527,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
     def testValidLayerDiscoverRelations(self):
         """
-        Test implicit relations that can be discovers between tables, based on declared foreign keys.
+        Test implicit relations that can be discovered between tables, based on declared foreign keys.
         The test also checks that two distinct relations can be discovered when two foreign keys are declared (see #41138).
         """
         vl = QgsVectorLayer(
@@ -2545,11 +2546,28 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             vl
         ]
 
+    def testValidLayerDiscoverRelationsComposite(self):
+        """
+        Test implicit relations that can be discovered between tables, based on declared composite foreign keys.
+        """
+        vl = QgsVectorLayer(
+            self.dbconn +
+            ' sslmode=disable key=\'pk\' checkPrimaryKeyUnicity=\'1\' table="qgis_test"."referencing_layer_composite"',
+            'referencing_layer', 'postgres')
+        vls = [
+            QgsVectorLayer(
+                self.dbconn +
+                ' sslmode=disable key=\'pk_ref_1\' checkPrimaryKeyUnicity=\'1\' table="qgis_test"."referenced_layer_composite"',
+                'referenced_layer_1', 'postgres'),
+            vl
+        ]
+
         for lyr in vls:
             self.assertTrue(lyr.isValid())
             QgsProject.instance().addMapLayer(lyr)
         relations = vl.dataProvider().discoverRelations(vl, vls)
-        self.assertEqual(len(relations), 2)
+        self.assertEqual(len(relations), 1)
+        self.assertEqual(len(relations[0].fieldPairs()), 2)
         for i, r in enumerate(relations):
             self.assertEqual(r.referencedLayer(), vls[i])
 
@@ -3233,7 +3251,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             self.assertEqual(set(extracted_fids), {1, 2})  # Bug ?
 
 
-class TestPyQgsPostgresProviderCompoundKey(unittest.TestCase, ProviderTestCase):
+class TestPyQgsPostgresProviderCompoundKey(QgisTestCase, ProviderTestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -3334,7 +3352,7 @@ class TestPyQgsPostgresProviderCompoundKey(unittest.TestCase, ProviderTestCase):
         self.assertTrue(vl.commitChanges())
 
 
-class TestPyQgsPostgresProviderBigintSinglePk(unittest.TestCase, ProviderTestCase):
+class TestPyQgsPostgresProviderBigintSinglePk(QgisTestCase, ProviderTestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -3907,7 +3925,7 @@ class TestPyQgsPostgresProviderBigintSinglePk(unittest.TestCase, ProviderTestCas
         self.assertEqual(vl.getFeature(8)['geom'].crs(), geom.crs())
 
 
-class TestPyQgsPostgresProviderAsyncCreation(unittest.TestCase):
+class TestPyQgsPostgresProviderAsyncCreation(QgisTestCase):
 
     @classmethod
     def setUpClass(cls):

@@ -119,6 +119,7 @@ set(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmjoinbylocation.cpp
   processing/qgsalgorithmjoinbynearest.cpp
   processing/qgsalgorithmjoinwithlines.cpp
+  processing/qgsalgorithmkeepnbiggestparts.cpp
   processing/qgsalgorithmkmeansclustering.cpp
   processing/qgsalgorithmlayoutatlastoimage.cpp
   processing/qgsalgorithmlayoutatlastopdf.cpp
@@ -162,6 +163,7 @@ set(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmrandompointsinpolygons.cpp
   processing/qgsalgorithmrandompointsonlines.cpp
   processing/qgsalgorithmrandomraster.cpp
+  processing/qgsalgorithmrasterdtmslopebasedfilter.cpp
   processing/qgsalgorithmrasterfrequencybycomparisonoperator.cpp
   processing/qgsalgorithmrasterlayerproperties.cpp
   processing/qgsalgorithmrasterlayeruniquevalues.cpp

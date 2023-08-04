@@ -1226,6 +1226,9 @@ QList<QPolygonF> offsetLine( QPolygonF polyline, double dist, Qgis::GeometryType
 
 QgsSymbol *QgsSymbolLayerUtils::loadSymbol( const QDomElement &element, const QgsReadWriteContext &context )
 {
+  if ( element.isNull() )
+    return nullptr;
+
   QgsSymbolLayerList layers;
   QDomNode layerNode = element.firstChild();
 
@@ -1341,6 +1344,7 @@ QgsSymbolLayer *QgsSymbolLayerUtils::loadSymbolLayer( QDomElement &element, cons
   const bool enabled = element.attribute( QStringLiteral( "enabled" ), QStringLiteral( "1" ) ).toInt();
   const int pass = element.attribute( QStringLiteral( "pass" ) ).toInt();
   const QString id = element.attribute( QStringLiteral( "id" ) );
+  const Qgis::SymbolLayerUserFlags userFlags = qgsFlagKeysToValue( element.attribute( QStringLiteral( "userFlags" ) ), Qgis::SymbolLayerUserFlags() );
 
   // parse properties
   QVariantMap props = parseProperties( element );
@@ -1357,6 +1361,7 @@ QgsSymbolLayer *QgsSymbolLayerUtils::loadSymbolLayer( QDomElement &element, cons
     layer->setLocked( locked );
     layer->setRenderingPass( pass );
     layer->setEnabled( enabled );
+    layer->setUserFlags( userFlags );
 
     // old project format, empty is missing, keep the actual layer one
     if ( !id.isEmpty() )
@@ -1443,6 +1448,8 @@ QDomElement QgsSymbolLayerUtils::saveSymbol( const QString &name, const QgsSymbo
     layerEl.setAttribute( QStringLiteral( "locked" ), layer->isLocked() );
     layerEl.setAttribute( QStringLiteral( "pass" ), layer->renderingPass() );
     layerEl.setAttribute( QStringLiteral( "id" ), layer->id() );
+    if ( layer->userFlags() != Qgis::SymbolLayerUserFlags() )
+      layerEl.setAttribute( QStringLiteral( "userFlags" ), qgsFlagValueToKeys( layer->userFlags() ) );
 
     QVariantMap props = layer->properties();
 

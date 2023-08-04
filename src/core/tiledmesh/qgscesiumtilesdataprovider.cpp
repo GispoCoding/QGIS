@@ -20,45 +20,237 @@
 #include "qgsapplication.h"
 #include "qgsprovidersublayerdetails.h"
 #include "qgsthreadingutils.h"
+#include "qgsnetworkaccessmanager.h"
+#include "qgsblockingnetworkrequest.h"
+#include "qgscesiumutils.h"
+#include "qgssphere.h"
+#include "qgslogger.h"
+#include "qgsorientedbox3d.h"
+#include "qgstiledmeshboundingvolume.h"
+#include "qgscoordinatetransform.h"
 
 #include <QUrl>
 #include <QIcon>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QFileInfo>
 
 ///@cond PRIVATE
 
 #define PROVIDER_KEY QStringLiteral( "cesiumtiles" )
 #define PROVIDER_DESCRIPTION QStringLiteral( "Cesium 3D Tiles data provider" )
 
+//
+// QgsCesiumTilesDataProviderSharedData
+//
+
+QgsCesiumTilesDataProviderSharedData::QgsCesiumTilesDataProviderSharedData() = default;
+
+void QgsCesiumTilesDataProviderSharedData::setTilesetContent( const QString &tileset, const QgsCoordinateTransformContext &transformContext )
+{
+  mTileset = json::parse( tileset.toStdString() );
+
+  // parse root
+  {
+    const auto &root = mTileset[ "root" ];
+    // parse root bounding volume
+
+    // TODO -- read crs from metadata tags. Need to find real world examples of this. And can metadata crs override
+    // the EPSG:4979 requirement from a region bounding volume??
+
+    {
+      const auto &rootBoundingVolume = root[ "boundingVolume" ];
+      if ( rootBoundingVolume.contains( "region" ) )
+      {
+        const QgsBox3D rootRegion = QgsCesiumUtils::parseRegion( rootBoundingVolume[ "region" ] );
+        if ( !rootRegion.isNull() )
+        {
+          mBoundingVolume = std::make_unique< QgsTiledMeshNodeBoundingVolumeRegion >( rootRegion );
+          mZRange = QgsDoubleRange( rootRegion.zMinimum(), rootRegion.zMaximum() );
+          mLayerCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4979" ) );
+          mMeshCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4978" ) );
+          mExtent = rootRegion.toRectangle();
+        }
+      }
+      else if ( rootBoundingVolume.contains( "box" ) )
+      {
+        const QgsOrientedBox3D bbox = QgsCesiumUtils::parseBox( rootBoundingVolume["box"] );
+        if ( !bbox.isNull() )
+        {
+          // layer must advertise as EPSG:4979, as the various QgsMapLayer
+          // methods which utilize QgsMapLayer::crs() (such as layer extent transformation)
+          // are all purely 2D and can't handle the cesium data source z value
+          // range in EPSG:4978 !
+          mLayerCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4979" ) );
+          mMeshCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4978" ) );
+
+          const QgsCoordinateTransform transform( mMeshCrs, mLayerCrs, transformContext );
+
+          mBoundingVolume = std::make_unique< QgsTiledMeshNodeBoundingVolumeBox >( bbox );
+          try
+          {
+            const QgsBox3D rootRegion = mBoundingVolume->bounds( transform );
+            mZRange = QgsDoubleRange( rootRegion.zMinimum(), rootRegion.zMaximum() );
+
+            std::unique_ptr< QgsAbstractGeometry > extent2D( mBoundingVolume->as2DGeometry( transform ) );
+            mExtent = extent2D->boundingBox();
+          }
+          catch ( QgsCsException & )
+          {
+            QgsDebugError( QStringLiteral( "Caught transform exception when transforming boundingVolume" ) );
+          }
+        }
+      }
+      else if ( rootBoundingVolume.contains( "sphere" ) )
+      {
+        const QgsSphere sphere = QgsCesiumUtils::parseSphere( rootBoundingVolume["sphere"] );
+        if ( !sphere.isNull() )
+        {
+          // layer must advertise as EPSG:4979, as the various QgsMapLayer
+          // methods which utilize QgsMapLayer::crs() (such as layer extent transformation)
+          // are all purely 2D and can't handle the cesium data source z value
+          // range in EPSG:4978 !
+          mLayerCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4979" ) );
+          mMeshCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4978" ) );
+
+          const QgsCoordinateTransform transform( mMeshCrs, mLayerCrs, transformContext );
+
+          mBoundingVolume = std::make_unique< QgsTiledMeshNodeBoundingVolumeSphere >( sphere );
+          try
+          {
+            const QgsBox3D rootRegion = mBoundingVolume->bounds( transform );
+            mZRange = QgsDoubleRange( rootRegion.zMinimum(), rootRegion.zMaximum() );
+
+            std::unique_ptr< QgsAbstractGeometry > extent2D( mBoundingVolume->as2DGeometry( transform ) );
+            mExtent = extent2D->boundingBox();
+          }
+          catch ( QgsCsException & )
+          {
+            QgsDebugError( QStringLiteral( "Caught transform exception when transforming boundingVolume" ) );
+          }
+        }
+      }
+      else
+      {
+        QgsDebugError( QStringLiteral( "unsupported boundingVolume format" ) );
+      }
+    }
+  }
+}
+
+
+//
+// QgsCesiumTilesDataProvider
+//
+
 QgsCesiumTilesDataProvider::QgsCesiumTilesDataProvider( const QString &uri, const ProviderOptions &providerOptions, ReadFlags flags )
   : QgsTiledMeshDataProvider( uri, providerOptions, flags )
+  , mShared( std::make_shared< QgsCesiumTilesDataProviderSharedData >() )
 {
+  QgsDataSourceUri dsUri;
+  dsUri.setEncodedUri( uri );
+  mAuthCfg = dsUri.authConfigId();
+  mHeaders = dsUri.httpHeaders();
 
+  mIsValid = init();
+}
+
+QgsCesiumTilesDataProvider::QgsCesiumTilesDataProvider( const QgsCesiumTilesDataProvider &other )
+  : QgsTiledMeshDataProvider( other )
+  , mIsValid( other.mIsValid )
+  , mAuthCfg( other.mAuthCfg )
+  , mHeaders( other.mHeaders )
+  , mShared( other.mShared )
+{
 }
 
 QgsCesiumTilesDataProvider::~QgsCesiumTilesDataProvider() = default;
+
+QgsCesiumTilesDataProvider *QgsCesiumTilesDataProvider::clone() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+  return new QgsCesiumTilesDataProvider( *this );
+}
+
+bool QgsCesiumTilesDataProvider::init()
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  QgsDataSourceUri dsUri;
+  dsUri.setEncodedUri( dataSourceUri() );
+
+  const QString tileSetUri = dsUri.param( QStringLiteral( "url" ) );
+  if ( !tileSetUri.isEmpty() )
+  {
+    const QUrl url( tileSetUri );
+
+    QNetworkRequest request = QNetworkRequest( url );
+    QgsSetRequestInitiatorClass( request, QStringLiteral( "QgsCesiumTilesDataProvider" ) )
+    mHeaders.updateNetworkRequest( request );
+
+    QgsBlockingNetworkRequest networkRequest;
+    networkRequest.setAuthCfg( mAuthCfg );
+
+    switch ( networkRequest.get( request ) )
+    {
+      case QgsBlockingNetworkRequest::NoError:
+        break;
+
+      case QgsBlockingNetworkRequest::NetworkError:
+      case QgsBlockingNetworkRequest::TimeoutError:
+      case QgsBlockingNetworkRequest::ServerExceptionError:
+        // TODO -- error reporting
+        return false;
+    }
+
+    const QgsNetworkReplyContent content = networkRequest.reply();
+    mShared->setTilesetContent( content.content(), transformContext() );
+  }
+  else
+  {
+    // try uri as a local file
+    if ( QFileInfo::exists( dataSourceUri( ) ) )
+    {
+      QFile file( dataSourceUri( ) );
+      if ( file.open( QIODevice::ReadOnly | QIODevice::Text ) )
+      {
+        const QByteArray raw = file.readAll();
+        mShared->setTilesetContent( raw, transformContext() );
+      }
+      else
+      {
+        return false;
+      }
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 QgsCoordinateReferenceSystem QgsCesiumTilesDataProvider::crs() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  // TODO
-  return QgsCoordinateReferenceSystem();
+  return mShared->mLayerCrs;
 }
 
 QgsRectangle QgsCesiumTilesDataProvider::extent() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  // TODO
-  return QgsRectangle();
+  return mShared->mExtent;
 }
 
 bool QgsCesiumTilesDataProvider::isValid() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  // TODO
-  return true;
+  return mIsValid;
 }
 
 QString QgsCesiumTilesDataProvider::name() const
@@ -74,6 +266,81 @@ QString QgsCesiumTilesDataProvider::description() const
 
   return QObject::tr( "Cesium 3D Tiles" );
 }
+
+QString QgsCesiumTilesDataProvider::htmlMetadata() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  QString metadata;
+
+  if ( mShared->mTileset.contains( "asset" ) )
+  {
+    const auto &asset = mShared->mTileset[ "asset" ];
+    if ( asset.contains( "version" ) )
+    {
+      const QString version = QString::fromStdString( asset["version"].get<std::string>() );
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "3D Tiles Version" ) % QStringLiteral( "</td><td>%1</a>" ).arg( version ) % QStringLiteral( "</td></tr>\n" );
+    }
+
+    if ( asset.contains( "tilesetVersion" ) )
+    {
+      const QString tilesetVersion = QString::fromStdString( asset["tilesetVersion"].get<std::string>() );
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Tileset Version" ) % QStringLiteral( "</td><td>%1</a>" ).arg( tilesetVersion ) % QStringLiteral( "</td></tr>\n" );
+    }
+
+    if ( asset.contains( "generator" ) )
+    {
+      const QString generator = QString::fromStdString( asset["generator"].get<std::string>() );
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Tileset Generator" ) % QStringLiteral( "</td><td>%1</a>" ).arg( generator ) % QStringLiteral( "</td></tr>\n" );
+    }
+  }
+  if ( mShared->mTileset.contains( "extensionsRequired" ) )
+  {
+    QStringList extensions;
+    for ( const auto &item : mShared->mTileset["extensionsRequired"] )
+    {
+      extensions << QString::fromStdString( item.get<std::string>() );
+    }
+    if ( !extensions.isEmpty() )
+    {
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Extensions Required" ) % QStringLiteral( "</td><td><ul><li>%1</li></ul></a>" ).arg( extensions.join( QStringLiteral( "</li><li>" ) ) ) % QStringLiteral( "</td></tr>\n" );
+    }
+  }
+  if ( mShared->mTileset.contains( "extensionsUsed" ) )
+  {
+    QStringList extensions;
+    for ( const auto &item : mShared->mTileset["extensionsUsed"] )
+    {
+      extensions << QString::fromStdString( item.get<std::string>() );
+    }
+    if ( !extensions.isEmpty() )
+    {
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Extensions Used" ) % QStringLiteral( "</td><td><ul><li>%1</li></ul></a>" ).arg( extensions.join( QStringLiteral( "</li><li>" ) ) ) % QStringLiteral( "</td></tr>\n" );
+    }
+  }
+
+  if ( !mShared->mZRange.isInfinite() )
+  {
+    metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Z Range" ) % QStringLiteral( "</td><td>%1 - %2</a>" ).arg( QLocale().toString( mShared->mZRange.lower() ), QLocale().toString( mShared->mZRange.upper() ) ) % QStringLiteral( "</td></tr>\n" );
+  }
+
+  return metadata;
+}
+
+const QgsCoordinateReferenceSystem QgsCesiumTilesDataProvider::meshCrs() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  return mShared ? mShared->mMeshCrs : QgsCoordinateReferenceSystem();
+}
+
+const QgsAbstractTiledMeshNodeBoundingVolume *QgsCesiumTilesDataProvider::boundingVolume() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  return mShared ? mShared->mBoundingVolume.get() : nullptr;
+}
+
 
 //
 // QgsCesiumTilesProviderMetadata

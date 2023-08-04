@@ -234,7 +234,7 @@ QgsAmsProvider::QgsAmsProvider( const QString &uri, const ProviderOptions &optio
   }
 
   QgsLayerMetadata::SpatialExtent spatialExtent;
-  spatialExtent.bounds = QgsBox3d( mExtent );
+  spatialExtent.bounds = QgsBox3D( mExtent );
   spatialExtent.extentCrs = mCrs;
   QgsLayerMetadata::Extent metadataExtent;
   metadataExtent.setSpatialExtents( QList<  QgsLayerMetadata::SpatialExtent >() << spatialExtent );
@@ -743,6 +743,10 @@ QImage QgsAmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, int
         query.addQueryItem( QStringLiteral( "layers" ), QStringLiteral( "show:%1" ).arg( dataSource.param( QStringLiteral( "layer" ) ) ) );
         query.addQueryItem( QStringLiteral( "transparent" ), QStringLiteral( "true" ) );
         query.addQueryItem( QStringLiteral( "f" ), QStringLiteral( "image" ) );
+        if ( mDpi != -1 )
+        {
+          query.addQueryItem( QStringLiteral( "dpi" ), QString::number( mDpi ) );
+        }
         requestUrl.setQuery( query );
         mError.clear();
         mErrorTitle.clear();

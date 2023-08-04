@@ -130,6 +130,7 @@ class QgsTemporalControllerDockWidget;
 
 class QgsMapDecoration;
 class QgsDecorationItem;
+class QgsDecorationOverlay;
 class QgsMessageLogViewer;
 class QgsMessageBar;
 class QgsMessageBarItem;
@@ -1930,7 +1931,6 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     void addTextAnnotation();
     void addHtmlAnnotation();
     void addSvgAnnotation();
-    void modifyAnnotation();
     void reprojectAnnotations();
 
     //! Alerts user when commit errors occurred
@@ -2351,8 +2351,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     /**
      * Pastes the \a features to the \a pasteVectorLayer and gives feedback to the user
      * according to \a invalidGeometryCount and \a nTotalFeatures
+     * \note Setting the \a duplicateFeature to TRUE will handle the pasting of features as duplicates of pre-existing features
      */
-    void pasteFeatures( QgsVectorLayer *pasteVectorLayer, int invalidGeometriesCount, int nTotalFeatures, QgsFeatureList &features );
+    void pasteFeatures( QgsVectorLayer *pasteVectorLayer, int invalidGeometriesCount, int nTotalFeatures, QgsFeatureList &features, bool duplicateFeature = false );
 
     /**
      * starts/stops for a vector layer \a vlayer
@@ -2593,6 +2594,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QgsTileScaleWidget *mpTileScaleWidget = nullptr;
 
     QList<QgsDecorationItem *> mDecorationItems;
+    QgsDecorationOverlay *mDecorationOverlay = nullptr;
 
     //! Persistent GPS toolbox
     QgsAppGpsConnection *mGpsConnection = nullptr;

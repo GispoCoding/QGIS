@@ -102,6 +102,7 @@
 #include "qgsalgorithmimportphotos.h"
 #include "qgsalgorithminterpolatepoint.h"
 #include "qgsalgorithmintersection.h"
+#include "qgsalgorithmkeepnbiggestparts.h"
 #include "qgsalgorithmkmeansclustering.h"
 #ifndef QT_NO_PRINTER
 #include "qgsalgorithmlayoutatlastoimage.h"
@@ -146,6 +147,7 @@
 #include "qgsalgorithmrandompointsinpolygons.h"
 #include "qgsalgorithmrandompointsonlines.h"
 #include "qgsalgorithmrandomraster.h"
+#include "qgsalgorithmrasterdtmslopebasedfilter.h"
 #include "qgsalgorithmrasterfrequencybycomparisonoperator.h"
 #include "qgsalgorithmrasterlayerproperties.h"
 #include "qgsalgorithmrasterlayeruniquevalues.h"
@@ -366,6 +368,7 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsJoinByLocationAlgorithm() );
   addAlgorithm( new QgsJoinByNearestAlgorithm() );
   addAlgorithm( new QgsJoinWithLinesAlgorithm() );
+  addAlgorithm( new QgsKeepNBiggestPartsAlgorithm() );
   addAlgorithm( new QgsKMeansClusteringAlgorithm() );
   addAlgorithm( new QgsLayerToBookmarksAlgorithm() );
   addAlgorithm( new QgsLayoutMapExtentToLayerAlgorithm() );
@@ -426,6 +429,7 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsRandomPointsOnLinesAlgorithm() );
   addAlgorithm( new QgsRandomPoissonRasterAlgorithm() );
   addAlgorithm( new QgsRandomUniformRasterAlgorithm() );
+  addAlgorithm( new QgsRasterDtmSlopeBasedFilterAlgorithm() );
   addAlgorithm( new QgsRasterFrequencyByEqualOperatorAlgorithm() );
   addAlgorithm( new QgsRasterFrequencyByGreaterThanOperatorAlgorithm() );
   addAlgorithm( new QgsRasterFrequencyByLessThanOperatorAlgorithm() );

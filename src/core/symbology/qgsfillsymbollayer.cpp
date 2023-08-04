@@ -325,12 +325,14 @@ void QgsSimpleFillSymbolLayer::renderPolygon( const QPolygonF &points, const QVe
     p->translate( offset );
   }
 
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+
 #ifndef QT_NO_PRINTER
   if ( mBrush.style() == Qt::SolidPattern || mBrush.style() == Qt::NoBrush || !dynamic_cast<QPrinter *>( p->device() ) )
 #endif
   {
-    p->setPen( context.selected() ? mSelPen : mPen );
-    p->setBrush( context.selected() ? mSelBrush : mBrush );
+    p->setPen( useSelectedColor ? mSelPen : mPen );
+    p->setBrush( useSelectedColor ? mSelBrush : mBrush );
     _renderPolygon( p, points, rings, context );
   }
 #ifndef QT_NO_PRINTER
@@ -339,11 +341,11 @@ void QgsSimpleFillSymbolLayer::renderPolygon( const QPolygonF &points, const QVe
     // workaround upstream issue https://github.com/qgis/QGIS/issues/36580
     // when a non-solid brush is set with opacity, the opacity incorrectly applies to the pen
     // when exporting to PDF/print devices
-    p->setBrush( context.selected() ? mSelBrush : mBrush );
+    p->setBrush( useSelectedColor ? mSelBrush : mBrush );
     p->setPen( Qt::NoPen );
     _renderPolygon( p, points, rings, context );
 
-    p->setPen( context.selected() ? mSelPen : mPen );
+    p->setPen( useSelectedColor ? mSelPen : mPen );
     p->setBrush( Qt::NoBrush );
     _renderPolygon( p, points, rings, context );
   }
@@ -988,7 +990,8 @@ void QgsGradientFillSymbolLayer::renderPolygon( const QPolygonF &points, const Q
 
   applyDataDefinedSymbology( context, points );
 
-  p->setBrush( context.selected() ? mSelBrush : mBrush );
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+  p->setBrush( useSelectedColor ? mSelBrush : mBrush );
   p->setPen( Qt::NoPen );
 
   QPointF offset = mOffset;
@@ -1297,7 +1300,8 @@ void QgsShapeburstFillSymbolLayer::renderPolygon( const QPolygonF &points, const
     return;
   }
 
-  if ( context.selected() )
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+  if ( useSelectedColor )
   {
     //feature is selected, draw using selection style
     p->setBrush( mSelBrush );
@@ -1805,7 +1809,8 @@ void QgsImageFillSymbolLayer::renderPolygon( const QPolygonF &points, const QVec
     mBrush.setTransform( t );
   }
 
-  if ( context.selected() )
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+  if ( useSelectedColor )
   {
     QColor selColor = context.renderContext().selectionColor();
     p->setBrush( QBrush( selColor ) );
@@ -2174,12 +2179,13 @@ void QgsSVGFillSymbolLayer::renderPolygon( const QPolygonF &points, const QVecto
 
   if ( mStroke )
   {
-    mStroke->renderPolyline( points, context.feature(), context.renderContext(), -1, SELECT_FILL_BORDER && context.selected() );
+    const bool useSelectedColor = SELECT_FILL_BORDER && shouldRenderUsingSelectionColor( context );
+    mStroke->renderPolyline( points, context.feature(), context.renderContext(), -1, useSelectedColor );
     if ( rings )
     {
       for ( auto ringIt = rings->constBegin(); ringIt != rings->constEnd(); ++ringIt )
       {
-        mStroke->renderPolyline( *ringIt, context.feature(), context.renderContext(), -1, SELECT_FILL_BORDER && context.selected() );
+        mStroke->renderPolyline( *ringIt, context.feature(), context.renderContext(), -1, useSelectedColor );
       }
     }
   }
@@ -2844,19 +2850,19 @@ QString QgsLinePatternFillSymbolLayer::layerType() const
   return QStringLiteral( "LinePatternFill" );
 }
 
-void QgsLinePatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &context, QBrush &brush, double lineAngle, double distance )
+bool QgsLinePatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &context, QBrush &brush, double lineAngle, double distance )
 {
   mBrush.setTextureImage( QImage() ); // set empty in case we have to return
 
   if ( !mFillLineSymbol )
   {
-    return;
+    return true;
   }
   // We have to make a copy because marker intervals will have to be adjusted
   std::unique_ptr< QgsLineSymbol > fillLineSymbol( mFillLineSymbol->clone() );
   if ( !fillLineSymbol )
   {
-    return;
+    return true;
   }
 
   const QgsRenderContext &ctx = context.renderContext();
@@ -2975,9 +2981,9 @@ void QgsLinePatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &
   height += 2 * yBuffer;
 
   //protect from zero width/height image and symbol layer from eating too much memory
-  if ( width > 10000 || height > 10000 || width == 0 || height == 0 )
+  if ( width > 2000 || height > 2000 || width == 0 || height == 0 )
   {
-    return;
+    return false;
   }
 
   QImage patternImage( width, height, QImage::Format_ARGB32 );
@@ -3107,9 +3113,10 @@ void QgsLinePatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &
     polygons.append( QPolygonF() << p5 << p6 );
   }
 
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
   for ( const QPolygonF &polygon : std::as_const( polygons ) )
   {
-    fillLineSymbol->renderPolyline( polygon, context.feature(), lineRenderContext, -1, context.selected() );
+    fillLineSymbol->renderPolyline( polygon, context.feature(), lineRenderContext, -1, useSelectedColor );
   }
 
   fillLineSymbol->stopRender( lineRenderContext );
@@ -3132,6 +3139,8 @@ void QgsLinePatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &
 
   QTransform brushTransform;
   brush.setTransform( brushTransform );
+
+  return true;
 }
 
 void QgsLinePatternFillSymbolLayer::startRender( QgsSymbolRenderContext &context )
@@ -3143,15 +3152,17 @@ void QgsLinePatternFillSymbolLayer::startRender( QgsSymbolRenderContext &context
                       || mClipMode != Qgis::LineClipMode::ClipPainterOnly
                       || mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyLineClipping );
 
+  if ( !mRenderUsingLines )
+  {
+    // optimised render for screen only, use image based brush
+    // (fallback to line rendering when pattern image will result in too large a memory footprint)
+    mRenderUsingLines = !applyPattern( context, mBrush, mLineAngle, mDistance );
+  }
+
   if ( mRenderUsingLines )
   {
     if ( mFillLineSymbol )
       mFillLineSymbol->startRender( context.renderContext(), context.fields() );
-  }
-  else
-  {
-    // optimised render for screen only, use image based brush
-    applyPattern( context, mBrush, mLineAngle, mDistance );
   }
 }
 
@@ -3205,7 +3216,8 @@ void QgsLinePatternFillSymbolLayer::renderPolygon( const QPolygonF &points, cons
 
   p->setPen( QPen( Qt::NoPen ) );
 
-  if ( context.selected() )
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+  if ( useSelectedColor )
   {
     QColor selColor = context.renderContext().selectionColor();
     p->setBrush( QBrush( selColor ) );
@@ -3808,7 +3820,7 @@ QString QgsPointPatternFillSymbolLayer::layerType() const
   return QStringLiteral( "PointPatternFill" );
 }
 
-void QgsPointPatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &context, QBrush &brush, double distanceX, double distanceY,
+bool QgsPointPatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext &context, QBrush &brush, double distanceX, double distanceY,
     double displacementX, double displacementY, double offsetX, double offsetY )
 {
   //render 3 rows and columns in one go to easily incorporate displacement
@@ -3823,11 +3835,10 @@ void QgsPointPatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext 
                           mOffsetYUnit == Qgis::RenderUnit::Percentage ? ( height * offsetY / 200 ) : ctx.convertToPainterUnits( offsetY, mOffsetYUnit, mOffsetYMapUnitScale ),
                           height );
 
-  if ( width > 10000 || height > 10000 ) //protect symbol layer from eating too much memory
+  if ( width > 2000 || height > 2000 ) //protect symbol layer from eating too much memory
   {
-    QImage img;
-    brush.setTextureImage( img );
-    return;
+    brush.setTextureImage( QImage() );
+    return false;
   }
 
   QImage patternImage( width, height, QImage::Format_ARGB32 );
@@ -3835,7 +3846,7 @@ void QgsPointPatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext 
   if ( patternImage.isNull() )
   {
     brush.setTextureImage( QImage() );
-    return;
+    return false;
   }
   if ( mMarkerSymbol )
   {
@@ -3903,6 +3914,8 @@ void QgsPointPatternFillSymbolLayer::applyPattern( const QgsSymbolRenderContext 
   }
   QTransform brushTransform;
   brush.setTransform( brushTransform );
+
+  return true;
 }
 
 void QgsPointPatternFillSymbolLayer::startRender( QgsSymbolRenderContext &context )
@@ -3920,14 +3933,16 @@ void QgsPointPatternFillSymbolLayer::startRender( QgsSymbolRenderContext &contex
                         || !qgsDoubleNear( mAngle, 0 )
                         || mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyAngle );
 
+  if ( !mRenderUsingMarkers )
+  {
+    // optimised render for screen only, use image based brush
+    // (fallback to line rendering when pattern image will result in too large a memory footprint)
+    mRenderUsingMarkers = !applyPattern( context, mBrush, mDistanceX, mDistanceY, mDisplacementX, mDisplacementY, mOffsetX, mOffsetY );
+  }
+
   if ( mRenderUsingMarkers )
   {
     mMarkerSymbol->startRender( context.renderContext() );
-  }
-  else
-  {
-    // optimised render for screen only, use image based brush
-    applyPattern( context, mBrush, mDistanceX, mDistanceY, mDisplacementX, mDisplacementY, mOffsetX, mOffsetY );
   }
 }
 
@@ -4042,7 +4057,8 @@ void QgsPointPatternFillSymbolLayer::renderPolygon( const QPolygonF &points, con
 
   p->setPen( QPen( Qt::NoPen ) );
 
-  if ( context.selected() )
+  const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+  if ( useSelectedColor )
   {
     QColor selColor = context.renderContext().selectionColor();
     p->setBrush( QBrush( selColor ) );
@@ -4788,7 +4804,8 @@ void QgsCentroidFillSymbolLayer::renderPolygon( const QPolygonF &points, const Q
     // not rendering a feature, so we can just render the polygon immediately
     const double prevOpacity = mMarker->opacity();
     mMarker->setOpacity( mMarker->opacity() * context.opacity() );
-    render( context.renderContext(), QVector<Part>() << part, context.feature() ? *context.feature() : QgsFeature(), context.selected() );
+    const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+    render( context.renderContext(), QVector<Part>() << part, context.feature() ? *context.feature() : QgsFeature(), useSelectedColor );
     mMarker->setOpacity( prevOpacity );
   }
 }
@@ -5471,7 +5488,8 @@ void QgsRandomMarkerFillSymbolLayer::renderPolygon( const QPolygonF &points, con
     // not rendering a feature, so we can just render the polygon immediately
     const double prevOpacity = mMarker->opacity();
     mMarker->setOpacity( mMarker->opacity() * context.opacity() );
-    render( context.renderContext(), QVector< Part>() << part, context.feature() ? *context.feature() : QgsFeature(), context.selected() );
+    const bool useSelectedColor = shouldRenderUsingSelectionColor( context );
+    render( context.renderContext(), QVector< Part>() << part, context.feature() ? *context.feature() : QgsFeature(), useSelectedColor );
     mMarker->setOpacity( prevOpacity );
   }
 }

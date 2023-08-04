@@ -90,6 +90,8 @@ class TestQgsGeometry : public QgsTest
     void splitCurve_data();
     void splitCurve();
 
+    void fromBox3d();
+    void fromPoint();
     void fromQgsPointXY();
     void fromQPoint();
     void fromQPolygonF();
@@ -744,6 +746,22 @@ void TestQgsGeometry::splitCurve()
   QCOMPARE( p2->asWkt(), curve2 );
 }
 
+void TestQgsGeometry::fromBox3d()
+{
+  QgsBox3D box3d( 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 );
+  QgsGeometry result( QgsGeometry::fromBox3D( box3d ) );
+  QCOMPARE( result.asWkt(), "MultiPolygonZ (((1 2 3, 1 5 3, 4 5 3, 4 2 3, 1 2 3)),((1 2 3, 1 5 3, 1 5 6, 1 2 6, 1 2 3)),((1 2 3, 4 2 3, 4 2 6, 1 2 6, 1 2 3)),((4 5 6, 4 2 6, 1 2 6, 1 5 6, 4 5 6)),((4 5 6, 4 2 6, 4 2 3, 4 5 3, 4 5 6)),((4 5 6, 4 5 3, 1 5 3, 1 5 6, 4 5 6)))" );
+}
+
+void TestQgsGeometry::fromPoint()
+{
+  QgsPoint point( 1.0, 2.0, 3.0 );
+  QgsGeometry result( QgsGeometry::fromPoint( point ) );
+  QCOMPARE( result.wkbType(), Qgis::WkbType::PointZ );
+  QgsPoint resultPoint = result.vertexAt( 0 );
+  QCOMPARE( resultPoint, point );
+}
+
 void TestQgsGeometry::fromQgsPointXY()
 {
   QgsPointXY point( 1.0, 2.0 );
@@ -979,6 +997,7 @@ namespace
   inline void testCreateEmptyWithSameType()
   {
     std::unique_ptr<QgsAbstractGeometry> geom { new T() };
+    std::unique_ptr<QgsAbstractGeometry> geomResult { new T() };
     std::unique_ptr<QgsAbstractGeometry> created { TestQgsGeometry::createEmpty( geom.get() ) };
     QVERIFY( created->isEmpty() );
 #if defined(__clang__) || defined(__GNUG__)
@@ -992,7 +1011,7 @@ namespace
 // remove Qgs prefix
     type = type.right( type.count() - 3 );
     QStringList extensionZM;
-    extensionZM << QString() << QString( "Z" ) << QString( "M" ) << QString( "ZM" );
+    extensionZM << QString() << QString( "Z" ) << QString( "M" ) << QString( "ZM" ) << QString( " Z" ) << QString( " M" ) << QString( " ZM" ) << QString( "Z M" ) << QString( " Z M" );
     for ( const QString &ext : extensionZM )
     {
       QString wkt = type + ext;
@@ -1010,10 +1029,10 @@ namespace
           QString generatedWkt = spacesBefore + wkt + spacesMiddle + emptyStringList.at( j ) + spacesAfter;
 
           QgsGeometry gWkt = QgsGeometry::fromWkt( generatedWkt );
-          QVERIFY( gWkt.asWkt().compare( result, Qt::CaseInsensitive ) == 0 );
 
           QVERIFY( geom->fromWkt( generatedWkt ) );
-          QVERIFY( geom->asWkt().compare( result, Qt::CaseInsensitive ) == 0 );
+          QVERIFY( geomResult->fromWkt( result ) );
+          QCOMPARE( geom->asWkt(), geomResult->asWkt() );
         }
       }
     }

@@ -1110,7 +1110,8 @@ Click and drag to select vertices by rectangle.
 Alt+click to select vertices by polygon.
 Shift+click/drag to add vertices to selection.
 Ctrl+click/drag to remove vertices from selection.
-Shift+R to enable range selection.</string>
+Shift+R to enable range selection.
+Shift+O to turn segments into straight or curve lines.</string>
    </property>
   </action>
   <action name="mActionRotatePointSymbols">
@@ -1521,18 +1522,6 @@ Shift+R to enable range selection.</string>
    </property>
    <property name="text">
     <string>Form Annotation</string>
-   </property>
-  </action>
-  <action name="mActionAnnotation">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../images/images.qrc">
-     <normaloff>:/images/themes/default/mActionAnnotation.svg</normaloff>:/images/themes/default/mActionAnnotation.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Move Annotation</string>
    </property>
   </action>
   <action name="mActionLabeling">
