@@ -61,11 +61,11 @@ Seuraavat kohdat ovat tarpeellisia vain, jos olet tekemässä muutoksia lähdeko
 
 Bugikorjaukset tehdään ensin tähän repositorioon omiin haaroihinsa.
 
-1. Nimeä haara siten, että siitä selviää, mitä seikkaa ollaan ratkomassa, etuliitteeksi "fix_{SEIKAN_ID}_". Esim. `fix_49311_creating_topological_points_with_geometry_precision`.
+1. Synkronoi tarvittaessa tämän repositorion master-haara QGIS:n virallisen repositorion master-haaran kanssa ("Sync fork"). Tee uusi haara tämän repositorion master-haarasta. Nimeä haara siten, että siitä selviää, mitä seikkaa ollaan ratkomassa, etuliitteeksi "fix_{SEIKAN_ID}_". Esim. `fix_49311_creating_topological_points_with_geometry_precision`.
 
 2. QGIS:n koodikäytännöt vaativat, että bugin korjaavan **commitin** viestin lopussa on oltava bugin yksilöivä tunnus muodossa "Fixes #{SEIKAN_ID}". Esim. `Fixes #12345`.
 
-3. Kun teet PR:ää QGIS:n viralliseen repoon, käythän tarkasti läpi PR:n templatessa olevan tarkistuslistan.
+3. Kun teet PR:ää QGIS:n viralliseen repoon, tee ensin kehityshaaralle rebase upstream-repositorion master-haarasta. Käythän myös tarkasti läpi PR:n templatessa olevan tarkistuslistan.
 
 ---
 
