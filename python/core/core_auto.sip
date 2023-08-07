@@ -717,7 +717,10 @@
 %Include auto_generated/tiledscene/qgstiledscenedataprovider.sip
 %Include auto_generated/tiledscene/qgstiledsceneindex.sip
 %Include auto_generated/tiledscene/qgstiledscenelayer.sip
+%Include auto_generated/tiledscene/qgstiledscenerenderer.sip
+%Include auto_generated/tiledscene/qgstiledscenerendererregistry.sip
 %Include auto_generated/tiledscene/qgstiledscenerequest.sip
+%Include auto_generated/tiledscene/qgstiledscenetexturerenderer.sip
 %Include auto_generated/tiledscene/qgstiledscenetile.sip
 %Include auto_generated/sensor/qgssensormodel.sip
 %Include auto_generated/sensor/qgssensormanager.sip
