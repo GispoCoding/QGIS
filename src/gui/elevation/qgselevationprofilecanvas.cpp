@@ -16,6 +16,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
 #include "qgselevationprofilecanvas.h"
 #include "qgsmaplayerlistutils_p.h"
 #include "qgsplotcanvasitem.h"
@@ -37,6 +38,7 @@
 
 #include <QWheelEvent>
 #include <QTimer>
+#include <QPalette>
 
 ///@cond PRIVATE
 class QgsElevationProfilePlotItem : public Qgs2DPlot, public QgsPlotCanvasItem
@@ -372,6 +374,11 @@ QgsElevationProfileCanvas::QgsElevationProfileCanvas( QWidget *parent )
   mScreenHelper = new QgsScreenHelper( this );
 
   mPlotItem = new QgsElevationProfilePlotItem( this );
+  QgsTextFormat textFormat = mPlotItem->xAxis().textFormat();
+  textFormat.setColor( qApp->palette().color( QPalette::Text ) );
+  mPlotItem->xAxis().setTextFormat( textFormat );
+  mPlotItem->yAxis().setTextFormat( textFormat );
+
   mCrossHairsItem = new QgsElevationProfileCrossHairsItem( this, mPlotItem );
   mCrossHairsItem->setZValue( 100 );
   mCrossHairsItem->hide();
@@ -540,7 +547,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
     case Qgis::LayerType::Annotation:
     case Qgis::LayerType::PointCloud:
     case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledMesh:
+    case Qgis::LayerType::TiledScene:
       break;
   }
 }

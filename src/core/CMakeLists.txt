@@ -336,15 +336,19 @@ set(QGIS_CORE_SRCS
   textrenderer/qgstextrendererutils.cpp
   textrenderer/qgstextshadowsettings.cpp
 
-  tiledmesh/qgscesiumtilesdataprovider.cpp
-  tiledmesh/qgscesiumutils.cpp
-  tiledmesh/qgstiledmeshboundingvolume.cpp
-  tiledmesh/qgstiledmeshconnection.cpp
-  tiledmesh/qgstiledmeshdataitems.cpp
-  tiledmesh/qgstiledmeshdataprovider.cpp
-  tiledmesh/qgstiledmeshlayer.cpp
-  tiledmesh/qgstiledmeshlayerrenderer.cpp
-  tiledmesh/qgstiledmeshprovidermetadata.cpp
+  tiledscene/qgscesiumtilesdataprovider.cpp
+  tiledscene/qgscesiumutils.cpp
+  tiledscene/qgstiledsceneboundingvolume.cpp
+  tiledscene/qgstiledsceneconnection.cpp
+  tiledscene/qgstiledscenedataitems.cpp
+  tiledscene/qgstiledscenedataprovider.cpp
+  tiledscene/qgstiledsceneindex.cpp
+  tiledscene/qgstiledscenelayer.cpp
+  tiledscene/qgstiledscenelayerrenderer.cpp
+  tiledscene/qgstiledscenenode.cpp
+  tiledscene/qgstiledsceneprovidermetadata.cpp
+  tiledscene/qgstiledscenerequest.cpp
+  tiledscene/qgstiledscenetile.cpp
 
   sensor/qgssensormodel.cpp
   sensor/qgssensormanager.cpp
@@ -1906,15 +1910,19 @@ set(QGIS_CORE_HDRS
   textrenderer/qgstextrendererutils.h
   textrenderer/qgstextshadowsettings.h
 
-  tiledmesh/qgscesiumtilesdataprovider.h
-  tiledmesh/qgscesiumutils.h
-  tiledmesh/qgstiledmeshboundingvolume.h
-  tiledmesh/qgstiledmeshconnection.h
-  tiledmesh/qgstiledmeshdataprovider.h
-  tiledmesh/qgstiledmeshdataitems.h
-  tiledmesh/qgstiledmeshlayer.h
-  tiledmesh/qgstiledmeshlayerrenderer.h
-  tiledmesh/qgstiledmeshprovidermetadata.h
+  tiledscene/qgscesiumtilesdataprovider.h
+  tiledscene/qgscesiumutils.h
+  tiledscene/qgstiledsceneboundingvolume.h
+  tiledscene/qgstiledsceneconnection.h
+  tiledscene/qgstiledscenedataprovider.h
+  tiledscene/qgstiledscenedataitems.h
+  tiledscene/qgstiledsceneindex.h
+  tiledscene/qgstiledscenelayer.h
+  tiledscene/qgstiledscenelayerrenderer.h
+  tiledscene/qgstiledscenenode.h
+  tiledscene/qgstiledsceneprovidermetadata.h
+  tiledscene/qgstiledscenerequest.h
+  tiledscene/qgstiledscenetile.h
 
   sensor/qgssensormodel.h
   sensor/qgssensormanager.h
@@ -2296,16 +2304,21 @@ target_include_directories(qgis_core PUBLIC
   sensor
   symbology
   textrenderer
-  tiledmesh
+  tiledscene
   validity
   vector
   vectortile
+)
+
+# treat these as system libraries -- we don't want warnings from them
+target_include_directories(qgis_core SYSTEM PUBLIC
   ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/external/nlohmann
   ${CMAKE_SOURCE_DIR}/external/kdbush/include
   ${CMAKE_SOURCE_DIR}/external/nmea
   ${CMAKE_SOURCE_DIR}/external/rtree/include
   ${CMAKE_SOURCE_DIR}/external/meshOptimizer
+  ${CMAKE_SOURCE_DIR}/external/tinygltf
 )
 
 if (WITH_EPT)
@@ -2410,6 +2423,11 @@ target_link_libraries(qgis_core
   ${ZLIB_LIBRARIES}
   ${EXIV2_LIBRARY}
 )
+
+if (WITH_DRACO)
+  target_link_libraries(qgis_core ${DRACO_LIBRARY})
+endif()
+
 if (NOT IOS)
   target_link_libraries(qgis_core ${QT_VERSION_BASE}::PrintSupport)
 endif()
