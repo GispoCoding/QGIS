@@ -67,6 +67,38 @@ class CORE_EXPORT QgsTiledSceneRenderContext
      */
     QgsFeedback *feedback() const { return mFeedback; }
 
+    /**
+     * Returns the current texture image.
+     *
+     * \see setTextureImage()
+     */
+    QImage textureImage() const;
+
+    /**
+     * Sets the current texture \a image.
+     *
+     * \see textureImage()
+     */
+    void setTextureImage( const QImage &image );
+
+    /**
+     * Sets the current texture coordinates.
+     *
+     * \see textureCoordinates()
+     */
+    void setTextureCoordinates(
+      float textureX1, float textureY1,
+      float textureX2, float textureY2,
+      float textureX3, float textureY3
+    );
+
+    /**
+     * Returns the current texture coordinates.
+     *
+     * \see setTextureCoordinates()
+     */
+    void textureCoordinates( float &textureX1 SIP_OUT, float &textureY1 SIP_OUT, float &textureX2 SIP_OUT, float &textureY2 SIP_OUT, float &textureX3 SIP_OUT, float &textureY3 SIP_OUT ) const;
+
   private:
 #ifdef SIP_RUN
     QgsTiledSceneRenderContext( const QgsTiledSceneRenderContext &rh );
@@ -74,6 +106,9 @@ class CORE_EXPORT QgsTiledSceneRenderContext
 
     QgsRenderContext &mRenderContext;
     QgsFeedback *mFeedback = nullptr;
+    QImage mTextureImage;
+    float mTextureCoordinates[6] { 0, 0, 0, 0, 0, 0 };
+
 };
 
 /**
@@ -91,8 +126,13 @@ class CORE_EXPORT QgsTiledSceneRenderer
     SIP_CONVERT_TO_SUBCLASS_CODE
 
     const QString type = sipCpp->type();
+    if ( type == QLatin1String( "texture" ) )
+      sipType = sipType_QgsTiledSceneTextureRenderer;
+    else if ( type == QLatin1String( "wireframe" ) )
+      sipType = sipType_QgsTiledSceneWireframeRenderer;
+    else
+      sipType = 0;
 
-    sipType = 0;
     SIP_END
 #endif
 
@@ -121,6 +161,11 @@ class CORE_EXPORT QgsTiledSceneRenderer
 
     //! QgsTiledSceneRenderer cannot be copied -- use clone() instead
     QgsTiledSceneRenderer &operator=( const QgsTiledSceneRenderer &other ) = delete;
+
+    /**
+     * Returns flags which control how the renderer behaves.
+     */
+    virtual Qgis::TiledSceneRendererFlags flags() const;
 
     /**
      * Creates a renderer from an XML \a element.
@@ -178,6 +223,20 @@ class CORE_EXPORT QgsTiledSceneRenderer
     void setMaximumScreenErrorUnit( Qgis::RenderUnit unit );
 
     /**
+     * Sets whether to render the borders of tiles.
+     *
+     * \see isTileBorderRenderingEnabled()
+     */
+    void setTileBorderRenderingEnabled( bool enabled ) { mTileBorderRendering = enabled; }
+
+    /**
+     * Returns whether to render also borders of tiles.
+     *
+     * see setTileBorderRenderingEnabled()
+     */
+    bool isTileBorderRenderingEnabled() const { return mTileBorderRendering; }
+
+    /**
      * Must be called when a new render cycle is started. A call to startRender() must always
      * be followed by a corresponding call to stopRender() after all features have been rendered.
      *
@@ -209,6 +268,11 @@ class CORE_EXPORT QgsTiledSceneRenderer
      * Returns a list of all rule keys for legend nodes created by the renderer.
      */
     virtual QStringList legendRuleKeys() const;
+
+    /**
+     * Renders a \a triangle.
+     */
+    virtual void renderTriangle( QgsTiledSceneRenderContext &context, const QPolygonF &triangle ) = 0;
 
   protected:
 
@@ -243,8 +307,9 @@ class CORE_EXPORT QgsTiledSceneRenderer
     QThread *mThread = nullptr;
 #endif
 
-    double mMaximumScreenError = 0.3;
+    double mMaximumScreenError = 3;
     Qgis::RenderUnit mMaximumScreenErrorUnit = Qgis::RenderUnit::Millimeters;
+    bool mTileBorderRendering = false;
 
 };
 

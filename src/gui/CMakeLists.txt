@@ -467,6 +467,7 @@ set(QGIS_GUI_SRCS
   tiledscene/qgstiledscenerendererwidget.cpp
   tiledscene/qgstiledscenesourceselect.cpp
   tiledscene/qgstiledscenetexturerendererwidget.cpp
+  tiledscene/qgstiledscenewireframerendererwidget.cpp
 
   vectortile/qgsarcgisvectortileconnectiondialog.cpp
   vectortile/qgsvectortilebasiclabelingwidget.cpp
@@ -1473,6 +1474,7 @@ set(QGIS_GUI_HDRS
 
   settings/qgssettingseditorwidgetwrapper.h
   settings/qgssettingseditorwidgetwrapperimpl.h
+  settings/qgssettingsenumflageditorwidgetwrapper.h
   settings/qgssettingseditorwidgetregistry.h
   settings/qgssettingsregistrygui.h
   settings/qgssettingstreemodel.h
@@ -1489,6 +1491,7 @@ set(QGIS_GUI_HDRS
   tiledscene/qgstiledscenerendererwidget.h
   tiledscene/qgstiledscenesourceselect.h
   tiledscene/qgstiledscenetexturerendererwidget.h
+  tiledscene/qgstiledscenewireframerendererwidget.h
 
   vectortile/qgsarcgisvectortileconnectiondialog.h
   vectortile/qgsvectortilebasiclabelingwidget.h

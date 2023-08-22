@@ -17,13 +17,17 @@
 
 // default renderers
 #include "qgstiledscenetexturerenderer.h"
+#include "qgstiledscenewireframerenderer.h"
 
 QgsTiledSceneRendererRegistry::QgsTiledSceneRendererRegistry()
 {
   // add default renderers
   addRenderer( new QgsTiledSceneRendererMetadata( QStringLiteral( "texture" ),
-               QObject::tr( "Textures" ),
+               QObject::tr( "Textured" ),
                QgsTiledSceneTextureRenderer::create ) );
+  addRenderer( new QgsTiledSceneRendererMetadata( QStringLiteral( "wireframe" ),
+               QObject::tr( "Wireframe" ),
+               QgsTiledSceneWireframeRenderer::create ) );
 }
 
 QgsTiledSceneRendererRegistry::~QgsTiledSceneRendererRegistry()

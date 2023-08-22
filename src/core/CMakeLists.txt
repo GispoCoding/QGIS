@@ -338,6 +338,7 @@ set(QGIS_CORE_SRCS
 
   tiledscene/qgscesiumtilesdataprovider.cpp
   tiledscene/qgscesiumutils.cpp
+  tiledscene/qgsgltfutils.cpp
   tiledscene/qgstiledsceneboundingvolume.cpp
   tiledscene/qgstiledsceneconnection.cpp
   tiledscene/qgstiledscenedataitems.cpp
@@ -352,6 +353,7 @@ set(QGIS_CORE_SRCS
   tiledscene/qgstiledscenerequest.cpp
   tiledscene/qgstiledscenetexturerenderer.cpp
   tiledscene/qgstiledscenetile.cpp
+  tiledscene/qgstiledscenewireframerenderer.cpp
 
   sensor/qgssensormodel.cpp
   sensor/qgssensormanager.cpp
@@ -1915,6 +1917,7 @@ set(QGIS_CORE_HDRS
 
   tiledscene/qgscesiumtilesdataprovider.h
   tiledscene/qgscesiumutils.h
+  tiledscene/qgsgltfutils.h
   tiledscene/qgstiledsceneboundingvolume.h
   tiledscene/qgstiledsceneconnection.h
   tiledscene/qgstiledscenedataprovider.h
@@ -1929,6 +1932,7 @@ set(QGIS_CORE_HDRS
   tiledscene/qgstiledscenerequest.h
   tiledscene/qgstiledscenetexturerenderer.h
   tiledscene/qgstiledscenetile.h
+  tiledscene/qgstiledscenewireframerenderer.h
 
   sensor/qgssensormodel.h
   sensor/qgssensormanager.h
@@ -2314,10 +2318,6 @@ target_include_directories(qgis_core PUBLIC
   validity
   vector
   vectortile
-)
-
-# treat these as system libraries -- we don't want warnings from them
-target_include_directories(qgis_core SYSTEM PUBLIC
   ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/external/nlohmann
   ${CMAKE_SOURCE_DIR}/external/kdbush/include

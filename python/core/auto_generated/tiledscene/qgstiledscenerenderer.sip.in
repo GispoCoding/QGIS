@@ -45,6 +45,38 @@ Returns the feedback object used to cancel rendering
 .. versionadded:: 3.20
 %End
 
+    QImage textureImage() const;
+%Docstring
+Returns the current texture image.
+
+.. seealso:: :py:func:`setTextureImage`
+%End
+
+    void setTextureImage( const QImage &image );
+%Docstring
+Sets the current texture ``image``.
+
+.. seealso:: :py:func:`textureImage`
+%End
+
+    void setTextureCoordinates(
+      float textureX1, float textureY1,
+      float textureX2, float textureY2,
+      float textureX3, float textureY3
+    );
+%Docstring
+Sets the current texture coordinates.
+
+.. seealso:: :py:func:`textureCoordinates`
+%End
+
+    void textureCoordinates( float &textureX1 /Out/, float &textureY1 /Out/, float &textureX2 /Out/, float &textureY2 /Out/, float &textureX3 /Out/, float &textureY3 /Out/ ) const;
+%Docstring
+Returns the current texture coordinates.
+
+.. seealso:: :py:func:`setTextureCoordinates`
+%End
+
   private:
     QgsTiledSceneRenderContext( const QgsTiledSceneRenderContext &rh );
 };
@@ -64,8 +96,13 @@ Abstract base class for 2d tiled scene renderers.
 %ConvertToSubClassCode
 
     const QString type = sipCpp->type();
+    if ( type == QLatin1String( "texture" ) )
+      sipType = sipType_QgsTiledSceneTextureRenderer;
+    else if ( type == QLatin1String( "wireframe" ) )
+      sipType = sipType_QgsTiledSceneWireframeRenderer;
+    else
+      sipType = 0;
 
-    sipType = 0;
 %End
   public:
 
@@ -88,6 +125,11 @@ and generate a proper subclass.
 %End
 
 
+
+    virtual Qgis::TiledSceneRendererFlags flags() const;
+%Docstring
+Returns flags which control how the renderer behaves.
+%End
 
     static QgsTiledSceneRenderer *load( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
 %Docstring
@@ -149,6 +191,20 @@ Sets the ``unit`` for the maximum screen error allowed when rendering the tiled 
 .. seealso:: :py:func:`maximumScreenErrorUnit`
 %End
 
+    void setTileBorderRenderingEnabled( bool enabled );
+%Docstring
+Sets whether to render the borders of tiles.
+
+.. seealso:: :py:func:`isTileBorderRenderingEnabled`
+%End
+
+    bool isTileBorderRenderingEnabled() const;
+%Docstring
+Returns whether to render also borders of tiles.
+
+see :py:func:`~QgsTiledSceneRenderer.setTileBorderRenderingEnabled`
+%End
+
     virtual void startRender( QgsTiledSceneRenderContext &context );
 %Docstring
 Must be called when a new render cycle is started. A call to :py:func:`~QgsTiledSceneRenderer.startRender` must always
@@ -184,6 +240,11 @@ Creates a set of legend nodes representing the renderer.
     virtual QStringList legendRuleKeys() const;
 %Docstring
 Returns a list of all rule keys for legend nodes created by the renderer.
+%End
+
+    virtual void renderTriangle( QgsTiledSceneRenderContext &context, const QPolygonF &triangle ) = 0;
+%Docstring
+Renders a ``triangle``.
 %End
 
   protected:

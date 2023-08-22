@@ -33,9 +33,44 @@ QgsTiledSceneRenderContext::QgsTiledSceneRenderContext( QgsRenderContext &contex
 
 }
 
+QImage QgsTiledSceneRenderContext::textureImage() const
+{
+  return mTextureImage;
+}
+
+void QgsTiledSceneRenderContext::setTextureImage( const QImage &image )
+{
+  mTextureImage = image;
+}
+
+void QgsTiledSceneRenderContext::setTextureCoordinates( float textureX1, float textureY1, float textureX2, float textureY2, float textureX3, float textureY3 )
+{
+  mTextureCoordinates[0] = textureX1;
+  mTextureCoordinates[1] = textureY1;
+  mTextureCoordinates[2] = textureX2;
+  mTextureCoordinates[3] = textureY2;
+  mTextureCoordinates[4] = textureX3;
+  mTextureCoordinates[5] = textureY3;
+}
+
+void QgsTiledSceneRenderContext::textureCoordinates( float &textureX1, float &textureY1, float &textureX2, float &textureY2, float &textureX3, float &textureY3 ) const
+{
+  textureX1 = mTextureCoordinates[0];
+  textureY1 = mTextureCoordinates[1];
+  textureX2 = mTextureCoordinates[2];
+  textureY2 = mTextureCoordinates[3];
+  textureX3 = mTextureCoordinates[4];
+  textureY3 = mTextureCoordinates[5];
+}
+
 //
 // QgsTiledSceneRenderer
 //
+
+Qgis::TiledSceneRendererFlags QgsTiledSceneRenderer::flags() const
+{
+  return Qgis::TiledSceneRendererFlags();
+}
 
 QgsTiledSceneRenderer *QgsTiledSceneRenderer::load( QDomElement &element, const QgsReadWriteContext &context )
 {
@@ -108,17 +143,19 @@ void QgsTiledSceneRenderer::copyCommonProperties( QgsTiledSceneRenderer *destina
 {
   destination->setMaximumScreenError( mMaximumScreenError );
   destination->setMaximumScreenErrorUnit( mMaximumScreenErrorUnit );
+  destination->setTileBorderRenderingEnabled( mTileBorderRendering );
 }
 
 void QgsTiledSceneRenderer::restoreCommonProperties( const QDomElement &element, const QgsReadWriteContext & )
 {
-  mMaximumScreenError = element.attribute( QStringLiteral( "maximumScreenError" ), QStringLiteral( "0.3" ) ).toDouble();
+  mMaximumScreenError = element.attribute( QStringLiteral( "maximumScreenError" ), QStringLiteral( "3" ) ).toDouble();
   mMaximumScreenErrorUnit = QgsUnitTypes::decodeRenderUnit( element.attribute( QStringLiteral( "maximumScreenErrorUnit" ), QStringLiteral( "MM" ) ) );
+  mTileBorderRendering = element.attribute( QStringLiteral( "tileBorderRendering" ), QStringLiteral( "0" ) ).toInt();
 }
 
 void QgsTiledSceneRenderer::saveCommonProperties( QDomElement &element, const QgsReadWriteContext & ) const
 {
-
   element.setAttribute( QStringLiteral( "maximumScreenError" ), qgsDoubleToString( mMaximumScreenError ) );
   element.setAttribute( QStringLiteral( "maximumScreenErrorUnit" ), QgsUnitTypes::encodeUnit( mMaximumScreenErrorUnit ) );
+  element.setAttribute( QStringLiteral( "tileBorderRendering" ), mTileBorderRendering ? 1 : 0 );
 }

@@ -33,6 +33,10 @@ Constructor for QgsTiledSceneTextureRenderer.
 
     virtual QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) const;
 
+    virtual Qgis::TiledSceneRendererFlags flags() const;
+
+    virtual void renderTriangle( QgsTiledSceneRenderContext &context, const QPolygonF &triangle );
+
 
     static QgsTiledSceneRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
 %Docstring

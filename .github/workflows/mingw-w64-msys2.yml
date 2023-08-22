@@ -89,6 +89,7 @@ jobs:
             -DWITH_INTERNAL_QWTPOLAR=OFF \
             -DWITH_BINDINGS=OFF \
             -DWITH_GRASS=OFF \
+            -DWITH_DRACO=OFF \
             -DUSE_CCACHE=ON \
             -S . \
             -B build

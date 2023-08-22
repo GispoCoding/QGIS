@@ -40,6 +40,8 @@ class CORE_EXPORT QgsTiledSceneTextureRenderer : public QgsTiledSceneRenderer
     QString type() const override;
     QgsTiledSceneRenderer *clone() const override;
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) const override;
+    Qgis::TiledSceneRendererFlags flags() const override;
+    void renderTriangle( QgsTiledSceneRenderContext &context, const QPolygonF &triangle ) override;
 
     /**
      * Creates a textured renderer from an XML \a element.
