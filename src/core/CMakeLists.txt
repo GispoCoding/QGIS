@@ -259,6 +259,7 @@ set(QGIS_CORE_SRCS
   processing/qgsprocessingparametertininputlayers.cpp
   processing/qgsprocessingparametertype.cpp
   processing/qgsprocessingparametervectortilewriterlayers.cpp
+  processing/qgsprocessingparameteralignrasterlayers.cpp
   processing/qgsprocessingprovider.cpp
   processing/qgsprocessingregistry.cpp
   processing/qgsprocessingutils.cpp
@@ -345,6 +346,7 @@ set(QGIS_CORE_SRCS
   tiledscene/qgstiledscenedataprovider.cpp
   tiledscene/qgstiledsceneindex.cpp
   tiledscene/qgstiledscenelayer.cpp
+  tiledscene/qgstiledscenelayerelevationproperties.cpp
   tiledscene/qgstiledscenelayerrenderer.cpp
   tiledscene/qgstiledscenenode.cpp
   tiledscene/qgstiledsceneprovidermetadata.cpp
@@ -1045,6 +1047,7 @@ set(QGIS_CORE_HDRS
   qgsabstractcontentcache.h
   qgsabstractgeopdfexporter.h
   qgsaggregatecalculator.h
+  qgsalignrasterdata.h
   qgsanimatedicon.h
   qgsapplication.h
   qgsarchive.h
@@ -1731,6 +1734,7 @@ set(QGIS_CORE_HDRS
   processing/qgsprocessingparametertype.h
   processing/qgsprocessingparametertypeimpl.h
   processing/qgsprocessingparametervectortilewriterlayers.h
+  processing/qgsprocessingparameteralignrasterlayers.h
   processing/qgsprocessingprovider.h
   processing/qgsprocessingregistry.h
   processing/qgsprocessingutils.h
@@ -1924,6 +1928,7 @@ set(QGIS_CORE_HDRS
   tiledscene/qgstiledscenedataitems.h
   tiledscene/qgstiledsceneindex.h
   tiledscene/qgstiledscenelayer.h
+  tiledscene/qgstiledscenelayerelevationproperties.h
   tiledscene/qgstiledscenelayerrenderer.h
   tiledscene/qgstiledscenenode.h
   tiledscene/qgstiledsceneprovidermetadata.h

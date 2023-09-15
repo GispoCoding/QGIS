@@ -261,6 +261,38 @@ void QgsRuntimeProfiler::end( const QString &group )
   emit ended( group, node->fullParentPath(), node->data( QgsRuntimeProfilerNode::Name ).toString(), node->data( QgsRuntimeProfilerNode::Elapsed ).toDouble() );
 }
 
+void QgsRuntimeProfiler::record( const QString &name, double time, const QString &group )
+{
+  std::unique_ptr< QgsRuntimeProfilerNode > node = std::make_unique< QgsRuntimeProfilerNode >( group, name );
+
+  QgsRuntimeProfilerNode *child = node.get();
+  if ( !mCurrentStack[ group ].empty() )
+  {
+    QgsRuntimeProfilerNode *parent = mCurrentStack[group ].top();
+
+    const QModelIndex parentIndex = node2index( parent );
+    beginInsertRows( parentIndex, parent->childCount(), parent->childCount() );
+    parent->addChild( std::move( node ) );
+    endInsertRows();
+  }
+  else
+  {
+    beginInsertRows( QModelIndex(), mRootNode->childCount(), mRootNode->childCount() );
+    mRootNode->addChild( std::move( node ) );
+    endInsertRows();
+  }
+
+  emit started( group, child->fullParentPath(), name );
+  child->setElapsed( time );
+  emit ended( group, child->fullParentPath(), child->data( QgsRuntimeProfilerNode::Name ).toString(), child->data( QgsRuntimeProfilerNode::Elapsed ).toDouble() );
+
+  if ( !mGroups.contains( group ) )
+  {
+    mGroups.insert( group );
+    emit groupAdded( group );
+  }
+}
+
 double QgsRuntimeProfiler::profileTime( const QString &name, const QString &group ) const
 {
   QgsRuntimeProfilerNode *node = pathToNode( group, name );
@@ -302,7 +334,7 @@ QString QgsRuntimeProfiler::translateGroupName( const QString &group )
     return tr( "Startup" );
   else if ( group == QLatin1String( "projectload" ) )
     return tr( "Project Load" );
-  else if ( group == QLatin1String( "render" ) )
+  else if ( group == QLatin1String( "rendering" ) )
     return tr( "Map Render" );
   return QString();
 }
@@ -573,6 +605,42 @@ QgsRuntimeProfilerNode *QgsRuntimeProfiler::index2node( const QModelIndex &index
     return mRootNode.get();
 
   return reinterpret_cast<QgsRuntimeProfilerNode *>( index.internalPointer() );
+}
+
+void QgsRuntimeProfiler::extractModelAsText( QStringList &lines, const QString &group, const QModelIndex &parent, int level )
+{
+  const int rc = rowCount( parent );
+  const int cc = columnCount( parent );
+  for ( int r = 0; r < rc; r++ )
+  {
+    QModelIndex rowIndex = index( r, 0, parent );
+    if ( data( rowIndex, QgsRuntimeProfilerNode::Group ).toString() != group )
+      continue;
+
+    QStringList cells;
+    for ( int c = 0; c < cc; c++ )
+    {
+      QModelIndex cellIndex = index( r, c, parent );
+      cells << data( cellIndex ).toString();
+    }
+    lines << QStringLiteral( "%1 %2" ).arg( QStringLiteral( "-" ).repeated( level + 1 ), cells.join( QStringLiteral( ": " ) ) );
+    extractModelAsText( lines, group, rowIndex, level + 1 );
+  }
+}
+
+QString QgsRuntimeProfiler::asText( const QString &group )
+{
+  QStringList lines;
+  for ( const QString &g : std::as_const( mGroups ) )
+  {
+    if ( !group.isEmpty() && g != group )
+      continue;
+
+    const QString groupName = translateGroupName( g );
+    lines << ( !groupName.isEmpty() ? groupName : g );
+    extractModelAsText( lines, g );
+  }
+  return lines.join( QStringLiteral( "\r\n" ) );
 }
 
 

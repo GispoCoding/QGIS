@@ -62,6 +62,9 @@ void QgsProcessingHistoryWidget::saveLog()
                      tr( "Save File" ),
                      QDir::homePath(),
                      tr( "Log files (*.log *.LOG)" ) );
+  // return dialog focus on Mac
+  activateWindow();
+  raise();
 
   if ( fileName.isEmpty() )
     return;
@@ -78,7 +81,7 @@ void QgsProcessingHistoryWidget::saveLog()
     for ( const QgsHistoryEntry &entry : entries )
     {
       logOut << QStringLiteral( "ALGORITHM%1%2%3%4\n" ).arg( logSeparator,
-             entry.timestamp.toString( "YYYY-mm-dd HH:MM:ss" ),
+             entry.timestamp.toString( "yyyy-MM-dd HH:mm:ss" ),
              logSeparator,
              entry.entry.value( QStringLiteral( "python_command" ) ).toString() );
     }

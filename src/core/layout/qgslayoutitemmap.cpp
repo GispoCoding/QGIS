@@ -331,7 +331,6 @@ QList<QgsMapLayer *> QgsLayoutItemMap::layers() const
 
 void QgsLayoutItemMap::setLayers( const QList<QgsMapLayer *> &layers )
 {
-
   mGroupLayers.clear();
 
   QList<QgsMapLayer *> layersCopy { layers };
@@ -343,9 +342,17 @@ void QgsLayoutItemMap::setLayers( const QList<QgsMapLayer *> &layers )
   {
     if ( const QgsGroupLayer *groupLayer = qobject_cast<QgsGroupLayer *>( *it ) )
     {
-      std::unique_ptr<QgsGroupLayer> groupLayerClone { groupLayer->clone() };
-      mGroupLayers[ groupLayer->id() ] = std::move( groupLayerClone );
-      *it = mGroupLayers[ groupLayer->id() ].get();
+      auto existingIt = mGroupLayers.find( groupLayer->id() );
+      if ( existingIt != mGroupLayers.end( ) )
+      {
+        *it = ( *existingIt ).second.get();
+      }
+      else
+      {
+        std::unique_ptr<QgsGroupLayer> groupLayerClone { groupLayer->clone() };
+        mGroupLayers[ groupLayer->id() ] = std::move( groupLayerClone );
+        *it = mGroupLayers[ groupLayer->id() ].get();
+      }
     }
   }
   mLayers = _qgis_listRawToRef( layersCopy );
@@ -597,6 +604,27 @@ QgsLayoutItemMapOverview *QgsLayoutItemMap::overview()
     mOverviewStack->addOverview( overview );
   }
   return mOverviewStack->overview( 0 );
+}
+
+double QgsLayoutItemMap::estimatedFrameBleed() const
+{
+  double frameBleed = QgsLayoutItem::estimatedFrameBleed();
+
+  // Check if any of the grids are enabled
+  if ( mGridStack )
+  {
+    for ( int i = 0; i < mGridStack->size(); ++i )
+    {
+      const QgsLayoutItemMapGrid *grid = qobject_cast<QgsLayoutItemMapGrid *>( mGridStack->item( i ) );
+      if ( grid->mEvaluatedEnabled )
+      {
+        // Grid bleed is the grid frame width + grid frame offset + half the pen width
+        frameBleed = std::max( frameBleed, grid->mEvaluatedGridFrameWidth + grid->mEvaluatedGridFrameMargin + grid->mEvaluatedGridFrameLineThickness / 2.0 );
+      }
+    }
+  }
+
+  return frameBleed;
 }
 
 void QgsLayoutItemMap::draw( QgsLayoutItemRenderContext & )

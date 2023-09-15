@@ -18,6 +18,7 @@
 #include "qgstiledsceneindex.h"
 #include "qgstiledscenelayer.h"
 #include "qgstiledscenechunkloader_p.h"
+#include "qgstiledscenelayerelevationproperties.h"
 
 #include "qgs3dmapsettings.h"
 
@@ -65,7 +66,11 @@ Qt3DCore::QEntity *QgsTiledSceneLayer3DRenderer::createEntity( const Qgs3DMapSet
 
   QgsTiledSceneIndex index = tsl->dataProvider()->index();
 
-  return new QgsTiledSceneLayerChunkedEntity( map, index, maximumScreenError(), showBoundingBoxes() );
+  return new QgsTiledSceneLayerChunkedEntity( map, index,
+         maximumScreenError(),
+         showBoundingBoxes(),
+         qgis::down_cast< const QgsTiledSceneLayerElevationProperties * >( tsl->elevationProperties() )->zScale(),
+         qgis::down_cast< const QgsTiledSceneLayerElevationProperties * >( tsl->elevationProperties() )->zOffset() );
 }
 
 void QgsTiledSceneLayer3DRenderer::writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const
@@ -86,7 +91,7 @@ void QgsTiledSceneLayer3DRenderer::readXml( const QDomElement &elem, const QgsRe
   mLayerRef = QgsMapLayerRef( elem.attribute( QStringLiteral( "layer" ) ) );
 
   mShowBoundingBoxes = elem.attribute( QStringLiteral( "show-bounding-boxes" ), QStringLiteral( "0" ) ).toInt();
-  mMaximumScreenError = elem.attribute( QStringLiteral( "max-screen-error" ), QStringLiteral( "50.0" ) ).toDouble();
+  mMaximumScreenError = elem.attribute( QStringLiteral( "max-screen-error" ), QStringLiteral( "16.0" ) ).toDouble();
 }
 
 void QgsTiledSceneLayer3DRenderer::resolveReferences( const QgsProject &project )

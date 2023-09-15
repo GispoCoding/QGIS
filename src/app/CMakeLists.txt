@@ -11,7 +11,6 @@ set(QGIS_APP_SRCS
   qgisappinterface.cpp
   qgisappstylesheet.cpp
   qgsabout.cpp
-  qgsalignrasterdialog.cpp
   qgsappauthrequesthandler.cpp
   qgsappbrowserproviders.cpp
   qgsappcoordinateoperationhandlers.cpp
@@ -72,6 +71,7 @@ set(QGIS_APP_SRCS
   qgstemporalcontrollerdockwidget.cpp
   qgsversioninfo.cpp
   qgsrecentprojectsitemsmodel.cpp
+  qgsrecentprojectsmenueventfilter.cpp
   qgsvectorlayerdigitizingproperties.cpp
   qgswelcomepage.cpp
 
@@ -135,6 +135,7 @@ set(QGIS_APP_SRCS
 
   raster/qgsrasterelevationpropertieswidget.cpp
 
+  tiledscene/qgstiledsceneelevationpropertieswidget.cpp
   tiledscene/qgstiledscenelayerproperties.cpp
   tiledscene/qgstiledscenelayerstylewidget.cpp
 
@@ -256,6 +257,7 @@ set(QGIS_APP_SRCS
   options/qgsadvancedoptions.cpp
   options/qgscodeeditoroptions.cpp
   options/qgscustomprojectionoptions.cpp
+  options/qgselevationoptions.cpp
   options/qgsfontoptions.cpp
   options/qgsgpsdeviceoptions.cpp
   options/qgsgpsoptions.cpp

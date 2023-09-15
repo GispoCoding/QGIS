@@ -60,6 +60,12 @@ class _3D_EXPORT QgsGltf3DUtils
       QgsMatrix4x4 tileTransform;
       //! Transform from ECEF (normally EPSG:4978) to the target CRS
       const QgsCoordinateTransform *ecefToTargetCrs = nullptr;
+
+      //! Axis to treat as up axis in the GLTF model
+      Qgis::Axis gltfUpAxis = Qgis::Axis::Y;
+
+      double zValueScale = 1;
+      double zValueOffset = 0;
     };
 
     /**

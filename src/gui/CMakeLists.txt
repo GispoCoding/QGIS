@@ -372,6 +372,7 @@ set(QGIS_GUI_SRCS
   processing/qgsprocessingaggregatewidgetwrapper.cpp
   processing/qgsprocessingalgorithmconfigurationwidget.cpp
   processing/qgsprocessingalgorithmdialogbase.cpp
+  processing/qgsprocessingalignrasterlayerswidgetwrapper.cpp
   processing/qgsprocessingbatchalgorithmdialogbase.cpp
   processing/qgsprocessingconfigurationwidgets.cpp
   processing/qgsprocessingdxflayerswidgetwrapper.cpp
@@ -619,6 +620,7 @@ set(QGIS_GUI_SRCS
   qgsmaplayercombobox.cpp
   qgsmaplayerconfigwidgetfactory.cpp
   qgsmaplayerloadstyledialog.cpp
+  qgsmaplayerrefreshsettingswidget.cpp
   qgsmaplayerstylecategoriesmodel.cpp
   qgsmaplayerstyleguiutils.cpp
   qgsmaplayerstylemanagerwidget.cpp
@@ -895,6 +897,7 @@ set(QGIS_GUI_HDRS
   qgsmaplayerconfigwidget.h
   qgsmaplayerconfigwidgetfactory.h
   qgsmaplayerloadstyledialog.h
+  qgsmaplayerrefreshsettingswidget.h
   qgsmaplayerstylecategoriesmodel.h
   qgsmaplayerstyleguiutils.h
   qgsmaplayerstylemanagerwidget.h

@@ -2,6 +2,7 @@
 %Include auto_generated/qgis.sip
 %Include auto_generated/qgsabstractcontentcache.sip
 %Include auto_generated/qgsaggregatecalculator.sip
+%Include auto_generated/qgsalignrasterdata.sip
 %Include auto_generated/qgsanimatedicon.sip
 %Include auto_generated/qgsapplication.sip
 %Include auto_generated/qgsarchive.sip
@@ -562,6 +563,7 @@
 %Include auto_generated/processing/qgsprocessingparametertininputlayers.sip
 %Include auto_generated/processing/qgsprocessingparametertype.sip
 %Include auto_generated/processing/qgsprocessingparametervectortilewriterlayers.sip
+%Include auto_generated/processing/qgsprocessingparameteralignrasterlayers.sip
 %Include auto_generated/processing/qgsprocessingprovider.sip
 %Include auto_generated/processing/qgsprocessingregistry.sip
 %Include auto_generated/processing/qgsprocessingutils.sip
@@ -717,6 +719,7 @@
 %Include auto_generated/tiledscene/qgstiledscenedataprovider.sip
 %Include auto_generated/tiledscene/qgstiledsceneindex.sip
 %Include auto_generated/tiledscene/qgstiledscenelayer.sip
+%Include auto_generated/tiledscene/qgstiledscenelayerelevationproperties.sip
 %Include auto_generated/tiledscene/qgstiledscenerenderer.sip
 %Include auto_generated/tiledscene/qgstiledscenerendererregistry.sip
 %Include auto_generated/tiledscene/qgstiledscenerequest.sip

@@ -19,6 +19,7 @@
 #include "qgsapplication.h"
 #include "qgscesiumutils.h"
 #include "qgsgltf3dutils.h"
+#include "qgsraycastingutils_p.h"
 #include "qgstiledsceneboundingvolume.h"
 #include "qgstiledscenetile.h"
 
@@ -37,19 +38,24 @@ static bool hasLargeBounds( const QgsTiledSceneTile &t )
   if ( t.geometricError() > 1e6 )
     return true;
 
+  if ( t.boundingVolume().box().isNull() )
+    return true;
+
   const QgsVector3D size = t.boundingVolume().box().size();
   return size.x() > 1e5 || size.y() > 1e5 || size.z() > 1e5;
 }
 
 ///
 
-QgsTiledSceneChunkLoader::QgsTiledSceneChunkLoader( QgsChunkNode *node, const QgsTiledSceneChunkLoaderFactory &factory, const QgsTiledSceneTile &t )
-  : QgsChunkLoader( node ), mFactory( factory ), mTile( t )
+QgsTiledSceneChunkLoader::QgsTiledSceneChunkLoader( QgsChunkNode *node, const QgsTiledSceneChunkLoaderFactory &factory, const QgsTiledSceneTile &t, double zValueScale, double zValueOffset )
+  : QgsChunkLoader( node )
+  , mFactory( factory )
+  , mTile( t )
 {
   mFutureWatcher = new QFutureWatcher<void>( this );
   connect( mFutureWatcher, &QFutureWatcher<void>::finished, this, &QgsChunkQueueJob::finished );
 
-  const QFuture<void> future = QtConcurrent::run( [this]
+  const QFuture<void> future = QtConcurrent::run( [this, zValueScale, zValueOffset]
   {
     // we do not load tiles that are too big - at least for the time being
     // the problem is that their 3D bounding boxes with ECEF coordinates are huge
@@ -86,6 +92,9 @@ QgsTiledSceneChunkLoader::QgsTiledSceneChunkLoader( QgsChunkNode *node, const Qg
     entityTransform.tileTransform.translate( tileContent.rtcCenter );
     entityTransform.sceneOriginTargetCrs = mFactory.mMap.origin();
     entityTransform.ecefToTargetCrs = &mFactory.mBoundsTransform;
+    entityTransform.zValueScale = zValueScale;
+    entityTransform.zValueOffset = zValueOffset;
+    entityTransform.gltfUpAxis = static_cast< Qgis::Axis >( mTile.metadata().value( QStringLiteral( "gltfUpAxis" ), static_cast< int >( Qgis::Axis::Y ) ).toInt() );
 
     QStringList errors;
     mEntity = QgsGltf3DUtils::gltfToEntity( tileContent.gltf, entityTransform, uri, &errors );
@@ -125,8 +134,11 @@ Qt3DCore::QEntity *QgsTiledSceneChunkLoader::createEntity( Qt3DCore::QEntity *pa
 
 ///
 
-QgsTiledSceneChunkLoaderFactory::QgsTiledSceneChunkLoaderFactory( const Qgs3DMapSettings &map, const QgsTiledSceneIndex &index )
-  : mMap( map ), mIndex( index )
+QgsTiledSceneChunkLoaderFactory::QgsTiledSceneChunkLoaderFactory( const Qgs3DMapSettings &map, const QgsTiledSceneIndex &index, double zValueScale, double zValueOffset )
+  : mMap( map )
+  , mIndex( index )
+  , mZValueScale( zValueScale )
+  , mZValueOffset( zValueOffset )
 {
   mBoundsTransform = QgsCoordinateTransform( QgsCoordinateReferenceSystem( "EPSG:4978" ), mMap.crs(), mMap.transformContext() );
 }
@@ -135,7 +147,7 @@ QgsChunkLoader *QgsTiledSceneChunkLoaderFactory::createChunkLoader( QgsChunkNode
 {
   const QgsTiledSceneTile t = mIndex.getTile( node->tileId().uniqueId );
 
-  return new QgsTiledSceneChunkLoader( node, *this, t );
+  return new QgsTiledSceneChunkLoader( node, *this, t, mZValueScale, mZValueOffset );
 }
 
 // converts box from map coordinates to world coords (also flips [X,Y] to [X,-Z])
@@ -147,6 +159,7 @@ static QgsAABB aabbConvert( const QgsBox3D &b0, const QgsVector3D &sceneOriginTa
 
 QgsChunkNode *QgsTiledSceneChunkLoaderFactory::nodeForTile( const QgsTiledSceneTile &t, const QgsChunkNodeId &nodeId, QgsChunkNode *parent ) const
 {
+  QgsChunkNode *node = nullptr;
   if ( hasLargeBounds( t ) )
   {
     // use the full extent of the scene
@@ -154,14 +167,19 @@ QgsChunkNode *QgsTiledSceneChunkLoaderFactory::nodeForTile( const QgsTiledSceneT
     QgsVector3D v1 = mMap.mapToWorldCoordinates( QgsVector3D( mMap.extent().xMaximum(), mMap.extent().yMaximum(), +100 ) );
     QgsAABB aabb( v0.x(), v0.y(), v0.z(), v1.x(), v1.y(), v1.z() );
     float err = std::min( 1e6, t.geometricError() );
-    return new QgsChunkNode( nodeId, aabb, err, parent );
+    node = new QgsChunkNode( nodeId, aabb, err, parent );
   }
   else
   {
-    const QgsBox3D box = t.boundingVolume().bounds( mBoundsTransform );
+    QgsBox3D box = t.boundingVolume().bounds( mBoundsTransform );
+    box.setZMinimum( box.zMinimum() * mZValueScale + mZValueOffset );
+    box.setZMaximum( box.zMaximum() * mZValueScale + mZValueOffset );
     const QgsAABB aabb = aabbConvert( box, mMap.origin() );
-    return new QgsChunkNode( nodeId, aabb, t.geometricError(), parent );
+    node = new QgsChunkNode( nodeId, aabb, t.geometricError(), parent );
   }
+
+  node->setRefinementProcess( t.refinementProcess() );
+  return node;
 }
 
 
@@ -300,11 +318,10 @@ void QgsTiledSceneChunkLoaderFactory::prepareChildren( QgsChunkNode *node )
 
 ///
 
-QgsTiledSceneLayerChunkedEntity::QgsTiledSceneLayerChunkedEntity( const Qgs3DMapSettings &map, const QgsTiledSceneIndex &index, double maximumScreenError, bool showBoundingBoxes )
-  : QgsChunkedEntity( maximumScreenError, new QgsTiledSceneChunkLoaderFactory( map, index ), true )
+QgsTiledSceneLayerChunkedEntity::QgsTiledSceneLayerChunkedEntity( const Qgs3DMapSettings &map, const QgsTiledSceneIndex &index, double maximumScreenError, bool showBoundingBoxes, double zValueScale, double zValueOffset )
+  : QgsChunkedEntity( maximumScreenError, new QgsTiledSceneChunkLoaderFactory( map, index, zValueScale, zValueOffset ), true )
+  , mIndex( index )
 {
-  if ( index.rootTile().refinementProcess() == Qgis::TileRefinementProcess::Additive )
-    setUsingAdditiveStrategy( true );
   setShowBoundingBoxes( showBoundingBoxes );
 }
 
@@ -317,6 +334,76 @@ QgsTiledSceneLayerChunkedEntity::~QgsTiledSceneLayerChunkedEntity()
 int QgsTiledSceneLayerChunkedEntity::pendingJobsCount() const
 {
   return QgsChunkedEntity::pendingJobsCount() + static_cast<QgsTiledSceneChunkLoaderFactory *>( mChunkLoaderFactory )->mPendingHierarchyFetches.count();
+}
+
+QVector<QgsRayCastingUtils::RayHit> QgsTiledSceneLayerChunkedEntity::rayIntersection( const QgsRayCastingUtils::Ray3D &ray, const QgsRayCastingUtils::RayCastContext &context ) const
+{
+  Q_UNUSED( context );
+  QgsDebugMsgLevel( QStringLiteral( "Ray cast on tiled scene layer" ), 2 );
+#ifdef QGISDEBUG
+  int nodeUsed = 0;
+  int nodesAll = 0;
+  int hits = 0;
+#endif
+
+  QVector<QgsRayCastingUtils::RayHit> result;
+  float minDist = -1;
+  QVector3D intersectionPoint;
+  QgsChunkNode *minNode = nullptr;
+  int minTriangleIndex = -1;
+
+  const QList<QgsChunkNode *> active = activeNodes();
+  for ( QgsChunkNode *node : active )
+  {
+#ifdef QGISDEBUG
+    nodesAll++;
+#endif
+    if ( node->entity() &&
+         ( minDist < 0 || node->bbox().distanceFromPoint( ray.origin() ) < minDist ) &&
+         QgsRayCastingUtils::rayBoxIntersection( ray, node->bbox() ) )
+    {
+#ifdef QGISDEBUG
+      nodeUsed++;
+#endif
+      const QList<Qt3DRender::QGeometryRenderer *> rendLst = node->entity()->findChildren<Qt3DRender::QGeometryRenderer *>();
+      for ( const auto &rend : rendLst )
+      {
+        QVector3D nodeIntPoint;
+        int triangleIndex = -1;
+        bool success = QgsRayCastingUtils::rayMeshIntersection( rend, ray, QMatrix4x4(), nodeIntPoint, triangleIndex );
+        if ( success )
+        {
+#ifdef QGISDEBUG
+          hits++;
+#endif
+          float dist = ( ray.origin() - nodeIntPoint ).length();
+          if ( minDist < 0 || dist < minDist )
+          {
+            minDist = dist;
+            minNode = node;
+            minTriangleIndex = triangleIndex;
+            intersectionPoint = nodeIntPoint;
+          }
+        }
+      }
+    }
+  }
+
+  if ( minDist >= 0 )
+  {
+    QVariantMap vm;
+    QgsTiledSceneTile tile = mIndex.getTile( minNode->tileId().uniqueId );
+    // at this point this is mostly for debugging - we may want to change/rename what's returned here
+    vm["node_id"] = tile.id();
+    vm["node_error"] = tile.geometricError();
+    vm["node_content"] = tile.resources().value( QStringLiteral( "content" ) );
+    vm["triangle_index"] = minTriangleIndex;
+    QgsRayCastingUtils::RayHit hit( minDist, intersectionPoint, FID_NULL, vm );
+    result.append( hit );
+  }
+
+  QgsDebugMsgLevel( QStringLiteral( "Active Nodes: %1, checked nodes: %2, hits found: %3" ).arg( nodesAll ).arg( nodeUsed ).arg( hits ), 2 );
+  return result;
 }
 
 /// @endcond

@@ -1244,47 +1244,93 @@ class CORE_EXPORT QgsMapLayer : public QObject
 
 
     /**
-     * Updates the data source of the layer. The layer's renderer and legend will be preserved only
+     * Updates the data source of the layer.
+     *
+     * The \a dataSource argument must specify the new data source string for the layer. The format varies depending on
+     * the specified data \a provider in use. See QgsDataSourceUri and the documentation for the various QgsMapLayer
+     * subclasses for further details on data source strings.
+     *
+     * The \a baseName argument specifies the user-visible name to use for the layer. (See name() or setName()).
+     *
+     * The \a provider argument is used to specify the unique key of the data provider to use for
+     * the layer. This must match one of the values returned by QgsProviderRegistry::instance()->providerList().
+     * (See providerType()).
+     *
+     * If \a loadDefaultStyleFlag is set to TRUE then the layer's existing style will be reset to the default
+     * for the data source.
+     *
+     * \note If \a loadDefaultStyleFlag is FALSE then the layer's renderer and legend will be preserved only
      * if the geometry type of the new data source matches the current geometry type of the layer.
+     *
+     * After setting a new data source callers can test isValid() to determine whether the new source
+     * and provider are valid and ready for use. If setting the new data source fails and the layer
+     * returns FALSE to isValid(), then descriptive errors relating to setting the data source can
+     * be retrieved by calling error().
      *
      * This method was defined in QgsVectorLayer since 2.10 and was marked as deprecated since 3.2
      *
-     * \param dataSource new layer data source
-     * \param baseName base name of the layer
-     * \param provider provider string
-     * \param loadDefaultStyleFlag set to TRUE to reset the layer's style to the default for the
-     * data source
      * \see dataSourceChanged()
      * \since QGIS 3.20
      */
     void setDataSource( const QString &dataSource, const QString &baseName, const QString &provider, bool loadDefaultStyleFlag = false );
 
     /**
-     * Updates the data source of the layer. The layer's renderer and legend will be preserved only
+     * Updates the data source of the layer.
+     *
+     * The \a dataSource argument must specify the new data source string for the layer. The format varies depending on
+     * the specified data \a provider in use. See QgsDataSourceUri and the documentation for the various QgsMapLayer
+     * subclasses for further details on data source strings.
+     *
+     * The \a baseName argument specifies the user-visible name to use for the layer. (See name() or setName()).
+     *
+     * The \a provider argument is used to specify the unique key of the data provider to use for
+     * the layer. This must match one of the values returned by QgsProviderRegistry::instance()->providerList().
+     * (See providerType()).
+     *
+     * The \a options argument can be used to pass additional layer properties to the new data provider.
+     *
+     * If \a loadDefaultStyleFlag is set to TRUE then the layer's existing style will be reset to the default
+     * for the data source.
+     *
+     * \note If \a loadDefaultStyleFlag is FALSE then the layer's renderer and legend will be preserved only
      * if the geometry type of the new data source matches the current geometry type of the layer.
      *
-     * \param dataSource new layer data source
-     * \param baseName base name of the layer
-     * \param provider provider string
-     * \param options provider options
-     * \param loadDefaultStyleFlag set to TRUE to reset the layer's style to the default for the
-     * data source
+     * After setting a new data source callers can test isValid() to determine whether the new source
+     * and provider are valid and ready for use. If setting the new data source fails and the layer
+     * returns FALSE to isValid(), then descriptive errors relating to setting the data source can
+     * be retrieved by calling error().
+     *
      * \see dataSourceChanged()
      * \since QGIS 3.6
      */
     void setDataSource( const QString &dataSource, const QString &baseName, const QString &provider, const QgsDataProvider::ProviderOptions &options, bool loadDefaultStyleFlag = false );
 
     /**
-     * Updates the data source of the layer. The layer's renderer and legend will be preserved only
+     * Updates the data source of the layer.
+     *
+     * The \a dataSource argument must specify the new data source string for the layer. The format varies depending on
+     * the specified data \a provider in use. See QgsDataSourceUri and the documentation for the various QgsMapLayer
+     * subclasses for further details on data source strings.
+     *
+     * The \a baseName argument specifies the user-visible name to use for the layer. (See name() or setName()).
+     *
+     * The \a provider argument is used to specify the unique key of the data provider to use for
+     * the layer. This must match one of the values returned by QgsProviderRegistry::instance()->providerList().
+     * (See providerType()).
+     *
+     * The \a options argument can be used to pass additional layer properties to the new data provider.
+     *
+     * The \a flags argument specifies provider read flags which control the data provider construction,
+     * such as QgsDataProvider::ReadFlag::FlagTrustDataSource, QgsDataProvider::ReadFlag::FlagLoadDefaultStyle, etc.
+     *
+     * \note The layer's renderer and legend will be preserved only
      * if the geometry type of the new data source matches the current geometry type of the layer.
      *
-     * Subclasses should override setDataSourcePrivate: default implementation does nothing.
+     * After setting a new data source callers can test isValid() to determine whether the new source
+     * and provider are valid and ready for use. If setting the new data source fails and the layer
+     * returns FALSE to isValid(), then descriptive errors relating to setting the data source can
+     * be retrieved by calling error().
      *
-     * \param dataSource new layer data source
-     * \param baseName base name of the layer
-     * \param provider provider string
-     * \param options provider options
-     * \param flags provider read flags which control dataprovider construction like FlagTrustDataSource, FlagLoadDefaultStyle, etc
      * \see dataSourceChanged()
      * \since QGIS 3.20
      */
@@ -1404,9 +1450,17 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * Returns TRUE if auto refresh is enabled for the layer.
      * \see autoRefreshInterval()
      * \see setAutoRefreshEnabled()
-     * \since QGIS 3.0
+     * \deprecated use autoRefreshMode() instead.
      */
-    bool hasAutoRefreshEnabled() const;
+    Q_DECL_DEPRECATED bool hasAutoRefreshEnabled() const SIP_DEPRECATED;
+
+    /**
+     * Returns the layer's automatical refresh mode.
+     * \see autoRefreshInterval()
+     * \see setAutoRefreshMode()
+     * \since QGIS 3.34
+     */
+    Qgis::AutoRefreshMode autoRefreshMode() const;
 
     /**
      * Returns the auto refresh interval (in milliseconds). Note that
@@ -1420,7 +1474,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Sets the auto refresh interval (in milliseconds) for the layer. This
      * will cause the layer to be automatically redrawn on a matching interval.
-     * Note that auto refresh must be enabled by calling setAutoRefreshEnabled().
+     * Note that auto refresh must be enabled by calling setAutoRefreshMode().
      *
      * Note that auto refresh triggers deferred repaints of the layer. Any map
      * canvas must be refreshed separately in order to view the refreshed layer.
@@ -1434,9 +1488,17 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * Sets whether auto refresh is enabled for the layer.
      * \see hasAutoRefreshEnabled()
      * \see setAutoRefreshInterval()
-     * \since QGIS 3.0
+     * \deprecated Use setAutoRefreshMode() instead.
      */
-    void setAutoRefreshEnabled( bool enabled );
+    Q_DECL_DEPRECATED void setAutoRefreshEnabled( bool enabled ) SIP_DEPRECATED;
+
+    /**
+     * Sets the automatic refresh mode for the layer.
+     * \see autoRefreshMode()
+     * \see setAutoRefreshInterval()
+     * \since QGIS 3.34
+     */
+    void setAutoRefreshMode( Qgis::AutoRefreshMode mode );
 
     /**
      * Returns a reference to the layer's metadata store.
@@ -2212,6 +2274,8 @@ class CORE_EXPORT QgsMapLayer : public QObject
 
     //! Manager of multiple styles available for a layer (may be NULLPTR)
     QgsMapLayerStyleManager *mStyleManager = nullptr;
+
+    Qgis::AutoRefreshMode mAutoRefreshMode = Qgis::AutoRefreshMode::Disabled;
 
     //! Timer for triggering automatic refreshes of the layer
     QTimer *mRefreshTimer = nullptr;

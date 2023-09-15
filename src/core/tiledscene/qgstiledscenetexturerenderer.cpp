@@ -17,11 +17,15 @@
 
 #include "qgstiledscenetexturerenderer.h"
 #include "qgspainting.h"
+#include "qgsfillsymbol.h"
+#include "qgssymbollayerutils.h"
 
 QgsTiledSceneTextureRenderer::QgsTiledSceneTextureRenderer()
 {
-
+  mFillSymbol.reset( createDefaultFillSymbol() );
 }
+
+QgsTiledSceneTextureRenderer::~QgsTiledSceneTextureRenderer() = default;
 
 QString QgsTiledSceneTextureRenderer::type() const
 {
@@ -31,6 +35,7 @@ QString QgsTiledSceneTextureRenderer::type() const
 QgsTiledSceneRenderer *QgsTiledSceneTextureRenderer::clone() const
 {
   std::unique_ptr< QgsTiledSceneTextureRenderer > res = std::make_unique< QgsTiledSceneTextureRenderer >();
+  res->setFillSymbol( mFillSymbol->clone() );
 
   copyCommonProperties( res.get() );
 
@@ -40,10 +45,43 @@ QgsTiledSceneRenderer *QgsTiledSceneTextureRenderer::clone() const
 QgsTiledSceneRenderer *QgsTiledSceneTextureRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
 {
   std::unique_ptr< QgsTiledSceneTextureRenderer > r = std::make_unique< QgsTiledSceneTextureRenderer >();
+  {
+    const QDomElement fillSymbolElem = element.firstChildElement( QStringLiteral( "fillSymbol" ) );
+    if ( !fillSymbolElem.isNull() )
+    {
+      const QDomElement symbolElem = fillSymbolElem.firstChildElement( QStringLiteral( "symbol" ) );
+      std::unique_ptr< QgsFillSymbol > fillSymbol( QgsSymbolLayerUtils::loadSymbol<QgsFillSymbol>( symbolElem, context ) );
+      if ( fillSymbol )
+        r->mFillSymbol = std::move( fillSymbol );
+    }
+  }
 
   r->restoreCommonProperties( element, context );
 
   return r.release();
+}
+
+QgsFillSymbol *QgsTiledSceneTextureRenderer::createDefaultFillSymbol()
+{
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "224,224,224" ) );
+  properties.insert( QStringLiteral( "style" ), QStringLiteral( "solid" ) );
+  properties.insert( QStringLiteral( "style_border" ), QStringLiteral( "solid" ) );
+  properties.insert( QStringLiteral( "color_border" ), QStringLiteral( "124,124,124" ) );
+  properties.insert( QStringLiteral( "width_border" ), QStringLiteral( "0.1" ) );
+  properties.insert( QStringLiteral( "joinstyle" ), QStringLiteral( "round" ) );
+
+  return QgsFillSymbol::createSimple( properties );
+}
+
+QgsFillSymbol *QgsTiledSceneTextureRenderer::fillSymbol() const
+{
+  return mFillSymbol.get();
+}
+
+void QgsTiledSceneTextureRenderer::setFillSymbol( QgsFillSymbol *symbol )
+{
+  mFillSymbol.reset( symbol );
 }
 
 QDomElement QgsTiledSceneTextureRenderer::save( QDomDocument &doc, const QgsReadWriteContext &context ) const
@@ -51,6 +89,16 @@ QDomElement QgsTiledSceneTextureRenderer::save( QDomDocument &doc, const QgsRead
   QDomElement rendererElem = doc.createElement( QStringLiteral( "renderer" ) );
 
   rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "texture" ) );
+
+  {
+    QDomElement fillSymbolElem = doc.createElement( QStringLiteral( "fillSymbol" ) );
+    const QDomElement symbolElement = QgsSymbolLayerUtils::saveSymbol( QString(),
+                                      mFillSymbol.get(),
+                                      doc,
+                                      context );
+    fillSymbolElem.appendChild( symbolElement );
+    rendererElem.appendChild( fillSymbolElem );
+  }
 
   saveCommonProperties( rendererElem, context );
 
@@ -62,13 +110,18 @@ Qgis::TiledSceneRendererFlags QgsTiledSceneTextureRenderer::flags() const
   // force raster rendering for this renderer type -- there's no benefit in exporting these layers as a bunch
   // of triangular images which are pieced together, that adds a lot of extra content to the exports and results
   // in files which can be extremely slow to open and render in other viewers.
-  return Qgis::TiledSceneRendererFlag::RequiresTextures | Qgis::TiledSceneRendererFlag::ForceRasterRender;
+  return Qgis::TiledSceneRendererFlag::RequiresTextures |
+         Qgis::TiledSceneRendererFlag::ForceRasterRender |
+         Qgis::TiledSceneRendererFlag::RendersTriangles;
 }
 
 void QgsTiledSceneTextureRenderer::renderTriangle( QgsTiledSceneRenderContext &context, const QPolygonF &triangle )
 {
   if ( context.textureImage().isNull() )
+  {
+    mFillSymbol->renderPolygon( triangle, nullptr, nullptr, context.renderContext() );
     return;
+  }
 
   float textureX1;
   float textureY1;
@@ -152,6 +205,9 @@ void QgsTiledSceneTextureRenderer::renderTriangle( QgsTiledSceneRenderContext &c
 
     QPolygonF result;
     result.reserve( 4 );
+    // limit triangle vertices to shifting AT MOST 2 pixels from their original locations, to avoid narrow triangles
+    // getting buffered too large
+    static double constexpr MAX_TRIANGLE_GROW_PIXELS_SQUARED = 3 * 3;
     for ( int i = 0; i < 3; ++i )
     {
       const auto &edge1 = offsetEdges[i];
@@ -161,7 +217,18 @@ void QgsTiledSceneTextureRenderer::renderTriangle( QgsTiledSceneRenderContext &c
       if ( vertex.isNull() )
         return triangle;
 
-      result << vertex;
+      const QPointF originalPoint = triangle.at( i );
+
+      // don't allow triangle to grow too large
+      double delta = std::pow( vertex.x() - originalPoint.x(), 2 ) + std::pow( vertex.y() - originalPoint.y(), 2 );
+      if ( delta > MAX_TRIANGLE_GROW_PIXELS_SQUARED )
+      {
+        double dx = ( vertex.x() - originalPoint.x() ) * MAX_TRIANGLE_GROW_PIXELS_SQUARED / delta;
+        double dy = ( vertex.y() - originalPoint.y() ) * MAX_TRIANGLE_GROW_PIXELS_SQUARED / delta;
+        result << triangle.at( i ) + QPointF( dx, dy );
+      }
+      else
+        result << vertex;
     }
     result << result.at( 0 );
     return result;
@@ -176,24 +243,30 @@ void QgsTiledSceneTextureRenderer::renderTriangle( QgsTiledSceneRenderContext &c
     return;
   }
 
-  float pixels = 1;
-  const QPainter::RenderHints prevHints = painter->renderHints();
-  if ( minAngle < 10 )
-  {
-    painter->setRenderHint( QPainter::Antialiasing, false );
-    pixels = 0;
-  }
-  else if ( minAngle < 15 )
-    pixels = 0.5;
-  else if ( minAngle < 25 )
-    pixels = 0.75;
-
   QgsPainting::drawTriangleUsingTexture(
     painter,
-    pixels > 0 ? growTriangle( triangle, pixels ) : triangle, context.textureImage(),
+    growTriangle( triangle, 1 ),
+    context.textureImage(),
     textureX1, textureY1,
     textureX2, textureY2,
     textureX3, textureY3
   );
-  painter->setRenderHints( prevHints );
+}
+
+void QgsTiledSceneTextureRenderer::renderLine( QgsTiledSceneRenderContext &, const QPolygonF & )
+{
+
+}
+
+void QgsTiledSceneTextureRenderer::startRender( QgsTiledSceneRenderContext &context )
+{
+  QgsTiledSceneRenderer::startRender( context );
+  mFillSymbol->startRender( context.renderContext() );
+}
+
+void QgsTiledSceneTextureRenderer::stopRender( QgsTiledSceneRenderContext &context )
+{
+  mFillSymbol->stopRender( context.renderContext() );
+
+  QgsTiledSceneRenderer::stopRender( context );
 }

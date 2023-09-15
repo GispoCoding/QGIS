@@ -1569,6 +1569,13 @@ Qgis.MapLayerProperty.baseClass = Qgis
 Qgis.MapLayerProperties.baseClass = Qgis
 MapLayerProperties = Qgis  # dirty hack since SIP seems to introduce the flags in module
 # monkey patching scoped based enum
+Qgis.AutoRefreshMode.Disabled.__doc__ = "Automatic refreshing is disabled"
+Qgis.AutoRefreshMode.ReloadData.__doc__ = "Reload data (and draw the new data)"
+Qgis.AutoRefreshMode.RedrawOnly.__doc__ = "Redraw current data only"
+Qgis.AutoRefreshMode.__doc__ = "Map layer automatic refresh modes.\n\n.. versionadded:: 3.34\n\n" + '* ``Disabled``: ' + Qgis.AutoRefreshMode.Disabled.__doc__ + '\n' + '* ``ReloadData``: ' + Qgis.AutoRefreshMode.ReloadData.__doc__ + '\n' + '* ``RedrawOnly``: ' + Qgis.AutoRefreshMode.RedrawOnly.__doc__
+# --
+Qgis.AutoRefreshMode.baseClass = Qgis
+# monkey patching scoped based enum
 Qgis.DataProviderFlag.IsBasemapSource.__doc__ = "Associated source should be considered a 'basemap' layer. See Qgis.MapLayerProperty.IsBasemapLayer."
 Qgis.DataProviderFlag.__doc__ = "Generic data provider flags.\n\n.. versionadded:: 3.26\n\n" + '* ``IsBasemapSource``: ' + Qgis.DataProviderFlag.IsBasemapSource.__doc__
 # --
@@ -1643,6 +1650,13 @@ Qgis.CoordinateOrder.YX.__doc__ = "Northing/Easting (or Latitude/Longitude for g
 Qgis.CoordinateOrder.__doc__ = "Order of coordinates.\n\n.. versionadded:: 3.26\n\n" + '* ``Default``: ' + Qgis.CoordinateOrder.Default.__doc__ + '\n' + '* ``XY``: ' + Qgis.CoordinateOrder.XY.__doc__ + '\n' + '* ``YX``: ' + Qgis.CoordinateOrder.YX.__doc__
 # --
 Qgis.CoordinateOrder.baseClass = Qgis
+# monkey patching scoped based enum
+Qgis.Axis.X.__doc__ = "X-axis"
+Qgis.Axis.Y.__doc__ = "Y-axis"
+Qgis.Axis.Z.__doc__ = "Z-axis"
+Qgis.Axis.__doc__ = "Cartesian axes.\n\n.. versionadded:: 3.34\n\n" + '* ``X``: ' + Qgis.Axis.X.__doc__ + '\n' + '* ``Y``: ' + Qgis.Axis.Y.__doc__ + '\n' + '* ``Z``: ' + Qgis.Axis.Z.__doc__
+# --
+Qgis.Axis.baseClass = Qgis
 # monkey patching scoped based enum
 Qgis.AnnotationItemFlag.ScaleDependentBoundingBox.__doc__ = "Item's bounding box will vary depending on map scale"
 Qgis.AnnotationItemFlag.__doc__ = "Flags for annotation items.\n\n.. versionadded:: 3.22\n\n" + '* ``ScaleDependentBoundingBox``: ' + Qgis.AnnotationItemFlag.ScaleDependentBoundingBox.__doc__
@@ -1839,7 +1853,10 @@ QgsMapSettings.SkipSymbolRendering.__doc__ = "Disable symbol rendering while sti
 QgsMapSettings.ForceRasterMasks = Qgis.MapSettingsFlag.ForceRasterMasks
 QgsMapSettings.ForceRasterMasks.is_monkey_patched = True
 QgsMapSettings.ForceRasterMasks.__doc__ = "Force symbol masking to be applied using a raster method. This is considerably faster when compared to the vector method, but results in a inferior quality output. (since QGIS 3.26.1)"
-Qgis.MapSettingsFlag.__doc__ = "Flags which adjust the way maps are rendered.\n\n.. versionadded:: 3.22\n\n" + '* ``Antialiasing``: ' + Qgis.MapSettingsFlag.Antialiasing.__doc__ + '\n' + '* ``DrawEditingInfo``: ' + Qgis.MapSettingsFlag.DrawEditingInfo.__doc__ + '\n' + '* ``ForceVectorOutput``: ' + Qgis.MapSettingsFlag.ForceVectorOutput.__doc__ + '\n' + '* ``UseAdvancedEffects``: ' + Qgis.MapSettingsFlag.UseAdvancedEffects.__doc__ + '\n' + '* ``DrawLabeling``: ' + Qgis.MapSettingsFlag.DrawLabeling.__doc__ + '\n' + '* ``UseRenderingOptimization``: ' + Qgis.MapSettingsFlag.UseRenderingOptimization.__doc__ + '\n' + '* ``DrawSelection``: ' + Qgis.MapSettingsFlag.DrawSelection.__doc__ + '\n' + '* ``DrawSymbolBounds``: ' + Qgis.MapSettingsFlag.DrawSymbolBounds.__doc__ + '\n' + '* ``RenderMapTile``: ' + Qgis.MapSettingsFlag.RenderMapTile.__doc__ + '\n' + '* ``RenderPartialOutput``: ' + Qgis.MapSettingsFlag.RenderPartialOutput.__doc__ + '\n' + '* ``RenderPreviewJob``: ' + Qgis.MapSettingsFlag.RenderPreviewJob.__doc__ + '\n' + '* ``RenderBlocking``: ' + Qgis.MapSettingsFlag.RenderBlocking.__doc__ + '\n' + '* ``LosslessImageRendering``: ' + Qgis.MapSettingsFlag.LosslessImageRendering.__doc__ + '\n' + '* ``Render3DMap``: ' + Qgis.MapSettingsFlag.Render3DMap.__doc__ + '\n' + '* ``HighQualityImageTransforms``: ' + Qgis.MapSettingsFlag.HighQualityImageTransforms.__doc__ + '\n' + '* ``SkipSymbolRendering``: ' + Qgis.MapSettingsFlag.SkipSymbolRendering.__doc__ + '\n' + '* ``ForceRasterMasks``: ' + Qgis.MapSettingsFlag.ForceRasterMasks.__doc__
+QgsMapSettings.RecordProfile = Qgis.MapSettingsFlag.RecordProfile
+QgsMapSettings.RecordProfile.is_monkey_patched = True
+QgsMapSettings.RecordProfile.__doc__ = "Enable run-time profiling while rendering (since QGIS 3.34)"
+Qgis.MapSettingsFlag.__doc__ = "Flags which adjust the way maps are rendered.\n\n.. versionadded:: 3.22\n\n" + '* ``Antialiasing``: ' + Qgis.MapSettingsFlag.Antialiasing.__doc__ + '\n' + '* ``DrawEditingInfo``: ' + Qgis.MapSettingsFlag.DrawEditingInfo.__doc__ + '\n' + '* ``ForceVectorOutput``: ' + Qgis.MapSettingsFlag.ForceVectorOutput.__doc__ + '\n' + '* ``UseAdvancedEffects``: ' + Qgis.MapSettingsFlag.UseAdvancedEffects.__doc__ + '\n' + '* ``DrawLabeling``: ' + Qgis.MapSettingsFlag.DrawLabeling.__doc__ + '\n' + '* ``UseRenderingOptimization``: ' + Qgis.MapSettingsFlag.UseRenderingOptimization.__doc__ + '\n' + '* ``DrawSelection``: ' + Qgis.MapSettingsFlag.DrawSelection.__doc__ + '\n' + '* ``DrawSymbolBounds``: ' + Qgis.MapSettingsFlag.DrawSymbolBounds.__doc__ + '\n' + '* ``RenderMapTile``: ' + Qgis.MapSettingsFlag.RenderMapTile.__doc__ + '\n' + '* ``RenderPartialOutput``: ' + Qgis.MapSettingsFlag.RenderPartialOutput.__doc__ + '\n' + '* ``RenderPreviewJob``: ' + Qgis.MapSettingsFlag.RenderPreviewJob.__doc__ + '\n' + '* ``RenderBlocking``: ' + Qgis.MapSettingsFlag.RenderBlocking.__doc__ + '\n' + '* ``LosslessImageRendering``: ' + Qgis.MapSettingsFlag.LosslessImageRendering.__doc__ + '\n' + '* ``Render3DMap``: ' + Qgis.MapSettingsFlag.Render3DMap.__doc__ + '\n' + '* ``HighQualityImageTransforms``: ' + Qgis.MapSettingsFlag.HighQualityImageTransforms.__doc__ + '\n' + '* ``SkipSymbolRendering``: ' + Qgis.MapSettingsFlag.SkipSymbolRendering.__doc__ + '\n' + '* ``ForceRasterMasks``: ' + Qgis.MapSettingsFlag.ForceRasterMasks.__doc__ + '\n' + '* ``RecordProfile``: ' + Qgis.MapSettingsFlag.RecordProfile.__doc__
 # --
 QgsMapSettings.Flags = Qgis.MapSettingsFlags
 Qgis.MapSettingsFlag.baseClass = Qgis
@@ -1904,7 +1921,10 @@ QgsRenderContext.HighQualityImageTransforms.__doc__ = "Enable high quality image
 QgsRenderContext.SkipSymbolRendering = Qgis.RenderContextFlag.SkipSymbolRendering
 QgsRenderContext.SkipSymbolRendering.is_monkey_patched = True
 QgsRenderContext.SkipSymbolRendering.__doc__ = "Disable symbol rendering while still drawing labels if enabled (since QGIS 3.24)"
-Qgis.RenderContextFlag.__doc__ = "Flags which affect rendering operations.\n\n.. versionadded:: 3.22\n\n" + '* ``DrawEditingInfo``: ' + Qgis.RenderContextFlag.DrawEditingInfo.__doc__ + '\n' + '* ``ForceVectorOutput``: ' + Qgis.RenderContextFlag.ForceVectorOutput.__doc__ + '\n' + '* ``UseAdvancedEffects``: ' + Qgis.RenderContextFlag.UseAdvancedEffects.__doc__ + '\n' + '* ``UseRenderingOptimization``: ' + Qgis.RenderContextFlag.UseRenderingOptimization.__doc__ + '\n' + '* ``DrawSelection``: ' + Qgis.RenderContextFlag.DrawSelection.__doc__ + '\n' + '* ``DrawSymbolBounds``: ' + Qgis.RenderContextFlag.DrawSymbolBounds.__doc__ + '\n' + '* ``RenderMapTile``: ' + Qgis.RenderContextFlag.RenderMapTile.__doc__ + '\n' + '* ``Antialiasing``: ' + Qgis.RenderContextFlag.Antialiasing.__doc__ + '\n' + '* ``RenderPartialOutput``: ' + Qgis.RenderContextFlag.RenderPartialOutput.__doc__ + '\n' + '* ``RenderPreviewJob``: ' + Qgis.RenderContextFlag.RenderPreviewJob.__doc__ + '\n' + '* ``RenderBlocking``: ' + Qgis.RenderContextFlag.RenderBlocking.__doc__ + '\n' + '* ``RenderSymbolPreview``: ' + Qgis.RenderContextFlag.RenderSymbolPreview.__doc__ + '\n' + '* ``LosslessImageRendering``: ' + Qgis.RenderContextFlag.LosslessImageRendering.__doc__ + '\n' + '* ``ApplyScalingWorkaroundForTextRendering``: ' + Qgis.RenderContextFlag.ApplyScalingWorkaroundForTextRendering.__doc__ + '\n' + '* ``Render3DMap``: ' + Qgis.RenderContextFlag.Render3DMap.__doc__ + '\n' + '* ``ApplyClipAfterReprojection``: ' + Qgis.RenderContextFlag.ApplyClipAfterReprojection.__doc__ + '\n' + '* ``RenderingSubSymbol``: ' + Qgis.RenderContextFlag.RenderingSubSymbol.__doc__ + '\n' + '* ``HighQualityImageTransforms``: ' + Qgis.RenderContextFlag.HighQualityImageTransforms.__doc__ + '\n' + '* ``SkipSymbolRendering``: ' + Qgis.RenderContextFlag.SkipSymbolRendering.__doc__
+QgsRenderContext.RecordProfile = Qgis.RenderContextFlag.RecordProfile
+QgsRenderContext.RecordProfile.is_monkey_patched = True
+QgsRenderContext.RecordProfile.__doc__ = "Enable run-time profiling while rendering (since QGIS 3.34)"
+Qgis.RenderContextFlag.__doc__ = "Flags which affect rendering operations.\n\n.. versionadded:: 3.22\n\n" + '* ``DrawEditingInfo``: ' + Qgis.RenderContextFlag.DrawEditingInfo.__doc__ + '\n' + '* ``ForceVectorOutput``: ' + Qgis.RenderContextFlag.ForceVectorOutput.__doc__ + '\n' + '* ``UseAdvancedEffects``: ' + Qgis.RenderContextFlag.UseAdvancedEffects.__doc__ + '\n' + '* ``UseRenderingOptimization``: ' + Qgis.RenderContextFlag.UseRenderingOptimization.__doc__ + '\n' + '* ``DrawSelection``: ' + Qgis.RenderContextFlag.DrawSelection.__doc__ + '\n' + '* ``DrawSymbolBounds``: ' + Qgis.RenderContextFlag.DrawSymbolBounds.__doc__ + '\n' + '* ``RenderMapTile``: ' + Qgis.RenderContextFlag.RenderMapTile.__doc__ + '\n' + '* ``Antialiasing``: ' + Qgis.RenderContextFlag.Antialiasing.__doc__ + '\n' + '* ``RenderPartialOutput``: ' + Qgis.RenderContextFlag.RenderPartialOutput.__doc__ + '\n' + '* ``RenderPreviewJob``: ' + Qgis.RenderContextFlag.RenderPreviewJob.__doc__ + '\n' + '* ``RenderBlocking``: ' + Qgis.RenderContextFlag.RenderBlocking.__doc__ + '\n' + '* ``RenderSymbolPreview``: ' + Qgis.RenderContextFlag.RenderSymbolPreview.__doc__ + '\n' + '* ``LosslessImageRendering``: ' + Qgis.RenderContextFlag.LosslessImageRendering.__doc__ + '\n' + '* ``ApplyScalingWorkaroundForTextRendering``: ' + Qgis.RenderContextFlag.ApplyScalingWorkaroundForTextRendering.__doc__ + '\n' + '* ``Render3DMap``: ' + Qgis.RenderContextFlag.Render3DMap.__doc__ + '\n' + '* ``ApplyClipAfterReprojection``: ' + Qgis.RenderContextFlag.ApplyClipAfterReprojection.__doc__ + '\n' + '* ``RenderingSubSymbol``: ' + Qgis.RenderContextFlag.RenderingSubSymbol.__doc__ + '\n' + '* ``HighQualityImageTransforms``: ' + Qgis.RenderContextFlag.HighQualityImageTransforms.__doc__ + '\n' + '* ``SkipSymbolRendering``: ' + Qgis.RenderContextFlag.SkipSymbolRendering.__doc__ + '\n' + '* ``RecordProfile``: ' + Qgis.RenderContextFlag.RecordProfile.__doc__
 # --
 QgsRenderContext.Flags = Qgis.RenderContextFlags
 Qgis.RenderContextFlag.baseClass = Qgis
@@ -2457,6 +2477,16 @@ Qgis.HistoryProviderBackend.__doc__ = "History provider backends.\n\n.. versiona
 Qgis.HistoryProviderBackend.baseClass = Qgis
 Qgis.HistoryProviderBackends.baseClass = Qgis
 HistoryProviderBackends = Qgis  # dirty hack since SIP seems to introduce the flags in module
+# monkey patching scoped based enum
+Qgis.ProcessingModelChildParameterSource.ModelParameter.__doc__ = "Parameter value is taken from a parent model parameter"
+Qgis.ProcessingModelChildParameterSource.ChildOutput.__doc__ = "Parameter value is taken from an output generated by a child algorithm"
+Qgis.ProcessingModelChildParameterSource.StaticValue.__doc__ = "Parameter value is a static value"
+Qgis.ProcessingModelChildParameterSource.Expression.__doc__ = "Parameter value is taken from an expression, evaluated just before the algorithm runs"
+Qgis.ProcessingModelChildParameterSource.ExpressionText.__doc__ = "Parameter value is taken from a text with expressions, evaluated just before the algorithm runs"
+Qgis.ProcessingModelChildParameterSource.ModelOutput.__doc__ = "Parameter value is linked to an output parameter for the model"
+Qgis.ProcessingModelChildParameterSource.__doc__ = "Processing model child parameter sources.\n\n.. versionadded:: 3.34\n\n" + '* ``ModelParameter``: ' + Qgis.ProcessingModelChildParameterSource.ModelParameter.__doc__ + '\n' + '* ``ChildOutput``: ' + Qgis.ProcessingModelChildParameterSource.ChildOutput.__doc__ + '\n' + '* ``StaticValue``: ' + Qgis.ProcessingModelChildParameterSource.StaticValue.__doc__ + '\n' + '* ``Expression``: ' + Qgis.ProcessingModelChildParameterSource.Expression.__doc__ + '\n' + '* ``ExpressionText``: ' + Qgis.ProcessingModelChildParameterSource.ExpressionText.__doc__ + '\n' + '* ``ModelOutput``: ' + Qgis.ProcessingModelChildParameterSource.ModelOutput.__doc__
+# --
+Qgis.ProcessingModelChildParameterSource.baseClass = Qgis
 QgsCoordinateReferenceSystem.Format = Qgis.CrsDefinitionFormat
 # monkey patching scoped based enum
 QgsCoordinateReferenceSystem.FormatWkt = Qgis.CrsDefinitionFormat.Wkt
@@ -3807,8 +3837,26 @@ TiledSceneRequestFlags = Qgis  # dirty hack since SIP seems to introduce the fla
 # monkey patching scoped based enum
 Qgis.TiledSceneRendererFlag.RequiresTextures.__doc__ = "Renderer requires textures"
 Qgis.TiledSceneRendererFlag.ForceRasterRender.__doc__ = "Layer should always be rendered as a raster image"
-Qgis.TiledSceneRendererFlag.__doc__ = "Flags which control how tiled scene 2D renderers behave.\n\n.. versionadded:: 3.34\n\n" + '* ``RequiresTextures``: ' + Qgis.TiledSceneRendererFlag.RequiresTextures.__doc__ + '\n' + '* ``ForceRasterRender``: ' + Qgis.TiledSceneRendererFlag.ForceRasterRender.__doc__
+Qgis.TiledSceneRendererFlag.RendersTriangles.__doc__ = "Renderer can render triangle primitives"
+Qgis.TiledSceneRendererFlag.RendersLines.__doc__ = "Renderer can render line primitives"
+Qgis.TiledSceneRendererFlag.__doc__ = "Flags which control how tiled scene 2D renderers behave.\n\n.. versionadded:: 3.34\n\n" + '* ``RequiresTextures``: ' + Qgis.TiledSceneRendererFlag.RequiresTextures.__doc__ + '\n' + '* ``ForceRasterRender``: ' + Qgis.TiledSceneRendererFlag.ForceRasterRender.__doc__ + '\n' + '* ``RendersTriangles``: ' + Qgis.TiledSceneRendererFlag.RendersTriangles.__doc__ + '\n' + '* ``RendersLines``: ' + Qgis.TiledSceneRendererFlag.RendersLines.__doc__
 # --
 Qgis.TiledSceneRendererFlag.baseClass = Qgis
 Qgis.TiledSceneRendererFlags.baseClass = Qgis
 TiledSceneRendererFlags = Qgis  # dirty hack since SIP seems to introduce the flags in module
+# monkey patching scoped based enum
+Qgis.GdalResampleAlgorithm.RA_NearestNeighbour.__doc__ = "Nearest neighbour (select on one input pixel)"
+Qgis.GdalResampleAlgorithm.RA_Bilinear.__doc__ = "Bilinear (2x2 kernel)"
+Qgis.GdalResampleAlgorithm.RA_Cubic.__doc__ = "Cubic Convolution Approximation (4x4 kernel)"
+Qgis.GdalResampleAlgorithm.RA_CubicSpline.__doc__ = "Cubic B-Spline Approximation (4x4 kernel)"
+Qgis.GdalResampleAlgorithm.RA_Lanczos.__doc__ = "Lanczos windowed sinc interpolation (6x6 kernel)"
+Qgis.GdalResampleAlgorithm.RA_Average.__doc__ = "Average (computes the average of all non-NODATA contributing pixels)"
+Qgis.GdalResampleAlgorithm.RA_Mode.__doc__ = "Mode (selects the value which appears most often of all the sampled points)"
+Qgis.GdalResampleAlgorithm.RA_Max.__doc__ = "Maximum (selects the maximum of all non-NODATA contributing pixels)"
+Qgis.GdalResampleAlgorithm.RA_Min.__doc__ = "Minimum (selects the minimum of all non-NODATA contributing pixels)"
+Qgis.GdalResampleAlgorithm.RA_Median.__doc__ = "Median (selects the median of all non-NODATA contributing pixels)"
+Qgis.GdalResampleAlgorithm.RA_Q1.__doc__ = "First quartile (selects the first quartile of all non-NODATA contributing pixels)"
+Qgis.GdalResampleAlgorithm.RA_Q3.__doc__ = "Third quartile (selects the third quartile of all non-NODATA contributing pixels)"
+Qgis.GdalResampleAlgorithm.__doc__ = "Resampling algorithm to be used (equivalent to GDAL's enum GDALResampleAlg)\n\n.. note::\n\n   RA_Max, RA_Min, RA_Median, RA_Q1 and RA_Q3 are available on GDAL >= 2.0 builds only\n\n.. versionadded:: 3.34\n\n" + '* ``RA_NearestNeighbour``: ' + Qgis.GdalResampleAlgorithm.RA_NearestNeighbour.__doc__ + '\n' + '* ``RA_Bilinear``: ' + Qgis.GdalResampleAlgorithm.RA_Bilinear.__doc__ + '\n' + '* ``RA_Cubic``: ' + Qgis.GdalResampleAlgorithm.RA_Cubic.__doc__ + '\n' + '* ``RA_CubicSpline``: ' + Qgis.GdalResampleAlgorithm.RA_CubicSpline.__doc__ + '\n' + '* ``RA_Lanczos``: ' + Qgis.GdalResampleAlgorithm.RA_Lanczos.__doc__ + '\n' + '* ``RA_Average``: ' + Qgis.GdalResampleAlgorithm.RA_Average.__doc__ + '\n' + '* ``RA_Mode``: ' + Qgis.GdalResampleAlgorithm.RA_Mode.__doc__ + '\n' + '* ``RA_Max``: ' + Qgis.GdalResampleAlgorithm.RA_Max.__doc__ + '\n' + '* ``RA_Min``: ' + Qgis.GdalResampleAlgorithm.RA_Min.__doc__ + '\n' + '* ``RA_Median``: ' + Qgis.GdalResampleAlgorithm.RA_Median.__doc__ + '\n' + '* ``RA_Q1``: ' + Qgis.GdalResampleAlgorithm.RA_Q1.__doc__ + '\n' + '* ``RA_Q3``: ' + Qgis.GdalResampleAlgorithm.RA_Q3.__doc__
+# --
+Qgis.GdalResampleAlgorithm.baseClass = Qgis

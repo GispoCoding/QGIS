@@ -492,7 +492,7 @@ void QgsChunkedEntity::update( QgsChunkNode *root, const SceneState &state )
       // has additive strategy. With additive strategy, child nodes should be rendered
       // in addition to the parent nodes (rather than child nodes replacing parent entirely)
 
-      if ( mAdditiveStrategy )
+      if ( node->refinementProcess() == Qgis::TileRefinementProcess::Additive )
       {
         // Logic of the additive strategy:
         // - children that are not loaded will get requested to be loaded
@@ -547,7 +547,7 @@ void QgsChunkedEntity::update( QgsChunkNode *root, const SceneState &state )
     {
       mActiveNodes << node;
       // if we are not using additive strategy we need to make sure the parent primitives are not counted
-      if ( !mAdditiveStrategy && node->parent() && nodes.contains( node->parent() ) )
+      if ( node->refinementProcess() != Qgis::TileRefinementProcess::Additive && node->parent() && nodes.contains( node->parent() ) )
       {
         nodes.remove( node->parent() );
         renderedCount -= mChunkLoaderFactory->primitivesCount( node->parent() );
@@ -670,11 +670,8 @@ void QgsChunkedEntity::onActiveJobFinished()
 
 void QgsChunkedEntity::startJobs()
 {
-  while ( mActiveJobs.count() < 4 )
+  while ( mActiveJobs.count() < 4 && !mChunkLoaderQueue->isEmpty() )
   {
-    if ( mChunkLoaderQueue->isEmpty() )
-      return;
-
     QgsChunkListEntry *entry = mChunkLoaderQueue->takeFirst();
     Q_ASSERT( entry );
     QgsChunkNode *node = entry->chunk;
@@ -717,6 +714,7 @@ void QgsChunkedEntity::cancelActiveJob( QgsChunkQueueJob *job )
   Q_ASSERT( job );
 
   QgsChunkNode *node = job->chunk();
+  disconnect( job, &QgsChunkQueueJob::finished, this, &QgsChunkedEntity::onActiveJobFinished );
 
   if ( qobject_cast<QgsChunkLoader *>( job ) )
   {

@@ -29,6 +29,9 @@
 #include "qgsgltfutils.h"
 #include "qgscesiumutils.h"
 #include "qgscurvepolygon.h"
+#include "qgstextrenderer.h"
+#include "qgsruntimeprofiler.h"
+#include "qgsapplication.h"
 
 #include <QMatrix4x4>
 
@@ -38,12 +41,17 @@
 
 QgsTiledSceneLayerRenderer::QgsTiledSceneLayerRenderer( QgsTiledSceneLayer *layer, QgsRenderContext &context )
   : QgsMapLayerRenderer( layer->id(), &context )
+  , mLayerName( layer->name() )
   , mFeedback( new QgsFeedback )
+  , mEnableProfile( context.flags() & Qgis::RenderContextFlag::RecordProfile )
 {
   // We must not keep pointer to mLayer (it's dangerous) - we must copy anything we need for rendering
   // or use some locking to prevent read/write from multiple threads
   if ( !layer->dataProvider() || !layer->renderer() )
     return;
+
+  QElapsedTimer timer;
+  timer.start();
 
   mRenderer.reset( layer->renderer()->clone() );
 
@@ -56,6 +64,8 @@ QgsTiledSceneLayerRenderer::QgsTiledSceneLayerRenderer( QgsTiledSceneLayer *laye
   mRenderTileBorders = mRenderer->isTileBorderRenderingEnabled();
 
   mReadyToCompose = false;
+
+  mPreparationTime = timer.elapsed();
 }
 
 QgsTiledSceneLayerRenderer::~QgsTiledSceneLayerRenderer() = default;
@@ -64,6 +74,20 @@ bool QgsTiledSceneLayerRenderer::render()
 {
   if ( !mIndex.isValid() )
     return false;
+
+  std::unique_ptr< QgsScopedRuntimeProfile > profile;
+  if ( mEnableProfile )
+  {
+    profile = std::make_unique< QgsScopedRuntimeProfile >( mLayerName, QStringLiteral( "rendering" ) );
+    if ( mPreparationTime > 0 )
+      QgsApplication::profiler()->record( QObject::tr( "Create renderer" ), mPreparationTime / 1000.0, QStringLiteral( "rendering" ) );
+  }
+
+  std::unique_ptr< QgsScopedRuntimeProfile > preparingProfile;
+  if ( mEnableProfile )
+  {
+    preparingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Preparing render" ), QStringLiteral( "rendering" ) );
+  }
 
   QgsRenderContext *rc = renderContext();
   QgsTiledSceneRenderContext context( *rc, mFeedback.get() );
@@ -87,6 +111,14 @@ bool QgsTiledSceneLayerRenderer::render()
   mSceneToMapTransform = QgsCoordinateTransform( mSceneCrs, rc->coordinateTransform().destinationCrs(), rc->transformContext() );
 
   mRenderer->startRender( context );
+
+  preparingProfile.reset();
+  std::unique_ptr< QgsScopedRuntimeProfile > renderingProfile;
+  if ( mEnableProfile )
+  {
+    renderingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Rendering" ), QStringLiteral( "rendering" ) );
+  }
+
   const bool result = renderTiles( context );
   mRenderer->stopRender( context );
   mReadyToCompose = true;
@@ -129,7 +161,7 @@ QgsTiledSceneRequest QgsTiledSceneLayerRenderer::createBaseRequest()
   request.setFeedback( feedback() );
 
   // TODO what z range makes sense here??
-  const QVector< QgsVector3D > corners = QgsBox3D( mapExtent, -1000, 1000 ).corners();
+  const QVector< QgsVector3D > corners = QgsBox3D( mapExtent, -10000, 10000 ).corners();
   QVector< double > x;
   x.reserve( 8 );
   QVector< double > y;
@@ -224,20 +256,38 @@ bool QgsTiledSceneLayerRenderer::renderTiles( QgsTiledSceneRenderContext &contex
 
   const bool needsTextures = mRenderer->flags() & Qgis::TiledSceneRendererFlag::RequiresTextures;
 
-  std::sort( mTriangleData.begin(), mTriangleData.end(), []( const TriangleData & a, const TriangleData & b )
+  std::sort( mPrimitiveData.begin(), mPrimitiveData.end(), []( const PrimitiveData & a, const PrimitiveData & b )
   {
+    // this isn't an exact science ;)
+    if ( qgsDoubleNear( a.z, b.z, 0.001 ) )
+    {
+      // for overlapping lines/triangles, ensure the line is drawn over the triangle
+      if ( a.type == PrimitiveType::Line )
+        return false;
+      else if ( b.type == PrimitiveType::Line )
+        return true;
+    }
     return a.z < b.z;
   } );
-  for ( const TriangleData &data : std::as_const( mTriangleData ) )
+  for ( const PrimitiveData &data : std::as_const( mPrimitiveData ) )
   {
-    if ( needsTextures )
+    switch ( data.type )
     {
-      context.setTextureImage( mTextures.value( data.textureId ) );
-      context.setTextureCoordinates( data.textureCoords[0], data.textureCoords[1],
-                                     data.textureCoords[2], data.textureCoords[3],
-                                     data.textureCoords[4], data.textureCoords[5] );
+      case PrimitiveType::Line:
+        mRenderer->renderLine( context, data.coordinates );
+        break;
+
+      case PrimitiveType::Triangle:
+        if ( needsTextures )
+        {
+          context.setTextureImage( mTextures.value( data.textureId ) );
+          context.setTextureCoordinates( data.textureCoords[0], data.textureCoords[1],
+                                         data.textureCoords[2], data.textureCoords[3],
+                                         data.textureCoords[4], data.textureCoords[5] );
+        }
+        mRenderer->renderTriangle( context, data.coordinates );
+        break;
     }
-    mRenderer->renderTriangle( context, data.triangle );
   }
 
   if ( mRenderTileBorders )
@@ -261,6 +311,15 @@ bool QgsTiledSceneLayerRenderer::renderTiles( QgsTiledSceneRenderContext &contex
       painter->setPen( pen );
       painter->setBrush( brush );
       painter->drawPolygon( tile.boundary );
+#if 1
+      QgsTextFormat format;
+      format.setColor( QColor( 255, 0, 0 ) );
+      format.buffer().setEnabled( true );
+
+      QgsTextRenderer::drawText( QRectF( QPoint( 0, 0 ), renderContext()->outputSize() ).intersected( tile.boundary.boundingRect() ),
+                                 0, Qgis::TextHorizontalAlignment::Center, { tile.id },
+                                 *renderContext(), format, true, Qgis::TextVerticalAlignment::VerticalCenter );
+#endif
     }
   }
 
@@ -297,6 +356,7 @@ void QgsTiledSceneLayerRenderer::renderTile( const QgsTiledSceneTile &tile, QgsT
         TileDetails details;
         details.boundary = volumePolygon;
         details.hasContent = hasContent;
+        details.id = QString::number( tile.id() );
         mTileDetails.append( details );
       }
     }
@@ -327,32 +387,37 @@ bool QgsTiledSceneLayerRenderer::renderTileContent( const QgsTiledSceneTile &til
   const bool res = QgsGltfUtils::loadGltfModel( content.gltf, model, &gltfErrors, &gltfWarnings );
   if ( res )
   {
-    const QgsVector3D tileTranslationEcef = content.rtcCenter + QgsGltfUtils::extractTileTranslation( model );
+    const QgsVector3D tileTranslationEcef = content.rtcCenter + QgsGltfUtils::extractTileTranslation( model,
+                                            static_cast< Qgis::Axis >( tile.metadata().value( QStringLiteral( "gltfUpAxis" ), static_cast< int >( Qgis::Axis::Y ) ).toInt() ) );
     const tinygltf::Scene &scene = model.scenes[model.defaultScene];
-    const int nodeIndex = scene.nodes[0];
-    const tinygltf::Node &gltfNode = model.nodes[nodeIndex];
-    const std::unique_ptr< QMatrix4x4 > gltfLocalTransform = QgsGltfUtils::parseNodeTransform( gltfNode );
-
-    if ( gltfNode.mesh >= 0 )
+    for ( int nodeIndex : scene.nodes )
     {
-      const tinygltf::Mesh &mesh = model.meshes[gltfNode.mesh];
+      const tinygltf::Node &gltfNode = model.nodes[nodeIndex];
+      const std::unique_ptr< QMatrix4x4 > gltfLocalTransform = QgsGltfUtils::parseNodeTransform( gltfNode );
 
-      for ( const tinygltf::Primitive &primitive : mesh.primitives )
+      if ( gltfNode.mesh >= 0 )
       {
-        if ( context.renderContext().renderingStopped() )
-          break;
+        const tinygltf::Mesh &mesh = model.meshes[gltfNode.mesh];
 
-        renderPrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform.get(), contentUri, context );
+        for ( const tinygltf::Primitive &primitive : mesh.primitives )
+        {
+          if ( context.renderContext().renderingStopped() )
+            break;
+
+          renderPrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform.get(), contentUri, context );
+        }
       }
     }
   }
   else if ( !gltfErrors.isEmpty() )
   {
-    mErrors.append( gltfErrors );
+    if ( !mErrors.contains( gltfErrors ) )
+      mErrors.append( gltfErrors );
+    QgsDebugError( QStringLiteral( "Error raised reading %1: %2" ).arg( contentUri, gltfErrors ) );
   }
   if ( !gltfWarnings.isEmpty() )
   {
-    QgsDebugError( gltfWarnings );
+    QgsDebugError( QStringLiteral( "Warnings raised reading %1: %2" ).arg( contentUri, gltfWarnings ) );
   }
   return true;
 }
@@ -362,15 +427,13 @@ void QgsTiledSceneLayerRenderer::renderPrimitive( const tinygltf::Model &model, 
   switch ( primitive.mode )
   {
     case TINYGLTF_MODE_TRIANGLES:
-      renderTrianglePrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform, contentUri, context );
+      if ( mRenderer->flags() & Qgis::TiledSceneRendererFlag::RendersTriangles )
+        renderTrianglePrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform, contentUri, context );
       break;
 
     case TINYGLTF_MODE_LINE:
-      if ( !mWarnedPrimitiveTypes.contains( TINYGLTF_MODE_LINE ) )
-      {
-        mErrors << QObject::tr( "Line objects in tiled scenes are not supported" );
-        mWarnedPrimitiveTypes.insert( TINYGLTF_MODE_LINE );
-      }
+      if ( mRenderer->flags() & Qgis::TiledSceneRendererFlag::RendersLines )
+        renderLinePrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform, contentUri, context );
       return;
 
     case TINYGLTF_MODE_POINTS:
@@ -441,6 +504,7 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
     &mSceneToMapTransform,
     tileTranslationEcef,
     gltfLocalTransform,
+    static_cast< Qgis::Axis >( tile.metadata().value( QStringLiteral( "gltfUpAxis" ), static_cast< int >( Qgis::Axis::Y ) ).toInt() ),
     x, y, z
   );
 
@@ -505,7 +569,7 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
   const bool useTexture = !textureImage.isNull();
   bool hasStoredTexture = false;
 
-  QVector< TriangleData > thisTileTriangleData;
+  QVector< PrimitiveData > thisTileTriangleData;
 
   if ( primitive.indices == -1 )
   {
@@ -517,7 +581,8 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
       if ( context.renderContext().renderingStopped() )
         break;
 
-      TriangleData data;
+      PrimitiveData data;
+      data.type = PrimitiveType::Triangle;
       data.textureId = textureId;
       if ( useTexture )
       {
@@ -528,9 +593,9 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
         data.textureCoords[4] = texturePointX[i + 2];
         data.textureCoords[5] = texturePointY[i + 2];
       }
-      data.triangle = QVector<QPointF> { QPointF( x[i], y[i] ), QPointF( x[i + 1], y[i + 1] ), QPointF( x[i + 2], y[i + 2] ), QPointF( x[i], y[i] ) };
+      data.coordinates = QVector<QPointF> { QPointF( x[i], y[i] ), QPointF( x[i + 1], y[i + 1] ), QPointF( x[i + 2], y[i + 2] ), QPointF( x[i], y[i] ) };
       data.z = ( z[i] + z[i + 1] + z[i + 2] ) / 3;
-      if ( needTriangle( data.triangle ) )
+      if ( needTriangle( data.coordinates ) )
       {
         thisTileTriangleData.push_back( data );
         if ( !hasStoredTexture && !textureImage.isNull() )
@@ -565,7 +630,8 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
       unsigned int index2 = 0;
       unsigned int index3 = 0;
 
-      TriangleData data;
+      PrimitiveData data;
+      data.type = PrimitiveType::Triangle;
       data.textureId = textureId;
 
       if ( primitiveAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT )
@@ -615,9 +681,9 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
         data.textureCoords[5] = texturePointY[index3];
       }
 
-      data.triangle = { QVector<QPointF>{ QPointF( x[index1], y[index1] ), QPointF( x[index2], y[index2] ), QPointF( x[index3], y[index3] ), QPointF( x[index1], y[index1] ) } };
+      data.coordinates = { QVector<QPointF>{ QPointF( x[index1], y[index1] ), QPointF( x[index2], y[index2] ), QPointF( x[index3], y[index3] ), QPointF( x[index1], y[index1] ) } };
       data.z = ( z[index1] + z[index2] + z[index3] ) / 3;
-      if ( needTriangle( data.triangle ) )
+      if ( needTriangle( data.coordinates ) )
       {
         thisTileTriangleData.push_back( data );
         if ( !hasStoredTexture && !textureImage.isNull() )
@@ -637,12 +703,12 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
     QPainter *finalPainter = context.renderContext().painter();
     context.renderContext().setPainter( context.renderContext().previewRenderPainter() );
 
-    std::sort( thisTileTriangleData.begin(), thisTileTriangleData.end(), []( const TriangleData & a, const TriangleData & b )
+    std::sort( thisTileTriangleData.begin(), thisTileTriangleData.end(), []( const PrimitiveData & a, const PrimitiveData & b )
     {
       return a.z < b.z;
     } );
 
-    for ( const TriangleData &data : std::as_const( thisTileTriangleData ) )
+    for ( const PrimitiveData &data : std::as_const( thisTileTriangleData ) )
     {
       if ( useTexture && data.textureId.first >= 0 )
       {
@@ -651,16 +717,168 @@ void QgsTiledSceneLayerRenderer::renderTrianglePrimitive( const tinygltf::Model 
                                        data.textureCoords[2], data.textureCoords[3],
                                        data.textureCoords[4], data.textureCoords[5] );
       }
-      mRenderer->renderTriangle( context, data.triangle );
+      mRenderer->renderTriangle( context, data.coordinates );
     }
     context.renderContext().setPainter( finalPainter );
   }
 
-  mTriangleData.append( thisTileTriangleData );
+  mPrimitiveData.append( thisTileTriangleData );
 
   // as soon as first tile is rendered, we can start showing layer updates. But we still delay
   // this by e.g. 3 seconds before we start forcing progressive updates, so that we don't show the unsorted
   // z triangle render if the overall layer render only takes a second or so.
+  if ( mElapsedTimer.elapsed() > MAX_TIME_TO_USE_CACHED_PREVIEW_IMAGE )
+  {
+    mReadyToCompose = true;
+  }
+}
+
+void QgsTiledSceneLayerRenderer::renderLinePrimitive( const tinygltf::Model &model, const tinygltf::Primitive &primitive, const QgsTiledSceneTile &tile, const QgsVector3D &tileTranslationEcef, const QMatrix4x4 *gltfLocalTransform, const QString &, QgsTiledSceneRenderContext &context )
+{
+  auto posIt = primitive.attributes.find( "POSITION" );
+  if ( posIt == primitive.attributes.end() )
+  {
+    mErrors << QObject::tr( "Could not find POSITION attribute for primitive" );
+    return;
+  }
+  int positionAccessorIndex = posIt->second;
+
+  QVector< double > x;
+  QVector< double > y;
+  QVector< double > z;
+  QgsGltfUtils::accessorToMapCoordinates(
+    model, positionAccessorIndex, tile.transform() ? *tile.transform() : QgsMatrix4x4(),
+    &mSceneToMapTransform,
+    tileTranslationEcef,
+    gltfLocalTransform,
+    static_cast< Qgis::Axis >( tile.metadata().value( QStringLiteral( "gltfUpAxis" ), static_cast< int >( Qgis::Axis::Y ) ).toInt() ),
+    x, y, z
+  );
+
+  renderContext()->mapToPixel().transformInPlace( x, y );
+
+  const QRect outputRect = QRect( QPoint( 0, 0 ), context.renderContext().outputSize() );
+  auto needLine = [&outputRect]( const QPolygonF & line ) -> bool
+  {
+    return line.boundingRect().intersects( outputRect );
+  };
+
+  QVector< PrimitiveData > thisTileLineData;
+
+  if ( primitive.indices == -1 )
+  {
+    Q_ASSERT( x.size() % 2 == 0 );
+
+    thisTileLineData.reserve( x.size() );
+    for ( int i = 0; i < x.size(); i += 2 )
+    {
+      if ( context.renderContext().renderingStopped() )
+        break;
+
+      PrimitiveData data;
+      data.type = PrimitiveType::Line;
+      data.coordinates = QVector<QPointF> { QPointF( x[i], y[i] ), QPointF( x[i + 1], y[i + 1] ) };
+      // note -- we take the maximum z here, as we'd ideally like lines to be placed over similarish z valued triangles
+      data.z = std::max( z[i], z[i + 1] );
+      if ( needLine( data.coordinates ) )
+      {
+        thisTileLineData.push_back( data );
+      }
+    }
+  }
+  else
+  {
+    const tinygltf::Accessor &primitiveAccessor = model.accessors[primitive.indices];
+    const tinygltf::BufferView &bvPrimitive = model.bufferViews[primitiveAccessor.bufferView];
+    const tinygltf::Buffer &bPrimitive = model.buffers[bvPrimitive.buffer];
+
+    Q_ASSERT( ( primitiveAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT
+                || primitiveAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
+                || primitiveAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE )
+              && primitiveAccessor.type == TINYGLTF_TYPE_SCALAR );
+
+    const char *primitivePtr = reinterpret_cast< const char * >( bPrimitive.data.data() ) + bvPrimitive.byteOffset + primitiveAccessor.byteOffset;
+
+    thisTileLineData.reserve( primitiveAccessor.count / 2 );
+    for ( std::size_t i = 0; i < primitiveAccessor.count / 2; i++ )
+    {
+      if ( context.renderContext().renderingStopped() )
+        break;
+
+      unsigned int index1 = 0;
+      unsigned int index2 = 0;
+
+      PrimitiveData data;
+      data.type = PrimitiveType::Line;
+
+      if ( primitiveAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT )
+      {
+        const unsigned short *usPtrPrimitive = reinterpret_cast< const unsigned short * >( primitivePtr );
+        if ( bvPrimitive.byteStride )
+          primitivePtr += bvPrimitive.byteStride;
+        else
+          primitivePtr += 2 * sizeof( unsigned short );
+
+        index1 = usPtrPrimitive[0];
+        index2 = usPtrPrimitive[1];
+      }
+      else if ( primitiveAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE )
+      {
+        const unsigned char *usPtrPrimitive = reinterpret_cast< const unsigned char * >( primitivePtr );
+        if ( bvPrimitive.byteStride )
+          primitivePtr += bvPrimitive.byteStride;
+        else
+          primitivePtr += 2 * sizeof( unsigned char );
+
+        index1 = usPtrPrimitive[0];
+        index2 = usPtrPrimitive[1];
+      }
+      else
+      {
+        const unsigned int *uintPtrPrimitive = reinterpret_cast< const unsigned int * >( primitivePtr );
+        if ( bvPrimitive.byteStride )
+          primitivePtr += bvPrimitive.byteStride;
+        else
+          primitivePtr += 2 * sizeof( unsigned int );
+
+        index1 = uintPtrPrimitive[0];
+        index2 = uintPtrPrimitive[1];
+      }
+
+      data.coordinates = { QVector<QPointF>{ QPointF( x[index1], y[index1] ), QPointF( x[index2], y[index2] ) } };
+      // note -- we take the maximum z here, as we'd ideally like lines to be placed over similarish z valued triangles
+      data.z = std::max( z[index1], z[index2] );
+      if ( needLine( data.coordinates ) )
+      {
+        thisTileLineData.push_back( data );
+      }
+    }
+  }
+
+  if ( context.renderContext().previewRenderPainter() )
+  {
+    // swap out the destination painter for the preview render painter, and render
+    // the triangles from this tile in a sorted order
+    QPainter *finalPainter = context.renderContext().painter();
+    context.renderContext().setPainter( context.renderContext().previewRenderPainter() );
+
+    std::sort( thisTileLineData.begin(), thisTileLineData.end(), []( const PrimitiveData & a, const PrimitiveData & b )
+    {
+      return a.z < b.z;
+    } );
+
+    for ( const PrimitiveData &data : std::as_const( thisTileLineData ) )
+    {
+      mRenderer->renderLine( context, data.coordinates );
+    }
+    context.renderContext().setPainter( finalPainter );
+  }
+
+  mPrimitiveData.append( thisTileLineData );
+
+  // as soon as first tile is rendered, we can start showing layer updates. But we still delay
+  // this by e.g. 3 seconds before we start forcing progressive updates, so that we don't show the unsorted
+  // z primitive render if the overall layer render only takes a second or so.
   if ( mElapsedTimer.elapsed() > MAX_TIME_TO_USE_CACHED_PREVIEW_IMAGE )
   {
     mReadyToCompose = true;
