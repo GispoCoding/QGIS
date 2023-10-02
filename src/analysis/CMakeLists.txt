@@ -122,6 +122,7 @@ set(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmintersection.cpp
   processing/qgsalgorithmjoinbyattribute.cpp
   processing/qgsalgorithmjoinbylocation.cpp
+  processing/qgsalgorithmjoinbylocationsummary.cpp
   processing/qgsalgorithmjoinbynearest.cpp
   processing/qgsalgorithmjoinwithlines.cpp
   processing/qgsalgorithmkeepnbiggestparts.cpp
@@ -168,6 +169,7 @@ set(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmrandompointsinpolygons.cpp
   processing/qgsalgorithmrandompointsonlines.cpp
   processing/qgsalgorithmrandomraster.cpp
+  processing/qgsalgorithmrastercalculator.cpp
   processing/qgsalgorithmrasterdtmslopebasedfilter.cpp
   processing/qgsalgorithmrasterfrequencybycomparisonoperator.cpp
   processing/qgsalgorithmrasterlayerproperties.cpp
@@ -237,6 +239,7 @@ set(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmunion.cpp
   processing/qgsalgorithmuniquevalueindex.cpp
   processing/qgsalgorithmvectorize.cpp
+  processing/qgsalgorithmvirtualrastercalculator.cpp
   processing/qgsalgorithmwedgebuffers.cpp
   processing/qgsalgorithmwritevectortiles.cpp
   processing/qgsalgorithmxyztiles.cpp
@@ -458,15 +461,10 @@ if (WITH_PDAL AND PDAL_2_5_OR_HIGHER)
   )
 endif()
 
-include_directories(SYSTEM ${SPATIALITE_INCLUDE_DIR})
 include_directories(SYSTEM ${SPATIALINDEX_INCLUDE_DIR})
 include_directories(SYSTEM ${SQLITE3_INCLUDE_DIR})
 include_directories(BEFORE raster)
 include_directories(BEFORE mesh)
-
-if(HAVE_GSL)
-  include_directories(SYSTEM ${GSL_INCLUDE_DIR})
-endif()
 
 if(NOT MSVC)
   set_source_files_properties(
@@ -577,7 +575,7 @@ target_link_libraries(
   )
 
 if(HAVE_GSL)
-  target_link_libraries(qgis_analysis ${GSL_LIBRARIES})
+  target_link_libraries(qgis_analysis GSL::gsl)
 endif()
 
 if(HAVE_OPENCL)

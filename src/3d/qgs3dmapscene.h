@@ -163,7 +163,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
 
     /**
      * Returns the scene's elevation range
-     * \note Only terrain and point cloud layers are taken into account
+     * \note Only some layer types are considered by this method (eg terrain, point cloud and mesh layers)
      *
      * \since QGIS 3.30
      */
@@ -229,6 +229,13 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      * \since QGIS 3.26
      */
     void viewed2DExtentFrom3DChanged( QVector<QgsPointXY> extent );
+
+    /**
+     *  Emitted when one of the entities reaches its GPU memory limit
+     *  and it is not possible to lower the GPU memory use by unloading
+     *  data that's not currently needed.
+     */
+    void gpuMemoryLimitReached();
 
   public slots:
     //! Updates the temporale entities

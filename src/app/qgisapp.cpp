@@ -816,6 +816,7 @@ void QgisApp::annotationItemTypeAdded( int id )
   action->setCheckable( true );
   action->setData( id );
   action->setIcon( QgsGui::annotationItemGuiRegistry()->itemMetadata( id )->creationIcon() );
+  action->setObjectName( QStringLiteral( "mAction%1" ).arg( name.replace( " ", "" ) ) );
 
   mMapToolGroup->addAction( action );
 
@@ -4471,7 +4472,12 @@ void QgisApp::setupConnections()
   {
     if ( !mProjectLoadingProxyTask && i < n )
     {
-      const QString name = QgsProject::instance()->title().isEmpty() ? QgsProject::instance()->fileName() : QgsProject::instance()->title();
+      QString name = QgsProject::instance()->title().isEmpty() ? QgsProject::instance()->fileName() : QgsProject::instance()->title();
+      if ( QgsProject::instance()->projectStorage() )
+      {
+        name = QgsDataSourceUri::removePassword( name, true );
+      }
+
       mProjectLoadingProxyTask = new QgsProxyProgressTask( tr( "Loading “%1”" ).arg( name ) );
       QgsApplication::taskManager()->addTask( mProjectLoadingProxyTask );
     }
@@ -10221,7 +10227,7 @@ void QgisApp::pasteFromClipboard( QgsMapLayer *destinationLayer )
         }
         if ( avoidIntersectionsLayers.size() > 0 )
         {
-          geom.avoidIntersections( avoidIntersectionsLayers );
+          geom.avoidIntersectionsV2( avoidIntersectionsLayers );
         }
 
         // count collapsed geometries
@@ -10612,6 +10618,7 @@ void QgisApp::pasteStyle( QgsMapLayer *destinationLayer, QgsMapLayer::StyleCateg
 
       mLayerTreeView->refreshLayerSymbology( selectionLayer->id() );
       selectionLayer->triggerRepaint();
+      QgsProject::instance()->setDirty( true );
     }
   }
 }

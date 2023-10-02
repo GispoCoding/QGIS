@@ -5470,13 +5470,18 @@ QString QgsProcessingParameterExpression::asPythonString( const QgsProcessing::P
       QgsProcessingContext c;
       code += QStringLiteral( ", defaultValue=%1" ).arg( valueAsPythonString( mDefault, c ) );
 
-      if ( mExpressionType == Qgis::ExpressionType::PointCloud )
+
+      switch ( mExpressionType )
       {
-        code += QLatin1String( ", type=Qgis.ExpressionType.PointCloud)" );
-      }
-      else
-      {
-        code += QLatin1Char( ')' );
+        case Qgis::ExpressionType::PointCloud:
+          code += QLatin1String( ", type=Qgis.ExpressionType.PointCloud)" );
+          break;
+        case Qgis::ExpressionType::RasterCalculator:
+          code += QLatin1String( ", type=Qgis.ExpressionType.RasterCalculator)" );
+          break;
+        default:
+          code += QLatin1Char( ')' );
+          break;
       }
       return code;
     }
@@ -5878,6 +5883,14 @@ QString QgsProcessingParameterField::asScriptCode() const
       code += QLatin1String( "datetime " );
       break;
 
+    case Binary:
+      code += QLatin1String( "binary " );
+      break;
+
+    case Boolean:
+      code += QLatin1String( "boolean " );
+      break;
+
     case Any:
       break;
   }
@@ -5922,6 +5935,14 @@ QString QgsProcessingParameterField::asPythonString( const QgsProcessing::Python
 
         case DateTime:
           dataType = QStringLiteral( "QgsProcessingParameterField.DateTime" );
+          break;
+
+        case Binary:
+          dataType = QStringLiteral( "QgsProcessingParameterField.Binary" );
+          break;
+
+        case Boolean:
+          dataType = QStringLiteral( "QgsProcessingParameterField.Boolean" );
           break;
       }
       code += QStringLiteral( ", type=%1" ).arg( dataType );
@@ -6032,6 +6053,16 @@ QgsProcessingParameterField *QgsProcessingParameterField::fromScriptCode( const 
   {
     type = DateTime;
     def = def.mid( 9 );
+  }
+  else if ( def.startsWith( QLatin1String( "binary " ), Qt::CaseInsensitive ) )
+  {
+    type = Binary;
+    def = def.mid( 7 );
+  }
+  else if ( def.startsWith( QLatin1String( "boolean " ), Qt::CaseInsensitive ) )
+  {
+    type = Boolean;
+    def = def.mid( 8 );
   }
 
   if ( def.startsWith( QLatin1String( "multiple" ), Qt::CaseInsensitive ) )

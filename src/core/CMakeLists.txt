@@ -2247,12 +2247,8 @@ target_include_directories(qgis_core SYSTEM PUBLIC
   ${${QT_VERSION_BASE}Network_INCLUDE_DIRS}
   ${${QT_VERSION_BASE}Sql_INCLUDE_DIRS}
   ${${QT_VERSION_BASE}Concurrent_INCLUDE_DIRS}
-  ${PROJ_INCLUDE_DIR}
-  ${GDAL_INCLUDE_DIR}
   ${LIBZIP_INCLUDE_DIRS}
   ${SPATIALINDEX_INCLUDE_DIR} # before GEOS for case-insensitive filesystems
-  ${GEOS_INCLUDE_DIR}
-  ${EXPAT_INCLUDE_DIR}
   ${SQLITE3_INCLUDE_DIR}
   ${QCA_INCLUDE_DIR}
   ${QTKEYCHAIN_INCLUDE_DIR}
@@ -2261,12 +2257,6 @@ target_include_directories(qgis_core SYSTEM PUBLIC
   ${ZLIB_INCLUDE_DIRS}
   ${EXIV2_INCLUDE_DIR}
 )
-
-if (WITH_SPATIALITE)
-  target_include_directories(qgis_core SYSTEM PUBLIC
-    ${SPATIALITE_INCLUDE_DIR}
-  )
-endif()
 
 target_include_directories(qgis_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -2423,16 +2413,16 @@ target_link_libraries(qgis_core
   ${OPTIONAL_QTWEBKIT}
   ${QCA_LIBRARY}
   ${QTKEYCHAIN_LIBRARY}
-  ${PROJ_LIBRARY}
-  ${GEOS_LIBRARY}
-  ${GDAL_LIBRARY}
+  GEOS::geos_c
+  GDAL::GDAL
   ${SPATIALINDEX_LIBRARY}
-  ${EXPAT_LIBRARY}
+  EXPAT::EXPAT
   ${SQLITE3_LIBRARY}
   ${LIBZIP_LIBRARY}
   ${Protobuf_LITE_LIBRARY}
   ${ZLIB_LIBRARIES}
   ${EXIV2_LIBRARY}
+  PROJ::proj
 )
 
 if (WITH_DRACO)
@@ -2444,7 +2434,7 @@ if (NOT IOS)
 endif()
 
 if (WITH_SPATIALITE)
-  target_link_libraries(qgis_core ${SPATIALITE_LIBRARY})
+  target_link_libraries(qgis_core spatialite::spatialite)
 endif()
 
 if (BUILD_WITH_QT6)

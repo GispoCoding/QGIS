@@ -17,13 +17,6 @@
 
 #include <QElapsedTimer>
 #include <QVector4D>
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#include <Qt3DRender/QBuffer>
-typedef Qt3DRender::QBuffer Qt3DQBuffer;
-#else
-#include <Qt3DCore/QBuffer>
-typedef Qt3DCore::QBuffer Qt3DQBuffer;
-#endif
 
 #include "qgs3dutils.h"
 #include "qgschunkboundsentity_p.h"
@@ -226,9 +219,12 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneState &state )
 
 int QgsChunkedEntity::unloadNodes()
 {
-  double usedGpuMemory = QgsChunkedEntity::calculateEntityGpuMemorySize( this );
+  double usedGpuMemory = Qgs3DUtils::calculateEntityGpuMemorySize( this );
   if ( usedGpuMemory <= mGpuMemoryLimit )
+  {
+    setHasReachedGpuMemoryLimit( false );
     return 0;
+  }
 
   QgsDebugMsgLevel( QStringLiteral( "Going to unload nodes to free GPU memory (used: %1 MB, limit: %2 MB)" ).arg( usedGpuMemory ).arg( mGpuMemoryLimit ), 2 );
 
@@ -247,7 +243,7 @@ int QgsChunkedEntity::unloadNodes()
     {
       QgsChunkListEntry *entryPrev = entry->prev;
       mReplacementQueue->takeEntry( entry );
-      usedGpuMemory -= QgsChunkedEntity::calculateEntityGpuMemorySize( entry->chunk->entity() );
+      usedGpuMemory -= Qgs3DUtils::calculateEntityGpuMemorySize( entry->chunk->entity() );
       mActiveNodes.removeOne( entry->chunk );
       entry->chunk->unloadChunk();  // also deletes the entry
       ++unloaded;
@@ -261,6 +257,7 @@ int QgsChunkedEntity::unloadNodes()
 
   if ( usedGpuMemory > mGpuMemoryLimit )
   {
+    setHasReachedGpuMemoryLimit( true );
     QgsDebugMsgLevel( QStringLiteral( "Unable to unload enough nodes to free GPU memory (used: %1 MB, limit: %2 MB)" ).arg( usedGpuMemory ).arg( mGpuMemoryLimit ), 2 );
   }
 
@@ -286,18 +283,11 @@ QgsRange<float> QgsChunkedEntity::getNearFarPlaneRange( const QMatrix4x4 &viewMa
     // project each corner of bbox to camera coordinates
     // and determine closest and farthest point.
     QgsAABB bbox = node->bbox();
-    for ( int i = 0; i < 8; ++i )
-    {
-      const QVector4D p( ( ( i >> 0 ) & 1 ) ? bbox.xMin : bbox.xMax,
-                         ( ( i >> 1 ) & 1 ) ? bbox.yMin : bbox.yMax,
-                         ( ( i >> 2 ) & 1 ) ? bbox.zMin : bbox.zMax, 1 );
-
-      const QVector4D pc = viewMatrix * p;
-
-      const float dst = -pc.z();  // in camera coordinates, x grows right, y grows down, z grows to the back
-      fnear = std::min( fnear, dst );
-      ffar = std::max( ffar, dst );
-    }
+    float bboxfnear;
+    float bboxffar;
+    Qgs3DUtils::computeBoundingBoxNearFarPlanes( bbox, viewMatrix, bboxfnear, bboxffar );
+    fnear = std::min( fnear, bboxfnear );
+    ffar = std::max( ffar, bboxffar );
   }
   return QgsRange<float>( fnear, ffar );
 }
@@ -745,20 +735,6 @@ void QgsChunkedEntity::cancelActiveJobs()
   }
 }
 
-double QgsChunkedEntity::calculateEntityGpuMemorySize( Qt3DCore::QEntity *entity )
-{
-  long long usedGpuMemory = 0;
-  for ( Qt3DQBuffer *buffer : entity->findChildren<Qt3DQBuffer *>() )
-  {
-    usedGpuMemory += buffer->data().size();
-  }
-  for ( Qt3DRender::QTexture2D *tex : entity->findChildren<Qt3DRender::QTexture2D *>() )
-  {
-    // TODO : lift the assumption that the texture is RGBA
-    usedGpuMemory += tex->width() * tex->height() * 4;
-  }
-  return usedGpuMemory / 1024.0 / 1024.0;
-}
 
 QVector<QgsRayCastingUtils::RayHit> QgsChunkedEntity::rayIntersection( const QgsRayCastingUtils::Ray3D &ray, const QgsRayCastingUtils::RayCastContext &context ) const
 {
