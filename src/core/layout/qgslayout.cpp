@@ -318,7 +318,7 @@ QgsLayoutItem *QgsLayout::layoutItemAt( QPointF position, const QgsLayoutItem *b
   }
 
   bool foundBelowItem = false;
-  for ( QGraphicsItem *graphicsItem : itemList )
+  for ( QGraphicsItem *graphicsItem : std::as_const( itemList ) )
   {
     QgsLayoutItem *layoutItem = dynamic_cast<QgsLayoutItem *>( graphicsItem );
     QgsLayoutItemPage *paperItem = dynamic_cast<QgsLayoutItemPage *>( layoutItem );
@@ -1124,6 +1124,13 @@ QList< QgsLayoutItem * > QgsLayout::addItemsFromXml( const QDomElement &parentEl
       {
         if ( label->mode() == QgsLayoutItemLabel::ModeHtml )
         {
+          QgsTextFormat textFormat = label->textFormat();
+          if ( textFormat.lineHeightUnit() == Qgis::RenderUnit::Percentage )
+          {
+            // The line-height property handles height differently in webkit, adjust accordingly
+            textFormat.setLineHeight( textFormat.lineHeight() + 0.22 );
+            label->setTextFormat( textFormat );
+          }
           QgsLayoutMultiFrame *html = QgsLayoutItemHtml::createFromLabel( label );
           addMultiFrame( html );
           if ( item->isGroupMember() )

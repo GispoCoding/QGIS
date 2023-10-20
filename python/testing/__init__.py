@@ -95,13 +95,32 @@ class QgisTestCase(unittest.TestCase):
         report_file = report_dir.filePath('index.html')
 
         # only append to existing reports if running under CI
+        file_is_empty = True
         if cls.is_ci_run() or \
                 os.environ.get("QGIS_APPEND_TO_TEST_REPORT") == 'true':
             file_mode = 'ta'
+            try:
+                with open(report_file, 'rt', encoding="utf-8") as f:
+                    file_is_empty = not bool(f.read())
+            except IOError:
+                pass
         else:
             file_mode = 'wt'
 
         with open(report_file, file_mode, encoding='utf-8') as f:
+            if file_is_empty:
+                from .test_data_dir import TEST_DATA_DIR
+
+                # append standard header
+                with open(TEST_DATA_DIR + "/../test_report_header.html", 'rt', encoding='utf-8') as header_file:
+                    f.write(header_file.read())
+
+                # append embedded scripts
+                f.write('<script>\n')
+                with open(TEST_DATA_DIR + "/../renderchecker.js", 'rt', encoding='utf-8') as script_file:
+                    f.write(script_file.read())
+                f.write("</script>\n")
+
             f.write(f"<h1>Python {cls.__name__} Tests</h1>\n")
             f.write(report)
 
@@ -115,7 +134,9 @@ class QgisTestCase(unittest.TestCase):
                     image: QImage,
                     control_name=None,
                     color_tolerance: int = 2,
-                    allowed_mismatch: int = 20) -> bool:
+                    allowed_mismatch: int = 20,
+                    size_tolerance: Optional[int] = None,
+                    expect_fail: bool = False) -> bool:
         temp_dir = QDir.tempPath() + '/'
         file_name = temp_dir + name + ".png"
         image.save(file_name, "PNG")
@@ -125,8 +146,13 @@ class QgisTestCase(unittest.TestCase):
         checker.setControlName(control_name or "expected_" + reference_image)
         checker.setRenderedImage(file_name)
         checker.setColorTolerance(color_tolerance)
+        checker.setExpectFail(expect_fail)
+        if size_tolerance is not None:
+            checker.setSizeTolerance(size_tolerance, size_tolerance)
+
         result = checker.runTest(name, allowed_mismatch)
-        if not result:
+        if (not expect_fail and not result) or \
+                (expect_fail and result):
             cls.report += f"<h2>Render {name}</h2>\n"
             cls.report += checker.report()
 

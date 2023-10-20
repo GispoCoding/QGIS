@@ -44,6 +44,7 @@ bool QgsMultiRenderChecker::runTest( const QString &testName, unsigned int misma
   mResult = false;
 
   mReport += "<h2>" + testName + "</h2>\n";
+  mMarkdownReport += QStringLiteral( "### %1\n\n" ).arg( testName );
 
   const QString baseDir = controlImagePath();
   if ( !QFile::exists( baseDir ) )
@@ -79,6 +80,7 @@ bool QgsMultiRenderChecker::runTest( const QString &testName, unsigned int misma
     checker.setControlPathSuffix( suffix );
     checker.setControlName( mControlName );
     checker.setMapSettings( mMapSettings );
+    checker.setExpectFail( mExpectFail );
 
     if ( !mRenderedImage.isNull() )
     {
@@ -96,6 +98,10 @@ bool QgsMultiRenderChecker::runTest( const QString &testName, unsigned int misma
     dartMeasurements << checker.dartMeasurements();
 
     mReport += checker.report( false );
+    if ( subDirs.count() > 1 )
+      mMarkdownReport += QStringLiteral( "* " ) + checker.markdownReport( false );
+    else
+      mMarkdownReport += checker.markdownReport( false );
 
     if ( !mResult && diffImageFile.isEmpty() )
     {
@@ -172,6 +178,11 @@ QString QgsMultiRenderChecker::report() const
   return !mResult ? mReport : QString();
 }
 
+QString QgsMultiRenderChecker::markdownReport() const
+{
+  return !mResult ? mMarkdownReport : QString();
+}
+
 QString QgsMultiRenderChecker::controlImagePath() const
 {
   QString myDataDir( TEST_DATA_DIR ); //defined in CmakeLists.txt
@@ -242,6 +253,9 @@ bool QgsLayoutChecker::testLayout( QString &checkedReport, int page, int pixelDi
   p.end();
 
   QString renderedFilePath = QDir::tempPath() + '/' + QFileInfo( mTestName ).baseName() + "_rendered.png";
+  if ( QFile::exists( renderedFilePath ) )
+    QFile::remove( renderedFilePath );
+
   outputImage.save( renderedFilePath, "PNG" );
 
   setRenderedImage( renderedFilePath );

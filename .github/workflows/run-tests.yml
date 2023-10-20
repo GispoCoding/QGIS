@@ -1,5 +1,9 @@
 name: 🧪 QGIS tests
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -85,9 +89,9 @@ jobs:
           large-packages: false
           docker-images: false
           swap-storage: true
-          
+
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set vars
         env:
@@ -336,7 +340,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set vars
         env:
@@ -412,11 +416,18 @@ jobs:
           mkdir -p /tmp/minio_tests/test-bucket && chmod -R 777 /tmp/minio_tests
           docker-compose -f .docker/$DOCKERFILE run qgis-deps /root/QGIS/.docker/docker-qgis-test.sh $TEST_BATCH
 
+      - name: Save PR number to test report
+        if: ${{ failure() }}
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          echo $PR_NUMBER > qgis_test_report/pr_number
+
       - name: Archive test results report
         if: ${{ failure() }}
         uses: actions/upload-artifact@v3
         with:
-          name: test-results
+          name: test-results-qt${{ matrix.qt-version }}
           path: qgis_test_report
 
   clang-tidy:
@@ -431,8 +442,16 @@ jobs:
             qt-version: 5
 
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          large-packages: false
+          docker-images: false
+          swap-storage: true
+
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 

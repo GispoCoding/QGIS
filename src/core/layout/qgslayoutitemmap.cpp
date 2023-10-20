@@ -113,7 +113,7 @@ QIcon QgsLayoutItemMap::icon() const
 
 QgsLayoutItem::Flags QgsLayoutItemMap::itemFlags() const
 {
-  return QgsLayoutItem::FlagOverridesPaint;
+  return QgsLayoutItem::FlagOverridesPaint | QgsLayoutItem::FlagDisableSceneCaching;
 }
 
 void QgsLayoutItemMap::assignFreeId()
@@ -242,27 +242,31 @@ void QgsLayoutItemMap::zoomToExtent( const QgsRectangle &extent )
   //Make sure the width/height ratio is the same as the current layout map extent.
   //This is to keep the map item frame size fixed
   double currentWidthHeightRatio = 1.0;
-  if ( !currentExtent.isNull() )
+  if ( !currentExtent.isEmpty() )
     currentWidthHeightRatio = currentExtent.width() / currentExtent.height();
   else
     currentWidthHeightRatio = rect().width() / rect().height();
-  double newWidthHeightRatio = newExtent.width() / newExtent.height();
 
-  if ( currentWidthHeightRatio < newWidthHeightRatio )
+  if ( currentWidthHeightRatio != 0 && ! std::isnan( currentWidthHeightRatio ) && !newExtent.isEmpty() )
   {
-    //enlarge height of new extent, ensuring the map center stays the same
-    double newHeight = newExtent.width() / currentWidthHeightRatio;
-    double deltaHeight = newHeight - newExtent.height();
-    newExtent.setYMinimum( newExtent.yMinimum() - deltaHeight / 2 );
-    newExtent.setYMaximum( newExtent.yMaximum() + deltaHeight / 2 );
-  }
-  else
-  {
-    //enlarge width of new extent, ensuring the map center stays the same
-    double newWidth = currentWidthHeightRatio * newExtent.height();
-    double deltaWidth = newWidth - newExtent.width();
-    newExtent.setXMinimum( newExtent.xMinimum() - deltaWidth / 2 );
-    newExtent.setXMaximum( newExtent.xMaximum() + deltaWidth / 2 );
+    double newWidthHeightRatio = newExtent.width() / newExtent.height();
+
+    if ( currentWidthHeightRatio < newWidthHeightRatio )
+    {
+      //enlarge height of new extent, ensuring the map center stays the same
+      double newHeight = newExtent.width() / currentWidthHeightRatio;
+      double deltaHeight = newHeight - newExtent.height();
+      newExtent.setYMinimum( newExtent.yMinimum() - deltaHeight / 2 );
+      newExtent.setYMaximum( newExtent.yMaximum() + deltaHeight / 2 );
+    }
+    else
+    {
+      //enlarge width of new extent, ensuring the map center stays the same
+      double newWidth = currentWidthHeightRatio * newExtent.height();
+      double deltaWidth = newWidth - newExtent.width();
+      newExtent.setXMinimum( newExtent.xMinimum() - deltaWidth / 2 );
+      newExtent.setXMaximum( newExtent.xMaximum() + deltaWidth / 2 );
+    }
   }
 
   if ( mExtent == newExtent )
@@ -494,15 +498,60 @@ bool QgsLayoutItemMap::containsWmsLayer() const
 
 bool QgsLayoutItemMap::requiresRasterization() const
 {
-  if ( QgsLayoutItem::requiresRasterization() )
+  if ( blendMode() != QPainter::CompositionMode_SourceOver )
     return true;
 
   // we MUST force the whole layout to render as a raster if any map item
   // uses blend modes, and we are not drawing on a solid opaque background
   // because in this case the map item needs to be rendered as a raster, but
   // it also needs to interact with items below it
-  if ( !containsAdvancedEffects() )
+
+  // WARNING -- modifying this logic? Then ALSO update containsAdvancedEffects accordingly!
+
+  // BIG WARNING -- we CANNOT just check containsAdvancedEffects here, as that method MUST
+  // return true if the map item has transparency.
+  // BUT, we **DO NOT HAVE TO** force the WHOLE layout to be rasterized if a map item
+  // is semi-opaque, as we have logic in QgsLayoutItemMap::paint to automatically render the
+  // map to a temporary image surface. I.e, we can get away with just rasterising the map
+  // alone and leaving the rest of the content as vector.
+
+  // SO this logic is a COPY of containsAdvancedEffects, without the opacity check
+
+  auto containsAdvancedEffectsIgnoreItemOpacity = [ = ]()-> bool
+  {
+    if ( QgsLayoutItem::containsAdvancedEffects() )
+      return true;
+
+    //check easy things first
+
+    // WARNING -- modifying this logic? Then ALSO update containsAdvancedEffects accordingly!
+
+    //overviews
+    if ( mOverviewStack->containsAdvancedEffects() )
+    {
+      return true;
+    }
+
+    // WARNING -- modifying this logic? Then ALSO update containsAdvancedEffects accordingly!
+
+    //grids
+    if ( mGridStack->containsAdvancedEffects() )
+    {
+      return true;
+    }
+
+    // WARNING -- modifying this logic? Then ALSO update containsAdvancedEffects accordingly!
+
+    QgsMapSettings ms;
+    ms.setLayers( layersToRender() );
+    return ( !QgsMapSettingsUtils::containsAdvancedEffects( ms ).isEmpty() );
+    // WARNING -- modifying this logic? Then ALSO update requiresRasterization accordingly!
+  };
+
+  if ( !containsAdvancedEffectsIgnoreItemOpacity() )
     return false;
+
+  // WARNING -- modifying this logic? Then ALSO update containsAdvancedEffects accordingly!
 
   if ( hasBackground() && qgsDoubleNear( backgroundColor().alphaF(), 1.0 ) )
     return false;
@@ -512,10 +561,12 @@ bool QgsLayoutItemMap::requiresRasterization() const
 
 bool QgsLayoutItemMap::containsAdvancedEffects() const
 {
-  if ( QgsLayoutItem::containsAdvancedEffects() )
+  if ( QgsLayoutItem::containsAdvancedEffects() || mEvaluatedOpacity < 1.0 )
     return true;
 
   //check easy things first
+
+  // WARNING -- modifying this logic? Then ALSO update requiresRasterization accordingly!
 
   //overviews
   if ( mOverviewStack->containsAdvancedEffects() )
@@ -523,15 +574,20 @@ bool QgsLayoutItemMap::containsAdvancedEffects() const
     return true;
   }
 
+  // WARNING -- modifying this logic? Then ALSO update requiresRasterization accordingly!
+
   //grids
   if ( mGridStack->containsAdvancedEffects() )
   {
     return true;
   }
 
+  // WARNING -- modifying this logic? Then ALSO update requiresRasterization accordingly!
+
   QgsMapSettings ms;
   ms.setLayers( layersToRender() );
   return ( !QgsMapSettingsUtils::containsAdvancedEffects( ms ).isEmpty() );
+  // WARNING -- modifying this logic? Then ALSO update requiresRasterization accordingly!
 }
 
 void QgsLayoutItemMap::setMapRotation( double rotation )
@@ -1061,6 +1117,7 @@ void QgsLayoutItemMap::paint( QPainter *painter, const QStyleOptionGraphicsItem 
       QgsScopedQPainterState rotatedPainterState( painter );
 
       painter->translate( mLastRenderedImageOffsetX + mXOffset, mLastRenderedImageOffsetY + mYOffset );
+      painter->setCompositionMode( blendModeForRender() );
       painter->scale( scale, scale );
       painter->drawImage( 0, 0, *mCacheFinalImage );
 
@@ -1095,7 +1152,8 @@ void QgsLayoutItemMap::paint( QPainter *painter, const QStyleOptionGraphicsItem 
     if ( mLayout && mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagLosslessImageRendering )
       painter->setRenderHint( QPainter::LosslessImageRendering, true );
 
-    if ( containsAdvancedEffects() && ( !mLayout || !( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagForceVectorOutput ) ) )
+    if ( ( containsAdvancedEffects() || ( blendModeForRender() != QPainter::CompositionMode_SourceOver ) )
+         && ( !mLayout || !( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagForceVectorOutput ) ) )
     {
       // rasterize
       double destinationDpi = QgsLayoutUtils::scaleFactorFromItemStyle( style, painter ) * 25.4;
@@ -1146,6 +1204,7 @@ void QgsLayoutItemMap::paint( QPainter *painter, const QStyleOptionGraphicsItem 
       drawAnnotations( &p );
 
       QgsScopedQPainterState painterState( painter );
+      painter->setCompositionMode( blendModeForRender() );
       painter->scale( 1 / dotsPerMM, 1 / dotsPerMM ); // scale painter from mm to dots
       painter->drawImage( QPointF( -tl.x()* dotsPerMM, -tl.y() * dotsPerMM ), image );
       painter->scale( dotsPerMM, dotsPerMM );

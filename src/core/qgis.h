@@ -125,6 +125,33 @@ class CORE_EXPORT Qgis
     Q_ENUM( LayerType )
 
     /**
+     * Filter for layers
+     *
+     * \since QGIS 3.34. Prior to 3.34 this was available as QgsMapLayerProxyModel::Filter.
+     */
+    enum class LayerFilter SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsMapLayerProxyModel, Filter ) : int
+      {
+      RasterLayer = 1,
+      NoGeometry = 2,
+      PointLayer = 4,
+      LineLayer = 8,
+      PolygonLayer = 16,
+      HasGeometry = PointLayer | LineLayer | PolygonLayer,
+      VectorLayer = NoGeometry | HasGeometry,
+      PluginLayer = 32,
+      WritableLayer = 64,
+      MeshLayer = 128, //!< QgsMeshLayer \since QGIS 3.6
+      VectorTileLayer = 256, //!< QgsVectorTileLayer \since QGIS 3.14
+      PointCloudLayer = 512, //!< QgsPointCloudLayer \since QGIS 3.18
+      AnnotationLayer = 1024, //!< QgsAnnotationLayer \since QGIS 3.22
+      TiledSceneLayer = 2048, //!< QgsTiledSceneLayer \since QGIS 3.34
+      All = RasterLayer | VectorLayer | PluginLayer | MeshLayer | VectorTileLayer | PointCloudLayer | AnnotationLayer | TiledSceneLayer,
+      SpatialLayer = RasterLayer | HasGeometry | PluginLayer | MeshLayer | VectorTileLayer | PointCloudLayer | AnnotationLayer | TiledSceneLayer //!< \since QGIS 3.24
+    };
+    Q_DECLARE_FLAGS( LayerFilters, LayerFilter )
+    Q_FLAG( LayerFilters )
+
+    /**
      * The WKB type describes the number of dimensions a geometry has
      *
      * - Point
@@ -1174,6 +1201,32 @@ class CORE_EXPORT Qgis
       NeverAskLoadAll, //!< Never ask users to select sublayers, instead automatically load all available sublayers
     };
     Q_ENUM( SublayerPromptMode )
+
+    /**
+     * Configuration flags for fields
+     * These flags are meant to be user-configurable
+     * and are not describing any information from the data provider.
+     * \note FieldConfigurationFlag are expressed in the negative forms so that default flags is NoFlag.
+     * \since QGIS 3.34
+     */
+    enum class FieldConfigurationFlag : int
+    {
+      NoFlag = 0, //!< No flag is defined
+      NotSearchable = 1 << 1, //!< Defines if the field is searchable (used in the locator search for instance)
+      HideFromWms = 1 << 2, //!< Field is not available if layer is served as WMS from QGIS server
+      HideFromWfs = 1 << 3, //!< Field is not available if layer is served as WFS from QGIS server
+    };
+    Q_ENUM( FieldConfigurationFlag )
+
+    /**
+     * Configuration flags for fields
+     * These flags are meant to be user-configurable
+     * and are not describing any information from the data provider.
+     * \note FieldConfigurationFlag are expressed in the negative forms so that default flags is NoFlag.
+     * \since QGIS 3.34
+     */
+    Q_DECLARE_FLAGS( FieldConfigurationFlags, FieldConfigurationFlag )
+    Q_FLAG( FieldConfigurationFlags )
 
     /**
      * Standard field metadata values.
@@ -4126,6 +4179,8 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::VectorTileProviderCapabilities )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TiledSceneProviderCapabilities )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TiledSceneRequestFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TiledSceneRendererFlags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::FieldConfigurationFlags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::LayerFilters )
 
 // hack to workaround warnings when casting void pointers
 // retrieved from QLibrary::resolve to function pointers.
