@@ -22,7 +22,7 @@ set(CMAKE_LINK_DEPENDS_NO_SHARED ON)
 #############################################################
 # Project and version
 set(CPACK_PACKAGE_VERSION_MAJOR "3")
-set(CPACK_PACKAGE_VERSION_MINOR "33")
+set(CPACK_PACKAGE_VERSION_MINOR "35")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(COMPLETE_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
 set(RELEASE_NAME "Master")
@@ -460,12 +460,14 @@ if(WITH_CORE)
 
   set (BUILD_WITH_QT6 FALSE CACHE BOOL "Enable (experimental) Qt6 support")
   if (BUILD_WITH_QT6)
+    set(QT_VERSION_MAJOR 6)
     set(QT_MIN_VERSION 6.4.0)
     set(QT_VERSION_BASE "Qt6")
     set(QT_VERSION_BASE_LOWER "qt6")
     set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
   else()
+    set(QT_VERSION_MAJOR 5)
     set(QT_MIN_VERSION 5.14.0)
     set(QT_VERSION_BASE "Qt5")
     set(QT_VERSION_BASE_LOWER "qt5")
@@ -1020,6 +1022,14 @@ if (WITH_BINDINGS)
   find_package(Python ${MIN_PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
 else()
   find_package(Python ${MIN_PYTHON_VERSION} REQUIRED COMPONENTS Interpreter)
+endif()
+
+# Fix python site-packages for Fedora
+# See https://github.com/qgis/QGIS/issues/54348#issuecomment-1694216152
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  if(EXISTS "/etc/fedora-release")
+    EXECUTE_PROCESS(COMMAND ${Python_EXECUTABLE} -c "import sysconfig;print(sysconfig.get_path(\"platlib\", \"rpm_prefix\"), end=\"\")" OUTPUT_VARIABLE Python_SITEARCH)
+  endif()
 endif()
 
 message("-- Found Python executable: ${Python_EXECUTABLE} (version ${Python_VERSION})")

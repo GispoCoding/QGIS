@@ -4503,11 +4503,40 @@ QgsRasterFillSymbolLayerWidget::QgsRasterFillSymbolLayerWidget( QgsVectorLayer *
 
   connect( mOffsetUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsRasterFillSymbolLayerWidget::mOffsetUnitWidget_changed );
   connect( mRotationSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsRasterFillSymbolLayerWidget::mRotationSpinBox_valueChanged );
-  connect( mWidthUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsRasterFillSymbolLayerWidget::mWidthUnitWidget_changed );
-  connect( mWidthSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsRasterFillSymbolLayerWidget::mWidthSpinBox_valueChanged );
 
-  mWidthUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits
-                              << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches << Qgis::RenderUnit::Percentage );
+  connect( mSizeUnitWidget, &QgsUnitSelectionWidget::changed, this, [ = ]
+  {
+    if ( !mLayer )
+    {
+      return;
+    }
+    mLayer->setSizeUnit( mSizeUnitWidget->unit() );
+    mLayer->setSizeMapUnitScale( mSizeUnitWidget->getMapUnitScale() );
+    emit changed();
+  }
+         );
+  connect( mWidthSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, [ = ]( double d )
+  {
+    if ( !mLayer )
+    {
+      return;
+    }
+    mLayer->setWidth( d );
+    emit changed();
+  } );
+
+  connect( mHeightSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, [ = ]( double d )
+  {
+    if ( !mLayer )
+    {
+      return;
+    }
+    mLayer->setHeight( d );
+    emit changed();
+  } );
+
+  mSizeUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits
+                             << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches << Qgis::RenderUnit::Percentage );
   mOffsetUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
                                << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
 
@@ -4565,10 +4594,12 @@ void QgsRasterFillSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
   mOffsetUnitWidget->blockSignals( false );
 
   whileBlocking( mWidthSpinBox )->setValue( mLayer->width() );
-  mWidthUnitWidget->blockSignals( true );
-  mWidthUnitWidget->setUnit( mLayer->widthUnit() );
-  mWidthUnitWidget->setMapUnitScale( mLayer->widthMapUnitScale() );
-  mWidthUnitWidget->blockSignals( false );
+  mSizeUnitWidget->blockSignals( true );
+  mSizeUnitWidget->setUnit( mLayer->sizeUnit() );
+  mSizeUnitWidget->setMapUnitScale( mLayer->sizeMapUnitScale() );
+  mSizeUnitWidget->blockSignals( false );
+
+  whileBlocking( mHeightSpinBox )->setValue( mLayer->height() );
 
   updatePreviewImage();
 
@@ -4576,6 +4607,7 @@ void QgsRasterFillSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
   registerDataDefinedButton( mOpacityDDBtn, QgsSymbolLayer::PropertyOpacity );
   registerDataDefinedButton( mRotationDDBtn, QgsSymbolLayer::PropertyAngle );
   registerDataDefinedButton( mWidthDDBtn, QgsSymbolLayer::PropertyWidth );
+  registerDataDefinedButton( mHeightDDBtn, QgsSymbolLayer::PropertyHeight );
   registerDataDefinedButton( mOffsetDDBtn, QgsSymbolLayer::PropertyOffset );
 }
 
@@ -4644,27 +4676,6 @@ void QgsRasterFillSymbolLayerWidget::mRotationSpinBox_valueChanged( double d )
     mLayer->setAngle( d );
     emit changed();
   }
-}
-
-void QgsRasterFillSymbolLayerWidget::mWidthUnitWidget_changed()
-{
-  if ( !mLayer )
-  {
-    return;
-  }
-  mLayer->setWidthUnit( mWidthUnitWidget->unit() );
-  mLayer->setWidthMapUnitScale( mWidthUnitWidget->getMapUnitScale() );
-  emit changed();
-}
-
-void QgsRasterFillSymbolLayerWidget::mWidthSpinBox_valueChanged( double d )
-{
-  if ( !mLayer )
-  {
-    return;
-  }
-  mLayer->setWidth( d );
-  emit changed();
 }
 
 void QgsRasterFillSymbolLayerWidget::updatePreviewImage()
@@ -5330,6 +5341,120 @@ void QgsLineburstSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
 }
 
 QgsSymbolLayer *QgsLineburstSymbolLayerWidget::symbolLayer()
+{
+  return mLayer;
+}
+
+//
+// QgsFilledLineSymbolLayerWidget
+//
+
+QgsFilledLineSymbolLayerWidget::QgsFilledLineSymbolLayerWidget( QgsVectorLayer *vl, QWidget *parent )
+  : QgsSymbolLayerWidget( parent, vl )
+{
+  mLayer = nullptr;
+  setupUi( this );
+
+  mPenWidthUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
+                                 << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
+  mOffsetUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
+                               << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
+
+  connect( mPenWidthUnitWidget, &QgsUnitSelectionWidget::changed, this, [ = ]
+  {
+    if ( mLayer )
+    {
+      mLayer->setWidthUnit( mPenWidthUnitWidget->unit() );
+      mLayer->setWidthMapUnitScale( mPenWidthUnitWidget->getMapUnitScale() );
+      emit changed();
+    }
+  } );
+
+  connect( spinWidth, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, [ = ]
+  {
+    if ( mLayer )
+    {
+      mLayer->setWidth( spinWidth->value() );
+      emit changed();
+    }
+  } );
+
+  connect( mOffsetUnitWidget, &QgsUnitSelectionWidget::changed, this, [ = ]
+  {
+    if ( mLayer )
+    {
+      mLayer->setOffsetUnit( mOffsetUnitWidget->unit() );
+      mLayer->setOffsetMapUnitScale( mOffsetUnitWidget->getMapUnitScale() );
+      emit changed();
+    }
+  } );
+
+  spinOffset->setClearValue( 0.0 );
+  connect( spinOffset, qOverload< double >( &QDoubleSpinBox::valueChanged ), this, [ = ]( double val )
+  {
+    if ( mLayer )
+    {
+      mLayer->setOffset( val );
+      emit changed();
+    }
+  } );
+
+  connect( cboCapStyle, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, [ = ]
+  {
+    if ( mLayer )
+    {
+      mLayer->setPenCapStyle( cboCapStyle->penCapStyle() );
+      emit changed();
+    }
+  } );
+  connect( cboJoinStyle, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, [ = ]
+  {
+    if ( mLayer )
+    {
+      mLayer->setPenJoinStyle( cboJoinStyle->penJoinStyle() );
+      emit changed();
+    }
+  } );
+}
+
+QgsFilledLineSymbolLayerWidget::~QgsFilledLineSymbolLayerWidget() = default;
+
+void QgsFilledLineSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
+{
+  if ( !layer )
+  {
+    return;
+  }
+
+  if ( layer->layerType() != QLatin1String( "FilledLine" ) )
+  {
+    return;
+  }
+
+  mLayer = dynamic_cast<QgsFilledLineSymbolLayer *>( layer );
+  if ( !mLayer )
+  {
+    return;
+  }
+
+  whileBlocking( spinWidth )->setValue( mLayer->width() );
+  whileBlocking( mPenWidthUnitWidget )->setUnit( mLayer->widthUnit() );
+  whileBlocking( mPenWidthUnitWidget )->setMapUnitScale( mLayer->widthMapUnitScale() );
+
+  whileBlocking( mOffsetUnitWidget )->setUnit( mLayer->offsetUnit() );
+  whileBlocking( mOffsetUnitWidget )->setMapUnitScale( mLayer->offsetMapUnitScale() );
+  whileBlocking( spinOffset )->setValue( mLayer->offset() );
+
+  whileBlocking( cboJoinStyle )->setPenJoinStyle( mLayer->penJoinStyle() );
+  whileBlocking( cboCapStyle )->setPenCapStyle( mLayer->penCapStyle() );
+
+  registerDataDefinedButton( mPenWidthDDBtn, QgsSymbolLayer::PropertyStrokeWidth );
+  registerDataDefinedButton( mOffsetDDBtn, QgsSymbolLayer::PropertyOffset );
+  registerDataDefinedButton( mJoinStyleDDBtn, QgsSymbolLayer::PropertyJoinStyle );
+  registerDataDefinedButton( mCapStyleDDBtn, QgsSymbolLayer::PropertyCapStyle );
+}
+
+QgsSymbolLayer *QgsFilledLineSymbolLayerWidget::symbolLayer()
 {
   return mLayer;
 }

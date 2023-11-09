@@ -522,7 +522,7 @@ void TestQgs3DRendering::testPolygonsEdges()
   QgsPolygon3DSymbol *symbol3d = new QgsPolygon3DSymbol;
   symbol3d->setMaterialSettings( materialSettings.clone() );
   symbol3d->setExtrusionHeight( 10.f );
-  symbol3d->setHeight( 20.f );
+  symbol3d->setOffset( 20.f );
   symbol3d->setEdgesEnabled( true );
   symbol3d->setEdgeWidth( 8 );
   symbol3d->setEdgeColor( QColor( 255, 0, 0 ) );
@@ -735,7 +735,7 @@ void TestQgs3DRendering::testBufferedLineRenderingWidth()
   QgsLine3DSymbol *lineSymbol = new QgsLine3DSymbol;
   lineSymbol->setWidth( 20 );
   lineSymbol->setExtrusionHeight( 30 );
-  lineSymbol->setHeight( 10 );
+  lineSymbol->setOffset( 10 );
   QgsPhongMaterialSettings matSettings;
   matSettings.setAmbient( Qt::red );
   lineSymbol->setMaterialSettings( matSettings.clone() );

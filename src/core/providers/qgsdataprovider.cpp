@@ -28,6 +28,13 @@ QgsDataProvider::QgsDataProvider( const QString &uri, const QgsDataProvider::Pro
   mReadFlags = flags;
 }
 
+QString QgsDataProvider::htmlMetadata() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  return QString();
+}
+
 Qgis::DataProviderFlags QgsDataProvider::flags() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
@@ -133,4 +140,9 @@ void QgsDataProvider::setTransformContext( const QgsCoordinateTransformContext &
 QString QgsDataProvider::sublayerSeparator()
 {
   return SUBLAYER_SEPARATOR;
+}
+
+Qgis::ProviderStyleStorageCapabilities QgsDataProvider::styleStorageCapabilities() const
+{
+  return Qgis::ProviderStyleStorageCapabilities();
 }

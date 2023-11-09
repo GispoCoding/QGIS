@@ -189,6 +189,12 @@ class CORE_EXPORT QgsDataProvider : public QObject
      */
     virtual QString dataComment() const { return QString(); };
 
+    /**
+     * Obtain a formatted HTML string containing assorted metadata for this data provider.
+     *
+     * \since QGIS 3.36
+     */
+    virtual QString htmlMetadata() const;
 
     /**
      * Set the data source specification.
@@ -198,6 +204,16 @@ class CORE_EXPORT QgsDataProvider : public QObject
     void setUri( const QgsDataSourceUri &uri )
     {
       mDataSourceURI = uri.uri( true );
+    }
+
+    /**
+     * Set the data source specification.
+     *
+     * \since QGIS 3.38
+     */
+    void setUri( const QString &uri )
+    {
+      mDataSourceURI = uri;
     }
 
     /**
@@ -632,6 +648,13 @@ class CORE_EXPORT QgsDataProvider : public QObject
      * \since QGIS 3.12
      */
     static QString sublayerSeparator();
+
+    /**
+     * Returns the style storage capabilities.
+     *
+     * \since QGIS 3.34
+     */
+    virtual Qgis::ProviderStyleStorageCapabilities styleStorageCapabilities() const;
 
   signals:
 

@@ -2917,7 +2917,7 @@ QWidget *QgsProcessingEnumWidgetWrapper::createWidget()
         return mCheckboxPanel;
       }
     }
-    FALLTHROUGH
+    [[fallthrough]];
     case QgsProcessingGui::Modeler:
     case QgsProcessingGui::Batch:
     {
@@ -7613,7 +7613,7 @@ void QgsProcessingAnnotationLayerWidgetWrapper::setWidgetValue( const QVariant &
     QVariant val = value;
     if ( val.userType() == QMetaType::type( "QgsProperty" ) )
     {
-      if ( val.value< QgsProperty >().propertyType() == QgsProperty::StaticProperty )
+      if ( val.value< QgsProperty >().propertyType() == Qgis::PropertyType::Static )
       {
         val = val.value< QgsProperty >().staticValue();
       }

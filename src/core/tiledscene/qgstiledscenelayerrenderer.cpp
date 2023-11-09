@@ -78,7 +78,7 @@ bool QgsTiledSceneLayerRenderer::render()
   std::unique_ptr< QgsScopedRuntimeProfile > profile;
   if ( mEnableProfile )
   {
-    profile = std::make_unique< QgsScopedRuntimeProfile >( mLayerName, QStringLiteral( "rendering" ) );
+    profile = std::make_unique< QgsScopedRuntimeProfile >( mLayerName, QStringLiteral( "rendering" ), layerId() );
     if ( mPreparationTime > 0 )
       QgsApplication::profiler()->record( QObject::tr( "Create renderer" ), mPreparationTime / 1000.0, QStringLiteral( "rendering" ) );
   }
@@ -389,23 +389,57 @@ bool QgsTiledSceneLayerRenderer::renderTileContent( const QgsTiledSceneTile &til
   {
     const QgsVector3D tileTranslationEcef = content.rtcCenter + QgsGltfUtils::extractTileTranslation( model,
                                             static_cast< Qgis::Axis >( tile.metadata().value( QStringLiteral( "gltfUpAxis" ), static_cast< int >( Qgis::Axis::Y ) ).toInt() ) );
-    const tinygltf::Scene &scene = model.scenes[model.defaultScene];
-    for ( int nodeIndex : scene.nodes )
+
+    bool sceneOk = false;
+    const std::size_t sceneIndex = QgsGltfUtils::sourceSceneForModel( model, sceneOk );
+    if ( !sceneOk )
     {
-      const tinygltf::Node &gltfNode = model.nodes[nodeIndex];
-      const std::unique_ptr< QMatrix4x4 > gltfLocalTransform = QgsGltfUtils::parseNodeTransform( gltfNode );
+      const QString error = QObject::tr( "No scenes found in model" );
+      mErrors.append( error );
+      QgsDebugError( QStringLiteral( "Error raised reading %1: %2" ).arg( contentUri, error ) );
+    }
+    else
+    {
+      const tinygltf::Scene &scene = model.scenes[sceneIndex];
 
-      if ( gltfNode.mesh >= 0 )
+      std::function< void( int nodeIndex, const QMatrix4x4 &transform ) > traverseNode;
+      traverseNode = [&model, &context, &tileTranslationEcef, &tile, &contentUri, &traverseNode, this]( int nodeIndex, const QMatrix4x4 & parentTransform )
       {
-        const tinygltf::Mesh &mesh = model.meshes[gltfNode.mesh];
+        const tinygltf::Node &gltfNode = model.nodes[nodeIndex];
+        std::unique_ptr< QMatrix4x4 > gltfLocalTransform = QgsGltfUtils::parseNodeTransform( gltfNode );
 
-        for ( const tinygltf::Primitive &primitive : mesh.primitives )
+        if ( !parentTransform.isIdentity() )
         {
-          if ( context.renderContext().renderingStopped() )
-            break;
-
-          renderPrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform.get(), contentUri, context );
+          if ( gltfLocalTransform )
+            *gltfLocalTransform = parentTransform * *gltfLocalTransform;
+          else
+          {
+            gltfLocalTransform.reset( new QMatrix4x4( parentTransform ) );
+          }
         }
+
+        if ( gltfNode.mesh >= 0 )
+        {
+          const tinygltf::Mesh &mesh = model.meshes[gltfNode.mesh];
+
+          for ( const tinygltf::Primitive &primitive : mesh.primitives )
+          {
+            if ( context.renderContext().renderingStopped() )
+              break;
+
+            renderPrimitive( model, primitive, tile, tileTranslationEcef, gltfLocalTransform.get(), contentUri, context );
+          }
+        }
+
+        for ( int childNode : gltfNode.children )
+        {
+          traverseNode( childNode, gltfLocalTransform ? *gltfLocalTransform : QMatrix4x4() );
+        }
+      };
+
+      for ( int nodeIndex : scene.nodes )
+      {
+        traverseNode( nodeIndex, QMatrix4x4() );
       }
     }
   }

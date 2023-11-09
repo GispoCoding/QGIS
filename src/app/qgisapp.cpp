@@ -2659,7 +2659,7 @@ QgsDockWidget *QgisApp::logDock()
   return mLogDock;
 }
 
-void QgisApp::dataSourceManager( const QString &pageName )
+void QgisApp::dataSourceManager( const QString &pageName, const QString &layerUri )
 {
   if ( ! mDataSourceManagerDialog )
   {
@@ -2743,7 +2743,15 @@ void QgisApp::dataSourceManager( const QString &pageName )
   // Try to open the dialog on a particular page
   if ( ! pageName.isEmpty() )
   {
-    mDataSourceManagerDialog->openPage( pageName );
+
+    if ( ! layerUri.isEmpty() )
+    {
+      mDataSourceManagerDialog->configureFromUri( pageName, layerUri );
+    }
+    else
+    {
+      mDataSourceManagerDialog->openPage( pageName );
+    }
   }
 
   mDataSourceManagerDialog->show();
@@ -10202,6 +10210,37 @@ void QgisApp::pasteFromClipboard( QgsMapLayer *destinationLayer )
   if ( duplicateFeature )
   {
     pastedFeatures = features;
+
+    for ( auto &feature : pastedFeatures )
+    {
+      QgsGeometry geom = feature.geometry();
+
+      if ( !( geom.isEmpty() || geom.isNull( ) ) )
+      {
+        // avoid intersection if enabled in digitize settings
+        QList<QgsVectorLayer *>  avoidIntersectionsLayers;
+        switch ( QgsProject::instance()->avoidIntersectionsMode() )
+        {
+          case Qgis::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer:
+            avoidIntersectionsLayers.append( pasteVectorLayer );
+            break;
+          case Qgis::AvoidIntersectionsMode::AvoidIntersectionsLayers:
+            avoidIntersectionsLayers = QgsProject::instance()->avoidIntersectionsLayers();
+            break;
+          case Qgis::AvoidIntersectionsMode::AllowIntersections:
+            break;
+        }
+        if ( !avoidIntersectionsLayers.empty() )
+        {
+          geom.avoidIntersectionsV2( avoidIntersectionsLayers );
+          feature.setGeometry( geom );
+        }
+
+        // count collapsed geometries
+        if ( geom.isEmpty() || geom.isNull( ) )
+          invalidGeometriesCount++;
+      }
+    }
   }
   else
   {

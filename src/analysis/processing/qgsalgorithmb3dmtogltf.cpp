@@ -119,16 +119,26 @@ QVariantMap QgsB3DMToGltfAlgorithm::processAlgorithm( const QVariantMap &paramet
   }
   else
   {
+    bool sceneOk = false;
+    const std::size_t sceneIndex = QgsGltfUtils::sourceSceneForModel( model, sceneOk );
+    if ( !sceneOk )
+    {
+      throw QgsProcessingException( QObject::tr( "No scenes found in model" ) );
+    }
+
     feedback->pushDebugInfo( QObject::tr( "Found %1 scenes" ).arg( model.scenes.size() ) );
 
-    const tinygltf::Scene &scene = model.scenes[model.defaultScene];
-    feedback->pushDebugInfo( QObject::tr( "Found %1 nodes in default scene [%2]" ).arg( scene.nodes.size() ).arg( model.defaultScene ) );
+    const tinygltf::Scene &scene = model.scenes[sceneIndex];
+    feedback->pushDebugInfo( QObject::tr( "Found %1 nodes in default scene [%2]" ).arg( scene.nodes.size() ).arg( sceneIndex ) );
     if ( !scene.nodes.empty() )
     {
       const int nodeIndex = scene.nodes[0];
       const tinygltf::Node &gltfNode = model.nodes[nodeIndex];
-      const tinygltf::Mesh &mesh = model.meshes[gltfNode.mesh];
-      feedback->pushDebugInfo( QObject::tr( "Found %1 primitives in default scene node [%2]" ).arg( mesh.primitives.size() ).arg( nodeIndex ) );
+      if ( gltfNode.mesh >= 0 )
+      {
+        const tinygltf::Mesh &mesh = model.meshes[gltfNode.mesh];
+        feedback->pushDebugInfo( QObject::tr( "Found %1 primitives in default scene node [%2]" ).arg( mesh.primitives.size() ).arg( nodeIndex ) );
+      }
     }
 
     if ( !b3dmContent.rtcCenter.isNull() )

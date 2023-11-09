@@ -135,12 +135,25 @@ providing access to (e.g. the comment for postgres table).
 
 .. versionadded:: 3.14
 %End
+    virtual QString htmlMetadata() const;
+%Docstring
+Obtain a formatted HTML string containing assorted metadata for this data provider.
+
+.. versionadded:: 3.36
+%End
 
     void setUri( const QgsDataSourceUri &uri );
 %Docstring
 Set the data source specification.
 
 .. versionadded:: 3.0
+%End
+
+    void setUri( const QString &uri );
+%Docstring
+Set the data source specification.
+
+.. versionadded:: 3.38
 %End
 
     QgsDataSourceUri uri() const;
@@ -467,6 +480,13 @@ String sequence used for separating components of sublayers strings.
 .. seealso:: :py:func:`subLayers`
 
 .. versionadded:: 3.12
+%End
+
+    virtual Qgis::ProviderStyleStorageCapabilities styleStorageCapabilities() const;
+%Docstring
+Returns the style storage capabilities.
+
+.. versionadded:: 3.34
 %End
 
   signals:

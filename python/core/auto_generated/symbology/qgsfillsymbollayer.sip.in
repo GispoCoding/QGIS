@@ -1118,84 +1118,178 @@ Returns the map unit scale for the fill's offset.
 .. seealso:: :py:func:`offsetUnit`
 %End
 
-    void setWidth( const double width );
+    void setWidth( double width );
 %Docstring
-Sets the width for scaling the image used in the fill. The image's height will also be
-scaled to maintain the image's aspect ratio.
+Sets the ``width`` for scaling the image used in the fill.
 
-:param width: width for scaling the image
+If ``width`` is 0 then the width will be calculated automatically based on the image's :py:func:`~QgsRasterFillSymbolLayer.height`.
 
 .. seealso:: :py:func:`width`
 
-.. seealso:: :py:func:`setWidthUnit`
+.. seealso:: :py:func:`height`
 
-.. seealso:: :py:func:`setWidthMapUnitScale`
+.. seealso:: :py:func:`setHeight`
+
+.. seealso:: :py:func:`setSizeUnit`
+
+.. seealso:: :py:func:`setSizeMapUnitScale`
 %End
 
     double width() const;
 %Docstring
-Returns the width used for scaling the image used in the fill. The image's height is
-scaled to maintain the image's aspect ratio.
+Returns the width used for scaling the image used in the fill.
 
-:return: width used for scaling the image
+If the width is 0 then the width will be calculated automatically based on the image's :py:func:`~QgsRasterFillSymbolLayer.height`.
+
+.. seealso:: :py:func:`height`
 
 .. seealso:: :py:func:`setWidth`
 
-.. seealso:: :py:func:`widthUnit`
+.. seealso:: :py:func:`sizeUnit`
 
-.. seealso:: :py:func:`widthMapUnitScale`
+.. seealso:: :py:func:`sizeMapUnitScale`
 %End
 
-    void setWidthUnit( const Qgis::RenderUnit unit );
+    void setHeight( double height );
 %Docstring
-Sets the units for the image's width.
+Sets the ``height`` for scaling the image.
 
-:param unit: units for width
+If ``height`` is 0 then the height will be calculated automatically based on the image's :py:func:`~QgsRasterFillSymbolLayer.width`.
+
+.. seealso:: :py:func:`setWidth`
+
+.. seealso:: :py:func:`height`
+
+.. seealso:: :py:func:`width`
+
+.. versionadded:: 3.36
+%End
+
+    double height() const;
+%Docstring
+Returns the height used for scaling the image used in the fill.
+
+If the height is 0 then the height will be calculated automatically based on the image's :py:func:`~QgsRasterFillSymbolLayer.width`.
+
+.. seealso:: :py:func:`width`
+
+.. seealso:: :py:func:`setHeight`
+
+.. versionadded:: 3.36
+%End
+
+ void setWidthUnit( Qgis::RenderUnit unit ) /Deprecated/;
+%Docstring
+Sets the ``unit`` for the image's width.
 
 .. seealso:: :py:func:`widthUnit`
 
 .. seealso:: :py:func:`setWidth`
 
 .. seealso:: :py:func:`setWidthMapUnitScale`
+
+.. deprecated::
+   use :py:func:`~QgsRasterFillSymbolLayer.setSizeUnit` instead.
 %End
 
-    Qgis::RenderUnit widthUnit() const;
+    void setSizeUnit( Qgis::RenderUnit unit );
+%Docstring
+Sets the ``unit`` for the image's width and height.
+
+.. seealso:: :py:func:`widthUnit`
+
+.. seealso:: :py:func:`setWidth`
+
+.. seealso:: :py:func:`setWidthMapUnitScale`
+
+.. versionadded:: 3.36
+%End
+
+ Qgis::RenderUnit widthUnit() const /Deprecated/;
 %Docstring
 Returns the units for the image's width.
 
-:return: units for width
-
 .. seealso:: :py:func:`setWidthUnit`
 
 .. seealso:: :py:func:`width`
 
 .. seealso:: :py:func:`widthMapUnitScale`
+
+.. deprecated::
+   use :py:func:`~QgsRasterFillSymbolLayer.sizeUnit` instead.
 %End
 
-    void setWidthMapUnitScale( const QgsMapUnitScale &scale );
+    Qgis::RenderUnit sizeUnit() const;
 %Docstring
-Sets the map unit scale for the image's width.
+Returns the units for the image's width and height.
 
-:param scale: map unit scale for width
+.. seealso:: :py:func:`setSizeUnit`
+
+.. seealso:: :py:func:`width`
+
+.. seealso:: :py:func:`height`
+
+.. seealso:: :py:func:`sizeMapUnitScale`
+
+.. versionadded:: 3.36
+%End
+
+ void setWidthMapUnitScale( const QgsMapUnitScale &scale ) /Deprecated/;
+%Docstring
+Sets the map unit ``scale`` for the image's width.
 
 .. seealso:: :py:func:`widthMapUnitScale`
 
 .. seealso:: :py:func:`setWidth`
 
 .. seealso:: :py:func:`setWidthUnit`
+
+.. deprecated::
+   use :py:func:`~QgsRasterFillSymbolLayer.setSizeMapUnitScale` instead.
 %End
 
-    const QgsMapUnitScale &widthMapUnitScale() const;
+    void setSizeMapUnitScale( const QgsMapUnitScale &scale );
+%Docstring
+Sets the map unit ``scale`` for the image's width and height.
+
+.. seealso:: :py:func:`sizeMapUnitScale`
+
+.. seealso:: :py:func:`setWidth`
+
+.. seealso:: :py:func:`setHeight`
+
+.. seealso:: :py:func:`setSizeUnit`
+
+.. versionadded:: 3.36
+%End
+
+ const QgsMapUnitScale &widthMapUnitScale() const /Deprecated/;
 %Docstring
 Returns the map unit scale for the image's width.
-
-:return: map unit scale for width
 
 .. seealso:: :py:func:`setWidthMapUnitScale`
 
 .. seealso:: :py:func:`width`
 
 .. seealso:: :py:func:`widthUnit`
+
+.. deprecated::
+   use :py:func:`~QgsRasterFillSymbolLayer.sizeMapUnitScale` instead.
+%End
+
+    const QgsMapUnitScale &sizeMapUnitScale() const;
+%Docstring
+Returns the map unit scale for the image's width and height.
+
+.. seealso:: :py:func:`setSizeMapUnitScale`
+
+.. seealso:: :py:func:`width`
+
+.. seealso:: :py:func:`height`
+
+.. seealso:: :py:func:`sizeUnit`
+
+.. versionadded:: 3.36
 %End
 
   protected:
@@ -2523,7 +2617,7 @@ Caller takes ownership of the returned symbol layer.
 
     virtual QgsSymbol *subSymbol();
 
-    virtual bool setSubSymbol( QgsSymbol *symbol /Transfer/ );
+    virtual bool setSubSymbol( QgsSymbol *symbol /Transfer/ ) ${SIP_FINAL};
 
 
     virtual void setOutputUnit( Qgis::RenderUnit unit );
@@ -2710,7 +2804,7 @@ Caller takes ownership of the returned symbol layer.
 
     virtual QgsSymbol *subSymbol();
 
-    virtual bool setSubSymbol( QgsSymbol *symbol /Transfer/ );
+    virtual bool setSubSymbol( QgsSymbol *symbol /Transfer/ ) ${SIP_FINAL};
 
     virtual void setOutputUnit( Qgis::RenderUnit unit );
 
