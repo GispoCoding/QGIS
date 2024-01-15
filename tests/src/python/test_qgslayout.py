@@ -72,7 +72,7 @@ class TestQgsLayout(QgisTestCase):
         grid = l.gridSettings()
         grid.setResolution(QgsLayoutMeasurement(5, QgsUnitTypes.LayoutPoints))
 
-        g1 = QgsLayoutGuide(Qt.Horizontal, QgsLayoutMeasurement(5, QgsUnitTypes.LayoutCentimeters),
+        g1 = QgsLayoutGuide(Qt.Orientation.Horizontal, QgsLayoutMeasurement(5, QgsUnitTypes.LayoutCentimeters),
                             l.pageCollection().page(0))
         l.guides().addGuide(g1)
 
@@ -103,7 +103,7 @@ class TestQgsLayout(QgisTestCase):
         self.assertEqual(collection2.page(0).pageSize().height(), 148)
         self.assertEqual(l2.gridSettings().resolution().length(), 5.0)
         self.assertEqual(l2.gridSettings().resolution().units(), QgsUnitTypes.LayoutPoints)
-        self.assertEqual(l2.guides().guidesOnPage(0)[0].orientation(), Qt.Horizontal)
+        self.assertEqual(l2.guides().guidesOnPage(0)[0].orientation(), Qt.Orientation.Horizontal)
         self.assertEqual(l2.guides().guidesOnPage(0)[0].position().length(), 5.0)
         self.assertEqual(l2.guides().guidesOnPage(0)[0].position().units(), QgsUnitTypes.LayoutCentimeters)
         self.assertEqual(l2.snapper().snapTolerance(), 7)
@@ -143,8 +143,8 @@ class TestQgsLayout(QgisTestCase):
         items = l2.items()
         self.assertTrue([i for i in items if i.id() == 'xxyyxx'])
         self.assertTrue([i for i in items if i.id() == 'zzyyzz'])
-        self.assertTrue(new_items[0] in l2.items())
-        self.assertTrue(new_items[1] in l2.items())
+        self.assertIn(new_items[0], l2.items())
+        self.assertIn(new_items[1], l2.items())
         new_item1 = [i for i in items if i.id() == 'xxyyxx'][0]
         new_item2 = [i for i in items if i.id() == 'zzyyzz'][0]
         self.assertEqual(new_item1.positionWithUnits(), QgsLayoutPoint(4, 8, QgsUnitTypes.LayoutMillimeters))
@@ -165,9 +165,9 @@ class TestQgsLayout(QgisTestCase):
         items = l3.items()
         self.assertTrue([i for i in items if i.id() == 'xxyyxx'])
         self.assertTrue([i for i in items if i.id() == 'zzyyzz'])
-        self.assertTrue(new_items[0] in l3.items())
-        self.assertTrue(new_items[1] in l3.items())
-        self.assertTrue(new_items[2] in l3.items())
+        self.assertIn(new_items[0], l3.items())
+        self.assertIn(new_items[1], l3.items())
+        self.assertIn(new_items[2], l3.items())
 
         # f*** you sip, I'll just manually cast
         new_group = sip.cast(l3.itemByUuid(group.uuid()), QgsLayoutItemGroup)
@@ -283,10 +283,10 @@ class TestQgsLayout(QgisTestCase):
         self.assertTrue([i for i in items if i.id() == 'frame2'])
         self.assertTrue([i for i in multiframes if i.html() == 'mf1'])
         self.assertTrue([i for i in multiframes if i.html() == 'mf2'])
-        self.assertTrue(new_items[0] in l2.items())
-        self.assertTrue(new_items[1] in l2.items())
-        self.assertTrue(new_items[2] in l2.items())
-        self.assertTrue(new_items[3] in l2.items())
+        self.assertIn(new_items[0], l2.items())
+        self.assertIn(new_items[1], l2.items())
+        self.assertIn(new_items[2], l2.items())
+        self.assertIn(new_items[3], l2.items())
 
         # double check that new items have a unique uid
         self.assertNotIn(new_items[0].uuid(), uuids)
@@ -327,14 +327,14 @@ class TestQgsLayout(QgisTestCase):
         self.assertTrue([i for i in items if i.id() == 'frame2'])
         self.assertTrue([i for i in multiframes2 if i.html() == 'mf1'])
         self.assertTrue([i for i in multiframes2 if i.html() == 'mf2'])
-        self.assertTrue(new_items[0] in l2.items())
-        self.assertTrue(new_items[1] in l2.items())
-        self.assertTrue(new_items[2] in l2.items())
-        self.assertTrue(new_items[3] in l2.items())
-        self.assertTrue(new_items2[0] in l2.items())
-        self.assertTrue(new_items2[1] in l2.items())
-        self.assertTrue(new_items2[2] in l2.items())
-        self.assertTrue(new_items2[3] in l2.items())
+        self.assertIn(new_items[0], l2.items())
+        self.assertIn(new_items[1], l2.items())
+        self.assertIn(new_items[2], l2.items())
+        self.assertIn(new_items[3], l2.items())
+        self.assertIn(new_items2[0], l2.items())
+        self.assertIn(new_items2[1], l2.items())
+        self.assertIn(new_items2[2], l2.items())
+        self.assertIn(new_items2[3], l2.items())
         self.assertNotIn(new_items2[0].uuid(), uuids)
         uuids.add(new_items[0].uuid())
         self.assertNotIn(new_items2[1].uuid(), uuids)
@@ -373,10 +373,10 @@ class TestQgsLayout(QgisTestCase):
         self.assertTrue([i for i in items if isinstance(i, QgsLayoutItem) and i.id() == 'zzyyzz'])
         self.assertTrue([i for i in items if isinstance(i, QgsLayoutItem) and i.id() == 'frame1'])
         self.assertTrue([i for i in items if isinstance(i, QgsLayoutItem) and i.id() == 'frame2'])
-        self.assertTrue(new_items3[0] in l2.items())
-        self.assertTrue(new_items3[1] in l2.items())
-        self.assertTrue(new_items3[2] in l2.items())
-        self.assertTrue(new_items3[3] in l2.items())
+        self.assertIn(new_items3[0], l2.items())
+        self.assertIn(new_items3[1], l2.items())
+        self.assertIn(new_items3[2], l2.items())
+        self.assertIn(new_items3[3], l2.items())
         new_multiframe1 = [i for i in new_multiframes if i.html() == 'mf1'][0]
         new_multiframe2 = [i for i in new_multiframes if i.html() == 'mf2'][0]
 

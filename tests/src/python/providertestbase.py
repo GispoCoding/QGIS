@@ -479,8 +479,8 @@ class ProviderTestCase(FeatureSourceTestCase):
         else:
             if self.treat_datetime_tz_as_utc():
                 self.assertEqual(set(self.source.uniqueValues(self.source.fields().lookupField('dt'))),
-                                 {QDateTime(2021, 5, 4, 13, 13, 14, 0, Qt.UTC), QDateTime(2020, 5, 4, 12, 14, 14, 0, Qt.UTC),
-                                  QDateTime(2020, 5, 4, 12, 13, 14, 0, Qt.UTC), QDateTime(2020, 5, 3, 12, 13, 14, 0, Qt.UTC), NULL})
+                                 {QDateTime(2021, 5, 4, 13, 13, 14, 0, Qt.TimeSpec.UTC), QDateTime(2020, 5, 4, 12, 14, 14, 0, Qt.TimeSpec.UTC),
+                                  QDateTime(2020, 5, 4, 12, 13, 14, 0, Qt.TimeSpec.UTC), QDateTime(2020, 5, 3, 12, 13, 14, 0, Qt.TimeSpec.UTC), NULL})
             else:
                 self.assertEqual(set(self.source.uniqueValues(self.source.fields().lookupField('dt'))),
                                  {QDateTime(2021, 5, 4, 13, 13, 14), QDateTime(2020, 5, 4, 12, 14, 14),
@@ -926,7 +926,7 @@ class ProviderTestCase(FeatureSourceTestCase):
         feature0 = [f for f in l.dataProvider().getFeatures()][0]
         feature1 = [f for f in l.dataProvider().getFeatures()][1]
         field_idx = l.fields().indexFromName('i_will_fail_on_no_name')
-        self.assertTrue(field_idx >= 0)
+        self.assertGreaterEqual(field_idx, 0)
         # changes by feature id, for changeAttributeValues call
         changes = {
             feature0.id(): {field_idx: 'no name'},
@@ -958,8 +958,8 @@ class ProviderTestCase(FeatureSourceTestCase):
         self.assertTrue(vl.isValid())
         unique_field_idx = vl.fields().indexFromName('unique')
         not_null_field_idx = vl.fields().indexFromName('not_null')
-        self.assertTrue(unique_field_idx > 0)
-        self.assertTrue(not_null_field_idx > 0)
+        self.assertGreater(unique_field_idx, 0)
+        self.assertGreater(not_null_field_idx, 0)
         # Not null
         self.assertFalse(bool(vl.fieldConstraints(unique_field_idx) & QgsFieldConstraints.ConstraintNotNull))
         self.assertTrue(bool(vl.fieldConstraints(not_null_field_idx) & QgsFieldConstraints.ConstraintNotNull))
@@ -1198,7 +1198,7 @@ class ProviderTestCase(FeatureSourceTestCase):
         feature = QgsFeature(vl.fields())
         feature.setAttribute(0, 2)
         vl.addFeature(feature)
-        self.assertTrue(feature.id() < 0)
+        self.assertLess(feature.id(), 0)
         self.assertFalse(QgsVectorLayerUtils.fieldIsEditable(vl, 1, feature))
         self.assertTrue(QgsVectorLayerUtils.fieldIsEditable(vl, 0, feature))
         vl.commitChanges()
@@ -1241,7 +1241,7 @@ class ProviderTestCase(FeatureSourceTestCase):
         vl.startEditing()
         feature = QgsVectorLayerUtils.createFeature(vl, QgsGeometry(), {0: 8})
         vl.addFeature(feature)
-        self.assertTrue(feature.id() < 0)
+        self.assertLess(feature.id(), 0)
         self.assertFalse(QgsVectorLayerUtils.fieldIsEditable(vl, 1, feature))
         self.assertTrue(QgsVectorLayerUtils.fieldIsEditable(vl, 0, feature))
         self.assertTrue(vl.commitChanges())

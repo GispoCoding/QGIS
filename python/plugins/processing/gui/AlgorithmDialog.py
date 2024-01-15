@@ -19,7 +19,6 @@ __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
 
-from pprint import pformat
 import datetime
 import time
 
@@ -72,7 +71,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.runAsBatchButton = QPushButton(QCoreApplication.translate("AlgorithmDialog", "Run as Batch Process…"))
             self.runAsBatchButton.clicked.connect(self.runAsBatch)
             self.buttonBox().addButton(self.runAsBatchButton,
-                                       QDialogButtonBox.ResetRole)  # reset role to ensure left alignment
+                                       QDialogButtonBox.ButtonRole.ResetRole)  # reset role to ensure left alignment
         else:
             in_place_input_parameter_name = 'INPUT'
             if hasattr(alg, 'inputParameterName'):
@@ -82,7 +81,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
             self.runAsBatchButton = None
             has_selection = self.active_layer and (self.active_layer.selectedFeatureCount() > 0)
-            self.buttonBox().button(QDialogButtonBox.Ok).setText(
+            self.buttonBox().button(QDialogButtonBox.StandardButton.Ok).setText(
                 QCoreApplication.translate("AlgorithmDialog", "Modify Selected Features")
                 if has_selection else QCoreApplication.translate("AlgorithmDialog", "Modify All Features"))
             self.setWindowTitle(self.windowTitle() + ' | ' + self.active_layer.name())
@@ -118,7 +117,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.buttonBox().accepted.connect(lambda w=widget:
                                               w.setPalette(QPalette()))
             palette = widget.palette()
-            palette.setColor(QPalette.Base, QColor(255, 255, 0))
+            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 0))
             widget.setPalette(palette)
         except:
             pass
@@ -135,7 +134,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.buttonBox().accepted.connect(lambda w=widget:
                                               w.setPalette(QPalette()))
             palette = widget.palette()
-            palette.setColor(QPalette.Base, QColor(255, 255, 0))
+            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 0))
             widget.setPalette(palette)
         except:
             pass
@@ -180,9 +179,9 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                                              self.tr('Parameters do not all use the same CRS. This can '
                                                      'cause unexpected results.\nDo you want to '
                                                      'continue?'),
-                                             QMessageBox.Yes | QMessageBox.No,
-                                             QMessageBox.No)
-                if reply == QMessageBox.No:
+                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                             QMessageBox.StandardButton.No)
+                if reply == QMessageBox.StandardButton.No:
                     return
             ok, msg = self.algorithm().checkParameterValues(parameters, self.context)
             if not ok:
@@ -283,9 +282,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     if ok:
                         self.feedback.pushInfo(
                             self.tr(elapsed_time(start_time, 'Execution completed in')))
-                        self.feedback.pushInfo(self.tr('Results:'))
-                        r = {k: v for k, v in results.items() if k not in ('CHILD_RESULTS', 'CHILD_INPUTS')}
-                        self.feedback.pushCommandInfo(pformat(r))
+                        self.feedback.pushFormattedResults(self.algorithm(), self.context, results)
                     else:
                         self.feedback.reportError(
                             self.tr(elapsed_time(start_time, 'Execution failed after')))

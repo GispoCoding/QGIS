@@ -357,7 +357,7 @@ class PyQgsOGRProvider(QgisTestCase):
         it = l.getFeatures()
         f = QgsFeature()
         while it.nextFeature(f):
-            self.assertTrue(f.attribute("text") == "shape 2")
+            self.assertEqual(f.attribute("text"), "shape 2")
 
     def testTriangleTINPolyhedralSurface(self):
         """ Test support for Triangles (mapped to Polygons) """
@@ -1395,7 +1395,7 @@ class PyQgsOGRProvider(QgisTestCase):
             with mockedwebserver.install_http_handler(handler):
                 QgsVectorLayer("OAPIF:http://127.0.0.1:%d/collections/foo" % port, 'test', 'ogr')
                 # Error coming from Qt network stack, not GDAL/CURL one
-                assert 'server replied: Not Found' in gdal.GetLastErrorMsg()
+                self.assertIn('server replied: Not Found', gdal.GetLastErrorMsg())
 
             # Test a nominal case
             handler = mockedwebserver.SequentialHandler()
@@ -1409,7 +1409,7 @@ class PyQgsOGRProvider(QgisTestCase):
                             '{ "type": "FeatureCollection", "features": [] }')
             with mockedwebserver.install_http_handler(handler):
                 vl = QgsVectorLayer("OAPIF:http://127.0.0.1:%d/collections/foo" % port, 'test', 'ogr')
-                assert vl.isValid()
+                self.assertTrue(vl.isValid())
 
             # More complicated test using an anthentication configuration
             authm = QgsApplication.authManager()
@@ -1666,7 +1666,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         editor_widget_type = 'Color'
         factory = QgsGui.instance().editorWidgetRegistry().factory(editor_widget_type)
-        assert factory.name() == editor_widget_type
+        self.assertEqual(factory.name(), editor_widget_type)
 
         # 1. create a vector
         uri = "point?crs=epsg:4326&field=id:integer"
@@ -1674,10 +1674,10 @@ class PyQgsOGRProvider(QgisTestCase):
 
         path = '/vsimem/test.gpkg'
         result, msg = QgsVectorLayerExporter.exportLayer(layer, path, 'ogr', layer.crs())
-        self.assertTrue(result == Qgis.VectorExportResult.Success, msg=msg)
+        self.assertEqual(result, Qgis.VectorExportResult.Success)
         layer = QgsVectorLayer(path)
         self.assertTrue(layer.isValid())
-        self.assertTrue(layer.providerType() == 'ogr')
+        self.assertEqual(layer.providerType(), 'ogr')
 
         field1 = QgsField(name='field1', type=QVariant.String)
         field2 = QgsField(name='field2', type=QVariant.String)
@@ -1685,9 +1685,9 @@ class PyQgsOGRProvider(QgisTestCase):
         setup2 = QgsEditorWidgetSetup(editor_widget_type, {})
 
         # 2. Add field, set editor widget after commitChanges()
-        assert layer.startEditing()
+        self.assertTrue(layer.startEditing())
         layer.addAttribute(field1)
-        assert layer.commitChanges(stopEditing=False)
+        self.assertTrue(layer.commitChanges(stopEditing=False))
         i = layer.fields().lookupField(field1.name())
         layer.setEditorWidgetSetup(i, setup1)
 

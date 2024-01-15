@@ -36,7 +36,7 @@ class TestQgsSettings(QgisTestCase):
         Path(path).touch()
         assert QgsSettings.setGlobalSettingsPath(path)
         self.settings = QgsSettings('testqgissettings', f'testqgissettings{self.cnt}')
-        self.globalsettings = QSettings(self.settings.globalSettingsPath(), QSettings.IniFormat)
+        self.globalsettings = QSettings(self.settings.globalSettingsPath(), QSettings.Format.IniFormat)
         self.globalsettings.sync()
         assert os.path.exists(self.globalsettings.fileName())
 
@@ -58,7 +58,7 @@ class TestQgsSettings(QgisTestCase):
         self.globalsettings.sync()
 
     def addArrayToDefaults(self, prefix, key, values):
-        defaults = QSettings(self.settings.globalSettingsPath(), QSettings.IniFormat)  # NOQA
+        defaults = QSettings(self.settings.globalSettingsPath(), QSettings.Format.IniFormat)  # NOQA
         self.globalsettings.beginWriteArray(prefix)
         i = 0
         for v in values:
@@ -69,7 +69,7 @@ class TestQgsSettings(QgisTestCase):
         self.globalsettings.sync()
 
     def addGroupToDefaults(self, prefix, kvp):
-        defaults = QSettings(self.settings.globalSettingsPath(), QSettings.IniFormat)  # NOQA
+        defaults = QSettings(self.settings.globalSettingsPath(), QSettings.Format.IniFormat)  # NOQA
         self.globalsettings.beginGroup(prefix)
         for k, v in kvp.items():
             self.globalsettings.setValue(k, v)
@@ -454,17 +454,17 @@ class TestQgsSettings(QgisTestCase):
         self.settings.setValue('an_invalid_value', QVariant())
 
         # Check
-        pure_settings = QSettings(self.settings.fileName(), QSettings.IniFormat)
-        self.assertFalse('a_value_with_default' in pure_settings.allKeys())
-        self.assertFalse('an_invalid_value' in pure_settings.allKeys())
+        pure_settings = QSettings(self.settings.fileName(), QSettings.Format.IniFormat)
+        self.assertNotIn('a_value_with_default', pure_settings.allKeys())
+        self.assertNotIn('an_invalid_value', pure_settings.allKeys())
 
         # Set a changed value
         self.settings.setValue('a_value_with_default', 'a new value')
         self.settings.setValue('an_invalid_value', 'valid value')
 
         # Check
-        self.assertTrue('a_value_with_default' in pure_settings.allKeys())
-        self.assertTrue('an_invalid_value' in pure_settings.allKeys())
+        self.assertIn('a_value_with_default', pure_settings.allKeys())
+        self.assertIn('an_invalid_value', pure_settings.allKeys())
 
         self.assertEqual(self.settings.value('a_value_with_default'), 'a new value')
         self.assertEqual(self.settings.value('an_invalid_value'), 'valid value')
@@ -477,9 +477,9 @@ class TestQgsSettings(QgisTestCase):
         self.assertEqual(self.settings.value('an_invalid_value'), QVariant())
 
         # Check if they are gone
-        pure_settings = QSettings(self.settings.fileName(), QSettings.IniFormat)
-        self.assertFalse('a_value_with_default' not in pure_settings.allKeys())
-        self.assertFalse('an_invalid_value' not in pure_settings.allKeys())
+        pure_settings = QSettings(self.settings.fileName(), QSettings.Format.IniFormat)
+        self.assertIn('a_value_with_default', pure_settings.allKeys())
+        self.assertIn('an_invalid_value', pure_settings.allKeys())
 
 
 if __name__ == '__main__':

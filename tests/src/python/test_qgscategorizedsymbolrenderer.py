@@ -600,21 +600,21 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
         sym1 = QgsMarkerSymbol()
         l1 = QgsSimpleMarkerSymbolLayer(QgsSimpleMarkerSymbolLayer.Triangle, 5)
         l1.setColor(QColor(255, 0, 0))
-        l1.setStrokeStyle(Qt.NoPen)
+        l1.setStrokeStyle(Qt.PenStyle.NoPen)
         l1.setDataDefinedProperty(QgsSymbolLayer.PropertyAngle, QgsProperty.fromField("Heading"))
         sym1.changeSymbolLayer(0, l1)
         cats.append(QgsRendererCategory("B52", sym1, "B52"))
         sym2 = QgsMarkerSymbol()
         l2 = QgsSimpleMarkerSymbolLayer(QgsSimpleMarkerSymbolLayer.Triangle, 5)
         l2.setColor(QColor(0, 255, 0))
-        l2.setStrokeStyle(Qt.NoPen)
+        l2.setStrokeStyle(Qt.PenStyle.NoPen)
         l2.setDataDefinedProperty(QgsSymbolLayer.PropertyAngle, QgsProperty.fromField("Heading"))
         sym2.changeSymbolLayer(0, l2)
         cats.append(QgsRendererCategory("Biplane", sym2, "Biplane"))
         sym3 = QgsMarkerSymbol()
         l3 = QgsSimpleMarkerSymbolLayer(QgsSimpleMarkerSymbolLayer.Triangle, 5)
         l3.setColor(QColor(0, 0, 255))
-        l3.setStrokeStyle(Qt.NoPen)
+        l3.setStrokeStyle(Qt.PenStyle.NoPen)
         l3.setDataDefinedProperty(QgsSymbolLayer.PropertyAngle, QgsProperty.fromField("Heading"))
         sym3.changeSymbolLayer(0, l3)
         cats.append(QgsRendererCategory("Jet", sym3, "Jet"))
@@ -736,7 +736,7 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
 
         # Default locale for tests is EN
         original_locale = QLocale()
-        locale = QLocale(QLocale.English)
+        locale = QLocale(QLocale.Language.English)
         locale.setNumberOptions(QLocale.DefaultNumberOptions)
         QLocale().setDefault(locale)
 
@@ -751,14 +751,14 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1,234,567;891,234")
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1,234,567.1230;891,234.1230")
 
-        locale.setNumberOptions(QLocale.OmitGroupSeparator)
+        locale.setNumberOptions(QLocale.NumberOption.OmitGroupSeparator)
         QLocale().setDefault(locale)
-        self.assertTrue(QLocale().numberOptions() & QLocale.OmitGroupSeparator)
+        self.assertTrue(QLocale().numberOptions() & QLocale.NumberOption.OmitGroupSeparator)
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1234567;891234")
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1234567.1230;891234.1230")
 
         # Test a non-dot locale
-        locale = QLocale(QLocale.Italian)
+        locale = QLocale(QLocale.Language.Italian)
         locale.setNumberOptions(QLocale.DefaultNumberOptions)
         QLocale().setDefault(locale)
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234.56), "1.234,56")
@@ -772,7 +772,7 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1.234.567;891.234")
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1.234.567,1230;891.234,1230")
 
-        locale.setNumberOptions(QLocale.OmitGroupSeparator)
+        locale.setNumberOptions(QLocale.NumberOption.OmitGroupSeparator)
         QLocale().setDefault(locale)
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1234567;891234")
         self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1234567,1230;891234,1230")
@@ -783,7 +783,7 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
 
         # Default locale for tests is EN
         original_locale = QLocale()
-        locale = QLocale(QLocale.English)
+        locale = QLocale(QLocale.Language.English)
         locale.setNumberOptions(QLocale.DefaultNumberOptions)
         QLocale().setDefault(locale)
 
@@ -795,7 +795,7 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
         self.assertEqual(result[2].label(), '3,456.7')
 
         # Test a non-dot locale
-        QLocale().setDefault(QLocale(QLocale.Italian))
+        QLocale().setDefault(QLocale(QLocale.Language.Italian))
 
         result = QgsCategorizedSymbolRenderer.createCategories([[1234.5, 6789.1], 2345.6, 3456.7], QgsMarkerSymbol(), layer, 'flddouble')
 
@@ -889,6 +889,367 @@ class TestQgsCategorizedSymbolRenderer(QgisTestCase):
         exp, ok = renderer.legendKeyToExpression('3', layer)
         self.assertTrue(ok)
         self.assertEqual(exp, """upper("field_name") IN ('d', 'e')""")
+
+    def testSldRuleExport(self):
+        """Test issue GH #4234 fields containing spaces"""
+
+        vl = QgsVectorLayer("Point", "test_layer", "memory")
+        self.assertTrue(vl.isValid())
+
+        self.assertTrue(
+            vl.dataProvider().addAttributes([
+                QgsField('Text Field With Spaces', QVariant.String)
+            ])
+        )
+        vl.updateFields()
+
+        # Create style
+
+        foo_sym = QgsFillSymbol.createSimple({'color': '#ff0000', 'outline_color': 'foo'})
+        bar_sym = QgsFillSymbol.createSimple({'color': '#00ff00', 'outline_color': 'bar'})
+
+        renderer = QgsCategorizedSymbolRenderer()
+        renderer.setClassAttribute('Text Field With Spaces')
+
+        renderer.addCategory(QgsRendererCategory('foo', foo_sym, 'foo'))
+        renderer.addCategory(QgsRendererCategory('bar', bar_sym, 'bar'))
+
+        vl.setRenderer(renderer)
+
+        doc = QDomDocument()
+        vl.exportSldStyle(doc, None)
+        self.assertNotIn('Parser Error', doc.toString())
+
+    def test_to_sld(self):
+        renderer = QgsCategorizedSymbolRenderer()
+        renderer.setClassAttribute('field_name')
+
+        symbol_a = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory('a', symbol_a, 'a', True, '0'))
+        symbol_b = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(5, symbol_b, 'b', True, '1'))
+        symbol_c = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(5.5, symbol_c, 'c', False, '2'))
+        symbol_d = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(['d', 'e'], symbol_d, 'de', True, '3'))
+        symbol_f = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(None, symbol_f, 'f', True, '4'))
+
+        dom = QDomDocument()
+        root = dom.createElement("FakeRoot")
+        dom.appendChild(root)
+        renderer.toSld(dom, root, {})
+
+        expected = """<FakeRoot>
+ <se:Rule>
+  <se:Name>a</se:Name>
+  <se:Description>
+   <se:Title>a</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:PropertyIsEqualTo>
+    <ogc:PropertyName>field_name</ogc:PropertyName>
+    <ogc:Literal>a</ogc:Literal>
+   </ogc:PropertyIsEqualTo>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>b</se:Name>
+  <se:Description>
+   <se:Title>b</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:PropertyIsEqualTo>
+    <ogc:PropertyName>field_name</ogc:PropertyName>
+    <ogc:Literal>5</ogc:Literal>
+   </ogc:PropertyIsEqualTo>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>c</se:Name>
+  <se:Description>
+   <se:Title>c</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:PropertyIsEqualTo>
+    <ogc:PropertyName>field_name</ogc:PropertyName>
+    <ogc:Literal>5.5</ogc:Literal>
+   </ogc:PropertyIsEqualTo>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>de</se:Name>
+  <se:Description>
+   <se:Title>de</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:Or>
+    <ogc:PropertyIsEqualTo>
+     <ogc:PropertyName>field_name</ogc:PropertyName>
+     <ogc:Literal>d</ogc:Literal>
+    </ogc:PropertyIsEqualTo>
+    <ogc:PropertyIsEqualTo>
+     <ogc:PropertyName>field_name</ogc:PropertyName>
+     <ogc:Literal>e</ogc:Literal>
+    </ogc:PropertyIsEqualTo>
+   </ogc:Or>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>f</se:Name>
+  <se:Description>
+   <se:Title>f</se:Title>
+  </se:Description>
+  <se:ElseFilter xmlns:se="http://www.opengis.net/se"/>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+</FakeRoot>
+"""
+
+        self.assertEqual(dom.toString(), expected)
+
+        # with class attribute quoted
+        renderer.setClassAttribute('"field_name"')
+        dom = QDomDocument()
+        root = dom.createElement("FakeRoot")
+        dom.appendChild(root)
+        renderer.toSld(dom, root, {})
+        self.assertEqual(dom.toString(), expected)
+
+        # with an expression for attribute
+        renderer.setClassAttribute('field_name + 2')
+        dom = QDomDocument()
+        root = dom.createElement("FakeRoot")
+        dom.appendChild(root)
+        renderer.toSld(dom, root, {})
+        self.assertEqual(dom.toString(), """<FakeRoot>
+ <se:Rule>
+  <se:Name>a</se:Name>
+  <se:Description>
+   <se:Title>a</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:PropertyIsEqualTo>
+    <ogc:Add>
+     <ogc:PropertyName>field_name</ogc:PropertyName>
+     <ogc:Literal>2</ogc:Literal>
+    </ogc:Add>
+    <ogc:Literal>a</ogc:Literal>
+   </ogc:PropertyIsEqualTo>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>b</se:Name>
+  <se:Description>
+   <se:Title>b</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:PropertyIsEqualTo>
+    <ogc:Add>
+     <ogc:PropertyName>field_name</ogc:PropertyName>
+     <ogc:Literal>2</ogc:Literal>
+    </ogc:Add>
+    <ogc:Literal>5</ogc:Literal>
+   </ogc:PropertyIsEqualTo>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>c</se:Name>
+  <se:Description>
+   <se:Title>c</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:PropertyIsEqualTo>
+    <ogc:Add>
+     <ogc:PropertyName>field_name</ogc:PropertyName>
+     <ogc:Literal>2</ogc:Literal>
+    </ogc:Add>
+    <ogc:Literal>5.5</ogc:Literal>
+   </ogc:PropertyIsEqualTo>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>de</se:Name>
+  <se:Description>
+   <se:Title>de</se:Title>
+  </se:Description>
+  <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+   <ogc:Or>
+    <ogc:PropertyIsEqualTo>
+     <ogc:Add>
+      <ogc:PropertyName>field_name</ogc:PropertyName>
+      <ogc:Literal>2</ogc:Literal>
+     </ogc:Add>
+     <ogc:Literal>d</ogc:Literal>
+    </ogc:PropertyIsEqualTo>
+    <ogc:PropertyIsEqualTo>
+     <ogc:Add>
+      <ogc:PropertyName>field_name</ogc:PropertyName>
+      <ogc:Literal>2</ogc:Literal>
+     </ogc:Add>
+     <ogc:Literal>e</ogc:Literal>
+    </ogc:PropertyIsEqualTo>
+   </ogc:Or>
+  </ogc:Filter>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+ <se:Rule>
+  <se:Name>f</se:Name>
+  <se:Description>
+   <se:Title>f</se:Title>
+  </se:Description>
+  <se:ElseFilter xmlns:se="http://www.opengis.net/se"/>
+  <se:PointSymbolizer>
+   <se:Graphic>
+    <se:Mark>
+     <se:WellKnownName>square</se:WellKnownName>
+     <se:Fill>
+      <se:SvgParameter name="fill">#649632</se:SvgParameter>
+     </se:Fill>
+     <se:Stroke>
+      <se:SvgParameter name="stroke">#232323</se:SvgParameter>
+      <se:SvgParameter name="stroke-width">0.5</se:SvgParameter>
+     </se:Stroke>
+    </se:Mark>
+    <se:Size>11</se:Size>
+   </se:Graphic>
+  </se:PointSymbolizer>
+ </se:Rule>
+</FakeRoot>
+""")
 
 
 if __name__ == "__main__":

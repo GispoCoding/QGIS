@@ -557,8 +557,8 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         flags = QgsMapLayer.ReadFlags()
         vl1.readLayerXml(elem, QgsReadWriteContext(), flags)
 
-        self.assertTrue(extent == vl1.extent())
-        self.assertTrue(wgs84_extent == vl1.wgs84Extent())
+        self.assertEqual(extent, vl1.extent())
+        self.assertEqual(wgs84_extent, vl1.wgs84Extent())
 
         # we add a feature and check that the original extent has been
         # updated (the extent is bigger with the new feature)
@@ -572,11 +572,11 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         vl1.addFeature(f)
         vl1.updateExtents()
 
-        self.assertTrue(extent != vl1.extent())
+        self.assertNotEqual(extent, vl1.extent())
 
         # trust is not activated so the wgs84 extent is updated
         # accordingly
-        self.assertTrue(wgs84_extent != vl1.wgs84Extent())
+        self.assertNotEqual(wgs84_extent, vl1.wgs84Extent())
         vl1.rollBack()
 
         # create a 3rd layer and read the xml document WITH trust
@@ -585,8 +585,8 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         flags |= QgsMapLayer.FlagTrustLayerMetadata
         vl2.readLayerXml(elem, QgsReadWriteContext(), flags)
 
-        self.assertTrue(extent == vl2.extent())
-        self.assertTrue(wgs84_extent == vl2.wgs84Extent())
+        self.assertEqual(extent, vl2.extent())
+        self.assertEqual(wgs84_extent, vl2.wgs84Extent())
 
         # we add a feature and check that the original extent has been
         # updated (the extent is bigger with the new feature)
@@ -600,14 +600,14 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         vl2.addFeature(f)
         vl2.updateExtents()
 
-        self.assertTrue(extent != vl2.extent())
+        self.assertNotEqual(extent, vl2.extent())
 
         # trust is activated so the wgs84 extent is not updated
-        self.assertTrue(wgs84_extent == vl2.wgs84Extent())
+        self.assertEqual(wgs84_extent, vl2.wgs84Extent())
 
         # but we can still retrieve the current wgs84 xtent with the force
         # parameter
-        self.assertTrue(wgs84_extent != vl2.wgs84Extent(True))
+        self.assertNotEqual(wgs84_extent, vl2.wgs84Extent(True))
         vl2.rollBack()
 
     # ADD FEATURE
@@ -2398,20 +2398,20 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
 
         self.blendModeTest = 0
         layer.blendModeChanged.connect(self.onBlendModeChanged)
-        layer.setBlendMode(QPainter.CompositionMode_Screen)
+        layer.setBlendMode(QPainter.CompositionMode.CompositionMode_Screen)
 
-        self.assertEqual(self.blendModeTest, QPainter.CompositionMode_Screen)
-        self.assertEqual(layer.blendMode(), QPainter.CompositionMode_Screen)
+        self.assertEqual(self.blendModeTest, QPainter.CompositionMode.CompositionMode_Screen)
+        self.assertEqual(layer.blendMode(), QPainter.CompositionMode.CompositionMode_Screen)
 
     def test_setFeatureBlendMode(self):
         layer = createLayerWithOnePoint()
 
         self.blendModeTest = 0
         layer.featureBlendModeChanged.connect(self.onBlendModeChanged)
-        layer.setFeatureBlendMode(QPainter.CompositionMode_Screen)
+        layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Screen)
 
-        self.assertEqual(self.blendModeTest, QPainter.CompositionMode_Screen)
-        self.assertEqual(layer.featureBlendMode(), QPainter.CompositionMode_Screen)
+        self.assertEqual(self.blendModeTest, QPainter.CompositionMode.CompositionMode_Screen)
+        self.assertEqual(layer.featureBlendMode(), QPainter.CompositionMode.CompositionMode_Screen)
 
     def test_ExpressionField(self):
         layer = createLayerWithOnePoint()
@@ -3270,7 +3270,7 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         # init map layer styles
         tmplayer = createLayerWithTwoPoints()
         sym1 = QgsLineSymbol()
-        sym1.setColor(Qt.magenta)
+        sym1.setColor(Qt.GlobalColor.magenta)
         tmplayer.setRenderer(QgsSingleSymbolRenderer(sym1))
 
         style0 = QgsMapLayerStyle()
@@ -3284,7 +3284,7 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
 
         # init layer
         layer = createLayerWithTwoPoints()
-        layer.setBlendMode(QPainter.CompositionMode_Screen)
+        layer.setBlendMode(QPainter.CompositionMode.CompositionMode_Screen)
         layer.styleManager().addStyle('style0', style0)
         layer.styleManager().addStyle('style1', style1)
         layer.setName('MyName')
@@ -3318,10 +3318,10 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         layer.setExcludeAttributesWfs(['MyExcludeAttributeWFS'])
         layer.setExcludeAttributesWms(['MyExcludeAttributeWMS'])
 
-        layer.setFeatureBlendMode(QPainter.CompositionMode_Xor)
+        layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Xor)
 
         sym = QgsLineSymbol()
-        sym.setColor(Qt.magenta)
+        sym.setColor(Qt.GlobalColor.magenta)
         layer.setRenderer(QgsSingleSymbolRenderer(sym))
 
         simplify = layer.simplifyMethod()
@@ -3348,13 +3348,13 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
         layer.selectByIds(selected_fids)
 
         cfg = layer.attributeTableConfig()
-        cfg.setSortOrder(Qt.DescendingOrder)  # by default AscendingOrder
+        cfg.setSortOrder(Qt.SortOrder.DescendingOrder)  # by default AscendingOrder
         layer.setAttributeTableConfig(cfg)
 
         pal = QgsPalLayerSettings()
         text_format = QgsTextFormat()
         text_format.setSize(33)
-        text_format.setColor(Qt.magenta)
+        text_format.setColor(Qt.GlobalColor.magenta)
         pal.setFormat(text_format)
 
         labeling = QgsVectorLayerSimpleLabeling(pal)
@@ -4142,7 +4142,7 @@ class TestQgsVectorLayerTransformContext(QgisTestCase):
                              msg=f'featuresDeleted returned {len(deleted_fids)} instead of 2 deleted feature IDs: '
                              f'{deleted_fids}')
             for d in deleted_fids:
-                self.assertTrue(d in temp_fids)
+                self.assertIn(d, temp_fids)
 
         layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point layer", "memory")
         layer.featuresDeleted.connect(onFeaturesDeleted)
@@ -4446,7 +4446,7 @@ class TestQgsVectorLayerTransformContext(QgisTestCase):
         layer.maximumValue(0)
         layer.minimumAndMaximumValue(0)
         layer.aggregate(QgsAggregateCalculator.Count, 'foo')
-        layer.setFeatureBlendMode(QPainter.CompositionMode_Screen)
+        layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Screen)
         layer.featureBlendMode()
         layer.htmlMetadata()
         layer.setSimplifyMethod(layer.simplifyMethod())
