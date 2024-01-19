@@ -9211,6 +9211,16 @@ void QgisApp::setupLayoutManagerConnections()
   } );
 }
 
+QList<Qgs3DMapCanvas *> QgisApp::mapCanvases3D()
+{
+  QList<Qgs3DMapCanvas *> canvases;
+#ifdef HAVE_3D
+  for ( Qgs3DMapCanvasWidget *w : std::as_const( mOpen3DMapViews ) )
+    canvases.append( w->mapCanvas3D() );
+#endif
+  return canvases;
+}
+
 Qgs3DMapCanvasWidget *QgisApp::open3DMapView( const QString &viewName )
 {
 #ifdef HAVE_3D
@@ -9289,7 +9299,7 @@ Qgs3DMapCanvasWidget *QgisApp::duplicate3DMapView( const QString &existingViewNa
   // settings from m3DMapViewsWidgets
   if ( Qgs3DMapCanvasWidget *widget = get3DMapView( existingViewName ) )
   {
-    Qgs3DMapSettings *map = new Qgs3DMapSettings( *widget->mapCanvas3D()->map() );
+    Qgs3DMapSettings *map = new Qgs3DMapSettings( *widget->mapCanvas3D()->mapSettings() );
     newCanvasWidget->setMapSettings( map );
 
     newCanvasWidget->mapCanvas3D()->cameraController()->readXml( widget->mapCanvas3D()->cameraController()->writeXml( doc ) );
@@ -13395,6 +13405,11 @@ QgsElevationProfileWidget *QgisApp::createNewElevationProfile()
 
 void QgisApp::new3DMapCanvas()
 {
+  createNewMapCanvas3D( QString() );
+}
+
+Qgs3DMapCanvas *QgisApp::createNewMapCanvas3D( const QString &name )
+{
 #ifdef HAVE_3D
   // initialize from project
   QgsRectangle fullExtent = mMapCanvas->projectExtent();
@@ -13404,18 +13419,18 @@ void QgisApp::new3DMapCanvas()
   if ( fullExtent.isEmpty() || !fullExtent.isFinite() )
   {
     QMessageBox::warning( this, tr( "New 3D Map View" ), tr( "Project extent is not valid. Please add or activate a layer to render." ) );
-    return;
+    return nullptr;
   }
 
   int i = 1;
   const QList< QString > usedCanvasNames = QgsProject::instance()->viewsManager()->get3DViewsNames();
-  QString name = tr( "3D Map %1" ).arg( i );
-  while ( usedCanvasNames.contains( name ) )
+  QString uniqueName = name.isEmpty() ? tr( "3D Map %1" ).arg( i ) : name;
+  while ( usedCanvasNames.contains( uniqueName ) )
   {
-    name = tr( "3D Map %1" ).arg( ++i );
+    uniqueName = tr( "3D Map %1" ).arg( ++i );
   }
 
-  Qgs3DMapCanvasWidget *canvasWidget = createNew3DMapCanvasDock( name, false );
+  Qgs3DMapCanvasWidget *canvasWidget = createNew3DMapCanvasDock( uniqueName, false );
   if ( canvasWidget )
   {
     QgsProject *prj = QgsProject::instance();
@@ -13484,10 +13499,15 @@ void QgisApp::new3DMapCanvas()
 
     write3DMapViewSettings( canvasWidget, doc, elem3DMap );
 
-    QgsProject::instance()->viewsManager()->register3DViewSettings( name, elem3DMap );
-    QgsProject::instance()->viewsManager()->set3DViewInitiallyVisible( name, true );
+    QgsProject::instance()->viewsManager()->register3DViewSettings( uniqueName, elem3DMap );
+    QgsProject::instance()->viewsManager()->set3DViewInitiallyVisible( uniqueName, true );
+
+    return canvasWidget->mapCanvas3D();
   }
+#else
+  Q_UNUSED( name );
 #endif
+  return nullptr;
 }
 
 void QgisApp::setExtent( const QgsRectangle &rect )
@@ -16238,7 +16258,7 @@ void QgisApp::write3DMapViewSettings( Qgs3DMapCanvasWidget *widget, QDomDocument
   QgsReadWriteContext readWriteContext;
   readWriteContext.setPathResolver( QgsProject::instance()->pathResolver() );
   elem3DMap.setAttribute( QStringLiteral( "name" ), widget->canvasName() );
-  QDomElement elem3DMapSettings = widget->mapCanvas3D()->map()->writeXml( doc, readWriteContext );
+  QDomElement elem3DMapSettings = widget->mapCanvas3D()->mapSettings()->writeXml( doc, readWriteContext );
   elem3DMap.appendChild( elem3DMapSettings );
   QDomElement elemCamera = widget->mapCanvas3D()->cameraController()->writeXml( doc );
   elem3DMap.appendChild( elemCamera );
