@@ -108,7 +108,7 @@ QgsProjectionSelectionTreeWidget::QgsProjectionSelectionTreeWidget( QWidget *par
   // Install event fiter to catch delete key press on the recent crs list
   lstRecent->installEventFilter( this );
 
-  mRecentProjections = QgsCoordinateReferenceSystem::recentCoordinateReferenceSystems();
+  mRecentProjections = QgsApplication::coordinateReferenceSystemRegistry()->recentCrs();
   for ( const QgsCoordinateReferenceSystem &crs : std::as_const( mRecentProjections ) )
   {
     insertRecent( crs );
@@ -144,7 +144,7 @@ QgsProjectionSelectionTreeWidget::~QgsProjectionSelectionTreeWidget()
   // Push current projection to front, only if set
   const QgsCoordinateReferenceSystem selectedCrs = crs();
   if ( selectedCrs.isValid() )
-    QgsCoordinateReferenceSystem::pushRecentCoordinateReferenceSystem( selectedCrs );
+    QgsApplication::coordinateReferenceSystemRegistry()->pushRecent( selectedCrs );
 }
 
 void QgsProjectionSelectionTreeWidget::resizeEvent( QResizeEvent *event )
@@ -598,7 +598,7 @@ void QgsProjectionSelectionTreeWidget::updateBoundsPreview()
                                    properties.join( QLatin1String( "</li><li>" ) ) );
 
   const QString extentHtml = QStringLiteral( "<dt><b>%1</b></dt><dd>%2</dd>" ).arg( tr( "Extent" ), extentString );
-  const QString wktString = QStringLiteral( "<dt><b>%1</b></dt><dd><code>%2</code></dd>" ).arg( tr( "WKT" ), currentCrs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED, true ).replace( '\n', QLatin1String( "<br>" ) ).replace( ' ', QLatin1String( "&nbsp;" ) ) );
+  const QString wktString = QStringLiteral( "<dt><b>%1</b></dt><dd><code>%2</code></dd>" ).arg( tr( "WKT" ), currentCrs.toWkt( Qgis::CrsWktVariant::Preferred, true ).replace( '\n', QLatin1String( "<br>" ) ).replace( ' ', QLatin1String( "&nbsp;" ) ) );
   const QString proj4String = QStringLiteral( "<dt><b>%1</b></dt><dd><code>%2</code></dd>" ).arg( tr( "Proj4" ), currentCrs.toProj() );
 
 #ifdef Q_OS_WIN
@@ -648,7 +648,7 @@ void QgsProjectionSelectionTreeWidget::removeRecentCrsItem( QTreeWidgetItem *ite
   if ( !selectedAuthId.isEmpty() )
   {
     const QgsCoordinateReferenceSystem crs( selectedAuthId );
-    QgsCoordinateReferenceSystem::removeRecentCoordinateReferenceSystem( crs );
+    QgsApplication::coordinateReferenceSystemRegistry()->removeRecent( crs );
   }
   lstRecent->takeTopLevelItem( index );
   delete item;

@@ -211,9 +211,9 @@ void QgsInstancedPoint3DSymbolHandler::makeEntity( Qt3DCore::QEntity *parent, co
     // update the material with selection colors
     for ( Qt3DRender::QParameter *param : mat->effect()->parameters() )
     {
-      if ( param->name() == QLatin1String( "kd" ) ) // diffuse
+      if ( param->name() == QLatin1String( "diffuseColor" ) )
         param->setValue( context.map().selectionColor() );
-      else if ( param->name() == QLatin1String( "ka" ) ) // ambient
+      else if ( param->name() == QLatin1String( "ambientColor" ) )
         param->setValue( context.map().selectionColor().darker() );
     }
   }
@@ -238,7 +238,7 @@ Qt3DRender::QMaterial *QgsInstancedPoint3DSymbolHandler::material( const QgsPoin
 
   Qt3DRender::QShaderProgram *shaderProgram = new Qt3DRender::QShaderProgram;
   shaderProgram->setVertexShaderCode( Qt3DRender::QShaderProgram::loadSource( QUrl( QStringLiteral( "qrc:/shaders/instanced.vert" ) ) ) );
-  shaderProgram->setFragmentShaderCode( Qt3DRender::QShaderProgram::loadSource( QUrl( QStringLiteral( "qrc:/shaders/instanced.frag" ) ) ) );
+  shaderProgram->setFragmentShaderCode( Qt3DRender::QShaderProgram::loadSource( QUrl( QStringLiteral( "qrc:/shaders/phongConstant.frag" ) ) ) );
 
   Qt3DRender::QRenderPass *renderPass = new Qt3DRender::QRenderPass;
   renderPass->setShaderProgram( shaderProgram );

@@ -1,7 +1,7 @@
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
- * src/gui/qgsprojectionselectionwidget.h                               *
+ * src/gui/proj/qgsprojectionselectionwidget.h                          *
  *                                                                      *
  * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
@@ -26,6 +26,7 @@ A widget for selecting a projection.
 
     enum CrsOption
     {
+      Invalid,
       LayerCrs,
       ProjectCrs,
       CurrentCrs,
@@ -34,9 +35,15 @@ A widget for selecting a projection.
       CrsNotSet,
     };
 
-    explicit QgsProjectionSelectionWidget( QWidget *parent /TransferThis/ = 0 );
+
+    explicit QgsProjectionSelectionWidget( QWidget *parent /TransferThis/ = 0,
+                                           QgsCoordinateReferenceSystemProxyModel::Filters filters = QgsCoordinateReferenceSystemProxyModel::FilterHorizontal | QgsCoordinateReferenceSystemProxyModel::FilterCompound );
 %Docstring
-Constructor for QgsProjectionSelectionWidget
+Constructor for QgsProjectionSelectionWidget, with the specified ``parent`` widget.
+
+Since QGIS 3.36, the optional ``filter`` argument can be used to specify filters on the systems
+shown in the widget. The default is to show all horizontal and compound CRS in order to match
+the behavior of older QGIS releases. The ``filter`` can be altered to also include vertical CRS if desired.
 %End
 
     QgsCoordinateReferenceSystem crs() const;
@@ -152,6 +159,24 @@ Sets a filtered list of CRSes to show in the widget.
 .. versionadded:: 3.28
 %End
 
+    QgsCoordinateReferenceSystemProxyModel::Filters filters() const;
+%Docstring
+Returns the filters set on the available CRS.
+
+.. seealso:: :py:func:`setFilters`
+
+.. versionadded:: 3.36
+%End
+
+    void setFilters( QgsCoordinateReferenceSystemProxyModel::Filters filters );
+%Docstring
+Sets ``filters`` for the available CRS.
+
+.. seealso:: :py:func:`filters`
+
+.. versionadded:: 3.36
+%End
+
   signals:
 
     void crsChanged( const QgsCoordinateReferenceSystem & );
@@ -199,10 +224,16 @@ Opens the dialog for selecting a new CRS
 
 };
 
+
+
+
+
+
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
- * src/gui/qgsprojectionselectionwidget.h                               *
+ * src/gui/proj/qgsprojectionselectionwidget.h                          *
  *                                                                      *
  * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
