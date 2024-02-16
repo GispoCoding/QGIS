@@ -151,6 +151,7 @@ class GUI_EXPORT QgsGraduatedSymbolRendererWidget : public QgsRendererWidget, pr
     void selectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
     void symmetryPointEditingFinished();
     void classifyGraduatedImpl();
+    void updateLegendLineEdit();
 
   protected slots:
 

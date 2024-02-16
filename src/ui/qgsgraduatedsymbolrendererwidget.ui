@@ -19,7 +19,7 @@
     </widget>
    </item>
    <item row="0" column="1">
-    <widget class="QgsFieldExpressionWidget" name="mExpressionWidget" native="true">
+    <widget class="QgsFieldExpressionWidget" name="mExpressionWidget">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -112,7 +112,7 @@
        <property name="value">
         <double>1.000000000000000</double>
        </property>
-       <property name="showClearButton" stdset="0">
+       <property name="showClearButton">
         <bool>false</bool>
        </property>
       </widget>
@@ -144,7 +144,7 @@
        <property name="value">
         <double>10.000000000000000</double>
        </property>
-       <property name="showClearButton" stdset="0">
+       <property name="showClearButton">
         <bool>false</bool>
        </property>
       </widget>
@@ -170,7 +170,34 @@
       <number>0</number>
      </property>
      <item>
+      <widget class="QComboBox" name="cboLegendFormat">
+       <item>
+        <property name="text">
+         <string>%1 - %2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>&gt; %1 - %2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>%1 &lt; x ≤ %2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Other</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
       <widget class="QLineEdit" name="txtLegendFormat">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="toolTip">
         <string>Template for the legend text associated with each classification.  
 Use &quot;%1&quot; for the lower bound of the classification, and &quot;%2&quot; for the upper bound.</string>
@@ -503,11 +530,6 @@ Negative rounds to powers of 10</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QgsSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qgsspinbox.h</header>
-  </customwidget>
-  <customwidget>
    <class>QgsDoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qgsdoublespinbox.h</header>
@@ -517,6 +539,11 @@ Negative rounds to powers of 10</string>
    <extends>QWidget</extends>
    <header>qgsfieldexpressionwidget.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsSymbolButton</class>
@@ -574,6 +601,7 @@ Negative rounds to powers of 10</string>
   <tabstop>cbxLinkBoundaries</tabstop>
  </tabstops>
  <resources>
+  <include location="../../images/images.qrc"/>
   <include location="../../images/images.qrc"/>
  </resources>
  <connections/>

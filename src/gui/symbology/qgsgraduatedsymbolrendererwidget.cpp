@@ -645,6 +645,21 @@ void QgsGraduatedSymbolRendererWidget::disableSymbolLevels()
   mActionLevels = nullptr;
 }
 
+void QgsGraduatedSymbolRendererWidget::updateLegendLineEdit()
+{
+  if ( cboLegendFormat->currentIndex() == cboLegendFormat->count() - 1 )
+  {
+    txtLegendFormat->setEnabled( true );
+    txtLegendFormat->setFocus();
+  }
+  else
+  {
+    txtLegendFormat->setText( cboLegendFormat->currentText() );
+    txtLegendFormat->setEnabled( false );
+  }
+
+}
+
 // Connect/disconnect event handlers which trigger updating renderer
 void QgsGraduatedSymbolRendererWidget::connectUpdateHandlers()
 {
@@ -653,6 +668,7 @@ void QgsGraduatedSymbolRendererWidget::connectUpdateHandlers()
   connect( btnColorRamp, &QgsColorRampButton::colorRampChanged, this, &QgsGraduatedSymbolRendererWidget::reapplyColorRamp );
   connect( spinPrecision, qOverload<int>( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   connect( cbxTrimTrailingZeroes, &QAbstractButton::toggled, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
+  connect( cboLegendFormat, &QComboBox::currentTextChanged, this, &QgsGraduatedSymbolRendererWidget::updateLegendLineEdit );
   connect( txtLegendFormat, &QLineEdit::textChanged, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   connect( minSizeSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
   connect( maxSizeSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
@@ -679,6 +695,7 @@ void QgsGraduatedSymbolRendererWidget::disconnectUpdateHandlers()
   disconnect( btnColorRamp, &QgsColorRampButton::colorRampChanged, this, &QgsGraduatedSymbolRendererWidget::reapplyColorRamp );
   disconnect( spinPrecision, qOverload<int>( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   disconnect( cbxTrimTrailingZeroes, &QAbstractButton::toggled, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
+  disconnect( cboLegendFormat, &QComboBox::currentTextChanged, this, &QgsGraduatedSymbolRendererWidget::updateLegendLineEdit );
   disconnect( txtLegendFormat, &QLineEdit::textChanged, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   disconnect( minSizeSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
   disconnect( maxSizeSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
