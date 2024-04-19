@@ -23,7 +23,7 @@ The content of this file is based on
 import functools
 
 from qgis.PyQt.QtCore import Qt, QByteArray, QSize
-from qgis.PyQt.QtWidgets import QMainWindow, QApplication, QMenu, QTabWidget, QGridLayout, QSpacerItem, QSizePolicy, QDockWidget, QStatusBar, QMenuBar, QToolBar, QTabBar
+from qgis.PyQt.QtWidgets import QAction, QMainWindow, QApplication, QMenu, QTabWidget, QGridLayout, QSpacerItem, QSizePolicy, QDockWidget, QStatusBar, QMenuBar, QToolBar, QTabBar
 from qgis.PyQt.QtGui import QIcon, QKeySequence
 
 from qgis.gui import QgsMessageBar
@@ -43,6 +43,7 @@ from .db_tree import DBTree
 
 from .db_plugins.plugin import BaseError
 from .dlg_db_error import DlgDbError
+from .gui_utils import GuiUtils
 
 
 class DBManager(QMainWindow):
@@ -165,7 +166,7 @@ class DBManager(QMainWindow):
         from .dlg_import_vector import DlgImportVector
 
         dlg = DlgImportVector(None, db, outUri, self)
-        dlg.exec_()
+        dlg.exec()
 
     def exportActionSlot(self):
         table = self.tree.currentTable()
@@ -184,7 +185,7 @@ class DBManager(QMainWindow):
         from .dlg_export_vector import DlgExportVector
 
         dlg = DlgExportVector(inLayer, table.database(), self)
-        dlg.exec_()
+        dlg.exec()
 
         inLayer.deleteLater()
 
@@ -380,7 +381,7 @@ class DBManager(QMainWindow):
 
     def setupUi(self):
         self.setWindowTitle(self.tr("DB Manager"))
-        self.setWindowIcon(QIcon(":/db_manager/icon"))
+        self.setWindowIcon(GuiUtils.get_icon("dbmanager"))
         self.resize(QSize(700, 500).expandedTo(self.minimumSizeHint()))
 
         # create central tab widget and add the first 3 tabs: info, table and preview
@@ -451,12 +452,25 @@ class DBManager(QMainWindow):
         sep.setObjectName("DB_Manager_DbMenu_placeholder")
         sep.setVisible(False)
 
-        self.actionRefresh = self.menuDb.addAction(QgsApplication.getThemeIcon("/mActionRefresh.svg"), self.tr("&Refresh"),
-                                                   self.refreshActionSlot, QKeySequence("F5"))
-        self.actionSqlWindow = self.menuDb.addAction(QIcon(":/db_manager/actions/sql_window"), self.tr("&SQL Window"),
-                                                     self.runSqlWindow, QKeySequence("F2"))
+        self.actionRefresh = QAction(QgsApplication.getThemeIcon("/mActionRefresh.svg"), self.tr("&Refresh"),
+                                     self.menuDb)
+        self.actionRefresh.triggered.connect(self.refreshActionSlot)
+        self.actionRefresh.setShortcut(QKeySequence("F5"))
+        self.menuDb.addAction(self.actionRefresh)
+
+        self.actionSqlWindow = QAction(GuiUtils.get_icon('mActionSQLWindow'),
+                                       self.tr("&SQL Window"),
+                                       self.menuDb)
+        self.actionSqlWindow.triggered.connect(self.runSqlWindow)
+        self.actionSqlWindow.setShortcut(QKeySequence("F2"))
+        self.menuDb.addAction(self.actionSqlWindow)
+
         self.menuDb.addSeparator()
-        self.actionClose = self.menuDb.addAction(QIcon(), self.tr("&Exit"), self.close, QKeySequence("CTRL+Q"))
+
+        self.actionClose = QAction(QIcon(), self.tr("&Exit"), self.menuDb)
+        self.actionClose.triggered.connect(self.close)
+        self.actionClose.setShortcut(QKeySequence("CTRL+Q"))
+        self.menuDb.addAction(self.actionClose)
 
         # menu SCHEMA
         sep = self.menuSchema.addSeparator()
@@ -470,10 +484,10 @@ class DBManager(QMainWindow):
         sep.setObjectName("DB_Manager_TableMenu_placeholder")
         sep.setVisible(False)
 
-        self.actionImport = self.menuTable.addAction(QIcon(":/db_manager/actions/import"),
+        self.actionImport = self.menuTable.addAction(GuiUtils.get_icon("mActionDBImport"),
                                                      QApplication.translate("DBManager", "&Import Layer/File…"),
                                                      self.importActionSlot)
-        self.actionExport = self.menuTable.addAction(QIcon(":/db_manager/actions/export"),
+        self.actionExport = self.menuTable.addAction(GuiUtils.get_icon("mActionDBExport"),
                                                      QApplication.translate("DBManager", "&Export to File…"),
                                                      self.exportActionSlot)
         self.menuTable.addSeparator()

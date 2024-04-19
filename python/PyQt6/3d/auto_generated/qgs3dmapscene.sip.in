@@ -22,8 +22,6 @@ Entity that encapsulates our 3D scene - contains all other entities (such as ter
 .. note::
 
    Not available in Python bindings
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -68,7 +66,7 @@ Returns number of pending jobs for all chunked entities
 .. versionadded:: 3.12
 %End
 
-    enum SceneState
+    enum SceneState /BaseType=IntEnum/
     {
       Ready,
       Updating,

@@ -38,6 +38,7 @@ from qgis.core import (
     QgsFields,
     QgsGeometry,
     QgsLayerMetadata,
+    QgsMapLayerUtils,
     QgsMemoryProviderUtils,
     QgsMultiPolygon,
     QgsPoint,
@@ -567,8 +568,8 @@ class TestQgsVectorFileWriter(QgisTestCase):
         self.assertEqual(f['nonconv'], 1)
         self.assertEqual(f['conv_attr'], 'converted_val')
 
-    def testInteger64WriteTabfile(self):
-        """Check writing Integer64 fields to an MapInfo tabfile (which does not support that type)."""
+    def testInteger64WriteUnsupportedFormat(self):
+        """Check writing Integer64 fields to a GMT file (which does not support that type)."""
         ml = QgsVectorLayer(
             ('Point?crs=epsg:4326&field=int8:int8'),
             'test',
@@ -585,14 +586,14 @@ class TestQgsVectorFileWriter(QgisTestCase):
         self.assertTrue(res)
         self.assertTrue(features)
 
-        dest_file_name = os.path.join(str(QDir.tempPath()), 'integer64.tab')
+        dest_file_name = os.path.join(str(QDir.tempPath()), 'integer64.gmt')
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         write_result, error_message = QgsVectorFileWriter.writeAsVectorFormat(
             ml,
             dest_file_name,
             'utf-8',
             crs,
-            'MapInfo File')
+            'GMT')
         self.assertEqual(write_result, QgsVectorFileWriter.WriterError.NoError, error_message)
 
         # Open result and check
@@ -1803,6 +1804,33 @@ class TestQgsVectorFileWriter(QgisTestCase):
                          QgsFieldConstraints.Constraints())
         self.assertEqual(res.fields()['size'].constraints().constraints(),
                          QgsFieldConstraints.Constraints())
+
+    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 5, 0), "GDAL 3.5 required")
+    def testFieldDomains(self):
+        """
+        Test that field domain and field domain names are copied
+        """
+
+        src_vl = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'domains.gpkg'), 'test', 'ogr')
+        self.assertTrue(src_vl.isValid())
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+
+        dest = os.path.join(str(QDir.tempPath()), 'domains.gpkg')
+        result, err = QgsVectorFileWriter.writeAsVectorFormatV2(
+            src_vl,
+            dest,
+            QgsProject.instance().transformContext(),
+            options)
+        self.assertEqual(result, QgsVectorFileWriter.WriterError.NoError)
+
+        vl = QgsVectorLayer(dest, 'result')
+        fields = vl.fields()
+        self.assertEqual(fields.field('with_range_domain_int').constraints().domainName(), 'range_domain_int')
+        self.assertEqual(fields.field('with_glob_domain').constraints().domainName(), 'glob_domain')
+
+        db_conn = QgsMapLayerUtils.databaseConnection(vl)
+        self.assertIsNotNone(db_conn.fieldDomain("range_domain_int"))
 
 
 if __name__ == '__main__':

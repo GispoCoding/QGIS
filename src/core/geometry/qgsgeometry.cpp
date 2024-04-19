@@ -801,6 +801,37 @@ bool QgsGeometry::insertVertex( const QgsPoint &point, int beforeVertex )
   return d->geometry->insertVertex( id, point );
 }
 
+bool QgsGeometry::addTopologicalPoint( const QgsPoint &point, double snappingTolerance, double segmentSearchEpsilon )
+{
+  if ( !d->geometry )
+  {
+    return false;
+  }
+
+  const double sqrSnappingTolerance = snappingTolerance * snappingTolerance;
+  int segmentAfterVertex;
+  QgsPointXY snappedPoint;
+  const double sqrDistSegmentSnap = closestSegmentWithContext( point, snappedPoint, segmentAfterVertex, nullptr, segmentSearchEpsilon );
+
+  if ( sqrDistSegmentSnap > sqrSnappingTolerance )
+    return false;
+
+  int atVertex, beforeVertex, afterVertex;
+  double sqrDistVertexSnap;
+  closestVertex( point, atVertex, beforeVertex, afterVertex, sqrDistVertexSnap );
+
+  if ( sqrDistVertexSnap < sqrSnappingTolerance )
+    return false;  // the vertex already exists - do not insert it
+
+  if ( !insertVertex( point, segmentAfterVertex ) )
+  {
+    QgsDebugError( QStringLiteral( "failed to insert topo point" ) );
+    return false;
+  }
+
+  return true;
+}
+
 QgsPoint QgsGeometry::vertexAt( int atVertex ) const
 {
   if ( !d->geometry )
@@ -1060,10 +1091,18 @@ Qgis::GeometryOperationResult QgsGeometry::splitGeometry( const QgsPointSequence
     return Qgis::GeometryOperationResult::InvalidBaseGeometry;
   }
 
+  // We're trying adding the split line's vertices to the geometry so that
+  // snap to segment always produces a valid split (see https://github.com/qgis/QGIS/issues/29270)
+  QgsGeometry tmpGeom( *this );
+  for ( const QgsPoint &v : splitLine )
+  {
+    tmpGeom.addTopologicalPoint( v );
+  }
+
   QVector<QgsGeometry > newGeoms;
   QgsLineString splitLineString( splitLine );
 
-  QgsGeos geos( d->geometry.get() );
+  QgsGeos geos( tmpGeom.get() );
   mLastError.clear();
   QgsGeometryEngine::EngineOperationResult result = geos.splitGeometry( splitLineString, newGeoms, topological, topologyTestPoints, &mLastError, skipIntersectionTest );
 
@@ -1447,10 +1486,21 @@ bool QgsGeometry::contains( const QgsPointXY *p ) const
     return false;
   }
 
-  QgsPoint pt( p->x(), p->y() );
   QgsGeos geos( d->geometry.get() );
   mLastError.clear();
-  return geos.contains( &pt, &mLastError );
+  return geos.contains( p->x(), p->y(), &mLastError );
+}
+
+bool QgsGeometry::contains( double x, double y ) const
+{
+  if ( !d->geometry )
+  {
+    return false;
+  }
+
+  QgsGeos geos( d->geometry.get() );
+  mLastError.clear();
+  return geos.contains( x, y, &mLastError );
 }
 
 bool QgsGeometry::contains( const QgsGeometry &geometry ) const
@@ -2641,6 +2691,20 @@ QgsGeometry QgsGeometry::delaunayTriangulation( double tolerance, bool edgesOnly
   return result;
 }
 
+QgsGeometry QgsGeometry::constrainedDelaunayTriangulation() const
+{
+  if ( !d->geometry )
+  {
+    return QgsGeometry();
+  }
+
+  QgsGeos geos( d->geometry.get() );
+  mLastError.clear();
+  QgsGeometry result( geos.constrainedDelaunayTriangulation() );
+  result.mLastError = mLastError;
+  return result;
+}
+
 QgsGeometry QgsGeometry::unionCoverage() const
 {
   if ( !d->geometry )
@@ -2990,7 +3054,10 @@ QVector<QgsPointXY> QgsGeometry::randomPointsInPolygon( int count, const std::fu
   if ( type() != Qgis::GeometryType::Polygon )
     return QVector< QgsPointXY >();
 
-  return QgsInternalGeometryEngine::randomPointsInPolygon( *this, count, acceptPoint, seed, feedback, maxTriesPerPoint );
+  QgsInternalGeometryEngine engine( *this );
+  const QVector<QgsPointXY> res = engine.randomPointsInPolygon( count, acceptPoint, seed, feedback, maxTriesPerPoint );
+  mLastError = engine.lastError();
+  return res;
 }
 
 QVector<QgsPointXY> QgsGeometry::randomPointsInPolygon( int count, unsigned long seed, QgsFeedback *feedback ) const
@@ -2998,7 +3065,10 @@ QVector<QgsPointXY> QgsGeometry::randomPointsInPolygon( int count, unsigned long
   if ( type() != Qgis::GeometryType::Polygon )
     return QVector< QgsPointXY >();
 
-  return QgsInternalGeometryEngine::randomPointsInPolygon( *this, count, []( const QgsPointXY & ) { return true; }, seed, feedback, 0 );
+  QgsInternalGeometryEngine engine( *this );
+  const QVector<QgsPointXY> res = engine.randomPointsInPolygon( count, []( const QgsPointXY & ) { return true; }, seed, feedback, 0 );
+  mLastError = engine.lastError();
+  return res;
 }
 ///@endcond
 
@@ -4291,9 +4361,9 @@ QgsGeometry QgsGeometry::convertToPolygon( bool destMultipart ) const
   }
 }
 
-QgsGeometryEngine *QgsGeometry::createGeometryEngine( const QgsAbstractGeometry *geometry )
+QgsGeometryEngine *QgsGeometry::createGeometryEngine( const QgsAbstractGeometry *geometry, double precision )
 {
-  return new QgsGeos( geometry );
+  return new QgsGeos( geometry, precision );
 }
 
 QDataStream &operator<<( QDataStream &out, const QgsGeometry &geometry )

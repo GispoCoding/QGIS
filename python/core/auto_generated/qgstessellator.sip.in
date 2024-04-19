@@ -19,8 +19,6 @@ It is expected that client code will create the tessellator object, then repeate
 :py:func:`~addPolygon` method that will generate triangles, and finally call :py:func:`~data` to get final vertex data.
 
 Optionally provides extrusion by adding triangles that serve as walls when extrusion height is non-zero.
-
-.. versionadded:: 3.4
 %End
 
 %TypeHeaderCode
@@ -80,6 +78,13 @@ Returns minimal Z value of the data (in world coordinates)
 Returns maximal Z value of the data (in world coordinates)
 
 .. versionadded:: 3.12
+%End
+
+    QString error() const;
+%Docstring
+Returns a descriptive error string if the tessellation failed.
+
+.. versionadded:: 3.34
 %End
 
 };

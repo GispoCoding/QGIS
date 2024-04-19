@@ -20,11 +20,15 @@
 #include "qgsprojectelevationproperties.h"
 #include "qgsrasterlayerelevationproperties.h"
 #include "qgselevationshadingrenderersettingswidget.h"
+#include "qgsprojectionselectionwidget.h"
 
 QgsProjectElevationSettingsWidget::QgsProjectElevationSettingsWidget( QWidget *parent )
   : QgsOptionsPageWidget( parent )
 {
   setupUi( this );
+
+  mElevationLowerSpin->setClearValueMode( QgsDoubleSpinBox::ClearValueMode::MinimumValue, tr( "Not set" ) );
+  mElevationUpperSpin->setClearValueMode( QgsDoubleSpinBox::ClearValueMode::MinimumValue, tr( "Not set" ) );
 
   mFlatHeightSpinBox->setClearValue( 0.0 );
 
@@ -39,6 +43,19 @@ QgsProjectElevationSettingsWidget::QgsProjectElevationSettingsWidget( QWidget *p
   mComboTerrainType->addItem( tr( "Flat Terrain" ), QStringLiteral( "flat" ) );
   mComboTerrainType->addItem( tr( "DEM (Raster Layer)" ), QStringLiteral( "raster" ) );
   mComboTerrainType->addItem( tr( "Mesh" ), QStringLiteral( "mesh" ) );
+
+  mVerticalCrsStackedWidget->setSizeMode( QgsStackedWidget::SizeMode::CurrentPageOnly );
+
+  QVBoxLayout *vl = new QVBoxLayout();
+  vl->setContentsMargins( 0, 0, 0, 0 );
+  mVerticalCrsWidget = new QgsProjectionSelectionWidget( nullptr, QgsCoordinateReferenceSystemProxyModel::FilterVertical );
+  mVerticalCrsWidget->setOptionVisible( QgsProjectionSelectionWidget::CrsNotSet, true );
+  mVerticalCrsWidget->setNotSetText( tr( "Not set" ) );
+  mVerticalCrsWidget->setDialogTitle( tr( "Project Vertical CRS" ) );
+  vl->addWidget( mVerticalCrsWidget );
+  mCrsPageEnabled->setLayout( vl );
+
+  mStackedWidget->setSizeMode( QgsStackedWidget::SizeMode::CurrentPageOnly );
 
   mStackedWidget->setCurrentWidget( mPageFlat );
   connect( mComboTerrainType, qOverload< int >( &QComboBox::currentIndexChanged ), this, [ = ]
@@ -60,7 +77,8 @@ QgsProjectElevationSettingsWidget::QgsProjectElevationSettingsWidget( QWidget *p
   } );
 
   // setup with current settings
-  const QgsAbstractTerrainProvider *provider = QgsProject::instance()->elevationProperties()->terrainProvider();
+  QgsProjectElevationProperties *elevationProperties = QgsProject::instance()->elevationProperties();
+  const QgsAbstractTerrainProvider *provider = elevationProperties->terrainProvider();
   mComboTerrainType->setCurrentIndex( mComboTerrainType->findData( provider->type() ) );
   if ( provider->type() == QLatin1String( "flat" ) )
   {
@@ -84,6 +102,18 @@ QgsProjectElevationSettingsWidget::QgsProjectElevationSettingsWidget( QWidget *p
 
   connect( mComboDemLayer, &QgsMapLayerComboBox::layerChanged, this, &QgsProjectElevationSettingsWidget::validate );
   connect( mComboMeshLayer, &QgsMapLayerComboBox::layerChanged, this, &QgsProjectElevationSettingsWidget::validate );
+
+  if ( elevationProperties->elevationRange().lower() != std::numeric_limits< double >::lowest() )
+    whileBlocking( mElevationLowerSpin )->setValue( elevationProperties->elevationRange().lower() );
+  else
+    whileBlocking( mElevationLowerSpin )->clear();
+  if ( elevationProperties->elevationRange().upper() != std::numeric_limits< double >::max() )
+    whileBlocking( mElevationUpperSpin )->setValue( elevationProperties->elevationRange().upper() );
+  else
+    whileBlocking( mElevationUpperSpin )->clear();
+
+  updateVerticalCrsOptions();
+  connect( QgsProject::instance(), &QgsProject::crsChanged, this, &QgsProjectElevationSettingsWidget::updateVerticalCrsOptions );
 
   validate();
 
@@ -109,6 +139,7 @@ void QgsProjectElevationSettingsWidget::apply()
     QgsRasterLayer *demLayer = qobject_cast< QgsRasterLayer * >( mComboDemLayer->currentLayer() );
     // always mark the terrain layer as a "dem" layer -- it seems odd for a user to have to manually set this after picking a terrain raster!
     qobject_cast< QgsRasterLayerElevationProperties * >( demLayer->elevationProperties() )->setEnabled( true );
+    qobject_cast< QgsRasterLayerElevationProperties * >( demLayer->elevationProperties() )->setMode( Qgis::RasterElevationMode::RepresentsElevationSurface );
     qgis::down_cast< QgsRasterDemTerrainProvider * >( provider.get() )->setLayer( demLayer );
   }
   else if ( terrainType == QLatin1String( "mesh" ) )
@@ -121,7 +152,48 @@ void QgsProjectElevationSettingsWidget::apply()
 
   QgsProject::instance()->elevationProperties()->setTerrainProvider( provider.release() );
 
+  double zLower = mElevationLowerSpin->value();
+  if ( zLower == mElevationLowerSpin->clearValue() )
+    zLower = std::numeric_limits< double >::lowest();
+  double zUpper = mElevationUpperSpin->value();
+  if ( zUpper == mElevationUpperSpin->clearValue() )
+    zUpper = std::numeric_limits< double >::max();
+
+  QgsProject::instance()->elevationProperties()->setElevationRange( QgsDoubleRange( zLower, zUpper ) );
+
+  QgsProject::instance()->setVerticalCrs( mVerticalCrsWidget->crs() );
+
   mElevationShadingSettingsWidget->apply();
+}
+
+void QgsProjectElevationSettingsWidget::updateVerticalCrsOptions()
+{
+  switch ( QgsProject::instance()->crs().type() )
+  {
+    case Qgis::CrsType::Compound:
+      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
+      mCrsDisabledLabel->setText( tr( "Project coordinate reference system is set to a compound CRS (%1), so the project's vertical CRS is the vertical component of this CRS (%2)." ).arg(
+                                    QgsProject::instance()->crs().userFriendlyIdentifier(),
+                                    QgsProject::instance()->verticalCrs().userFriendlyIdentifier()
+                                  ) );
+      break;
+
+    case Qgis::CrsType::Unknown:
+    case Qgis::CrsType::Geodetic:
+    case Qgis::CrsType::Geocentric:
+    case Qgis::CrsType::Geographic2d:
+    case Qgis::CrsType::Geographic3d:
+    case Qgis::CrsType::Vertical:
+    case Qgis::CrsType::Projected:
+    case Qgis::CrsType::Temporal:
+    case Qgis::CrsType::Engineering:
+    case Qgis::CrsType::Bound:
+    case Qgis::CrsType::Other:
+    case Qgis::CrsType::DerivedProjected:
+      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageEnabled );
+      mVerticalCrsWidget->setCrs( QgsProject::instance()->verticalCrs() );
+      break;
+  }
 }
 
 bool QgsProjectElevationSettingsWidget::validate()
@@ -160,7 +232,7 @@ bool QgsProjectElevationSettingsWidget::isValid()
 //
 
 QgsProjectElevationSettingsWidgetFactory::QgsProjectElevationSettingsWidgetFactory( QObject *parent )
-  : QgsOptionsWidgetFactory( tr( "Terrain" ), QgsApplication::getThemeIcon( QStringLiteral( "mLayoutItem3DMap.svg" ) ), QStringLiteral( "terrain" ) )
+  : QgsOptionsWidgetFactory( tr( "Elevation" ), QgsApplication::getThemeIcon( QStringLiteral( "propertyicons/elevationscale.svg" ) ), QStringLiteral( "terrain" ) )
 {
   setParent( parent );
 }

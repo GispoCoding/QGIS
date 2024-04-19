@@ -13,8 +13,6 @@ class QgsFeatureSink
 {
 %Docstring(signature="appended")
 An interface for objects which accept features via addFeature(s) methods.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -22,7 +20,7 @@ An interface for objects which accept features via addFeature(s) methods.
 %End
   public:
 
-    enum SinkFlag
+    enum SinkFlag /BaseType=IntEnum/
     {
 
       RegeneratePrimaryKey,
@@ -30,7 +28,7 @@ An interface for objects which accept features via addFeature(s) methods.
     typedef QFlags<QgsFeatureSink::SinkFlag> SinkFlags;
 
 
-    enum Flag
+    enum Flag /BaseType=IntEnum/
     {
 
       FastInsert,

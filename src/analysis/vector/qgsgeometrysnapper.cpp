@@ -99,18 +99,17 @@ bool QgsSnapIndex::SegmentSnapItem::getProjection( const QgsPoint &p, QgsPoint &
   return true;
 }
 
-bool QgsSnapIndex::SegmentSnapItem::withinDistance( const QgsPoint &p, const double tolerance )
+bool QgsSnapIndex::SegmentSnapItem::withinSquaredDistance( const QgsPoint &p, const double squaredDistance )
 {
   double minDistX, minDistY;
-  const double distance = QgsGeometryUtilsBase::sqrDistToLine( p.x(), p.y(), idxFrom->point().x(), idxFrom->point().y(), idxTo->point().x(), idxTo->point().y(), minDistX, minDistY, 4 * std::numeric_limits<double>::epsilon() );
-  return distance <= tolerance;
+  return QgsGeometryUtilsBase::sqrDistToLine( p.x(), p.y(), idxFrom->point().x(), idxFrom->point().y(), idxTo->point().x(), idxTo->point().y(), minDistX, minDistY, 4 * std::numeric_limits<double>::epsilon() ) <= squaredDistance;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 QgsSnapIndex::QgsSnapIndex()
 {
-  mSTRTree = GEOSSTRtree_create_r( QgsGeos::getGEOSHandler(), ( size_t )10 );
+  mSTRTree = GEOSSTRtree_create_r( QgsGeosContext::get(), ( size_t )10 );
 }
 
 QgsSnapIndex::~QgsSnapIndex()
@@ -118,14 +117,14 @@ QgsSnapIndex::~QgsSnapIndex()
   qDeleteAll( mCoordIdxs );
   qDeleteAll( mSnapItems );
 
-  GEOSSTRtree_destroy_r( QgsGeos::getGEOSHandler(), mSTRTree );
+  GEOSSTRtree_destroy_r( QgsGeosContext::get(), mSTRTree );
 }
 
 void QgsSnapIndex::addPoint( const CoordIdx *idx, bool isEndPoint )
 {
   const QgsPoint p = idx->point();
 
-  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
+  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
   geos::unique_ptr point( GEOSGeom_createPointFromXY_r( geosctxt, p.x(), p.y() ) );
 
   PointSnapItem *item = new PointSnapItem( idx, isEndPoint );
@@ -138,7 +137,7 @@ void QgsSnapIndex::addSegment( const CoordIdx *idxFrom, const CoordIdx *idxTo )
   const QgsPoint pointFrom = idxFrom->point();
   const QgsPoint pointTo = idxTo->point();
 
-  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
+  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
 
   GEOSCoordSequence *coord = GEOSCoordSeq_create_r( geosctxt, 2, 2 );
   GEOSCoordSeq_setXY_r( geosctxt, coord, 0, pointFrom.x(), pointFrom.y() );
@@ -192,7 +191,7 @@ void _GEOSQueryCallback( void *item, void *userdata )
 
 QgsPoint QgsSnapIndex::getClosestSnapToPoint( const QgsPoint &startPoint, const QgsPoint &midPoint )
 {
-  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
+  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
 
   // Look for intersections on segment from the target point to the point opposite to the point reference point
   // p2 = p1 + 2 * (q - p1)
@@ -232,7 +231,7 @@ QgsPoint QgsSnapIndex::getClosestSnapToPoint( const QgsPoint &startPoint, const 
 
 QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const double tolerance, QgsSnapIndex::PointSnapItem **pSnapPoint, QgsSnapIndex::SegmentSnapItem **pSnapSegment, bool endPointOnly ) const
 {
-  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
+  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
 
   GEOSCoordSequence *coord = GEOSCoordSeq_create_r( geosctxt, 2, 2 );
   GEOSCoordSeq_setXY_r( geosctxt, coord, 0, pos.x() - tolerance, pos.y() - tolerance );
@@ -250,6 +249,7 @@ QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const do
   QgsSnapIndex::SegmentSnapItem *snapSegment = nullptr;
   QgsSnapIndex::PointSnapItem *snapPoint = nullptr;
 
+  const double squaredTolerance = tolerance * tolerance;
   const auto constItems = items;
   for ( QgsSnapIndex::SnapItem *item : constItems )
   {
@@ -264,7 +264,7 @@ QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const do
     }
     else if ( item->type == SnapSegment && !endPointOnly )
     {
-      if ( !static_cast<SegmentSnapItem *>( item )->withinDistance( pos, tolerance ) )
+      if ( !static_cast<SegmentSnapItem *>( item )->withinSquaredDistance( pos, squaredTolerance ) )
         continue;
 
       QgsPoint pProj;
@@ -279,8 +279,8 @@ QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const do
       }
     }
   }
-  snapPoint = minDistPoint < tolerance * tolerance ? snapPoint : nullptr;
-  snapSegment = minDistSegment < tolerance * tolerance ? snapSegment : nullptr;
+  snapPoint = minDistPoint < squaredTolerance ? snapPoint : nullptr;
+  snapSegment = minDistSegment < squaredTolerance ? snapSegment : nullptr;
   if ( pSnapPoint ) *pSnapPoint = snapPoint;
   if ( pSnapSegment ) *pSnapSegment = snapSegment;
   return minDistPoint < minDistSegment ? static_cast<QgsSnapIndex::SnapItem *>( snapPoint ) : static_cast<QgsSnapIndex::SnapItem *>( snapSegment );

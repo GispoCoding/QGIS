@@ -39,7 +39,6 @@ class QTextCodec;
  *
  * Note that geometries will be automatically reprojected to WGS84 to match GeoJSON spec
  * if either the source vector layer or source CRS is set.
- * \since QGIS 2.16
  */
 
 class CORE_EXPORT QgsJsonExporter
@@ -298,7 +297,6 @@ class CORE_EXPORT QgsJsonExporter
  * \ingroup core
  * \class QgsJsonUtils
  * \brief Helper utilities for working with JSON and GeoJSON conversions.
- * \since QGIS 2.16
  */
 
 class CORE_EXPORT QgsJsonUtils
@@ -364,7 +362,6 @@ class CORE_EXPORT QgsJsonUtils
      * \param type optional variant type of the elements, if specified (and not Invalid),
      *        the array items will be converted to the type, and discarded if
      *        the conversion is not possible.
-     * \since QGIS 3.0
      */
     Q_INVOKABLE static QVariantList parseArray( const QString &json, QVariant::Type type = QVariant::Invalid );
 
@@ -425,6 +422,15 @@ class CORE_EXPORT QgsJsonUtils
      * \since QGIS 3.36
      */
     static QVariant jsonToVariant( const json &value ) SIP_SKIP;
+
+    /**
+     * Add \a crs information entry in \a json object regarding old GeoJSON specification format
+     * if it differs from OGC:CRS84 or EPSG:4326.
+     * According to new specification RFC 7946, coordinate reference system for all GeoJSON coordinates
+     * is assumed to be OGC:CRS84 but when user specifically request a different CRS, this method
+     * adds this information in the JSON output
+     */
+    static void addCrsInfo( json &value, const QgsCoordinateReferenceSystem &crs ) SIP_SKIP;
 
 };
 

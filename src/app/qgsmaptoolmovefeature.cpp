@@ -15,6 +15,7 @@
 
 #include "qgisapp.h"
 #include "qgsadvanceddigitizingdockwidget.h"
+#include "qgsavoidintersectionsoperation.h"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
@@ -49,35 +50,36 @@ void QgsMapToolMoveFeature::cadCanvasMoveEvent( QgsMapMouseEvent *e )
 {
   if ( mRubberBand )
   {
-    QgsVectorLayer *vlayer = currentVectorLayer();
-
-    // When MapCanvas crs == layer crs, fast rubberband translation
-    if ( vlayer->crs() == canvas()->mapSettings().destinationCrs() )
+    if ( QgsVectorLayer *vlayer = currentVectorLayer() )
     {
-      const QgsPointXY pointCanvasCoords = e->mapPoint();
-      const double offsetX = pointCanvasCoords.x() - mStartPointMapCoords.x();
-      const double offsetY = pointCanvasCoords.y() - mStartPointMapCoords.y();
-      mRubberBand->setTranslationOffset( offsetX, offsetY );
-    }
-
-    // Else, recreate the rubber band from the translated geometries
-    else
-    {
-      const QgsPointXY startPointLayerCoords = toLayerCoordinates( ( QgsMapLayer * )vlayer, mStartPointMapCoords );
-      const QgsPointXY stopPointLayerCoords = toLayerCoordinates( ( QgsMapLayer * )vlayer, e->mapPoint() );
-
-      const double dx = stopPointLayerCoords.x() - startPointLayerCoords.x();
-      const double dy = stopPointLayerCoords.y() - startPointLayerCoords.y();
-
-      QgsGeometry geom = mGeom;
-
-      if ( geom.translate( dx, dy ) == Qgis::GeometryOperationResult::Success )
+      // When MapCanvas crs == layer crs, fast rubberband translation
+      if ( vlayer->crs() == canvas()->mapSettings().destinationCrs() )
       {
-        mRubberBand->setToGeometry( geom, vlayer );
+        const QgsPointXY pointCanvasCoords = e->mapPoint();
+        const double offsetX = pointCanvasCoords.x() - mStartPointMapCoords.x();
+        const double offsetY = pointCanvasCoords.y() - mStartPointMapCoords.y();
+        mRubberBand->setTranslationOffset( offsetX, offsetY );
       }
+
+      // Else, recreate the rubber band from the translated geometries
       else
       {
-        mRubberBand->reset( vlayer->geometryType() );
+        const QgsPointXY startPointLayerCoords = toLayerCoordinates( ( QgsMapLayer * )vlayer, mStartPointMapCoords );
+        const QgsPointXY stopPointLayerCoords = toLayerCoordinates( ( QgsMapLayer * )vlayer, e->mapPoint() );
+
+        const double dx = stopPointLayerCoords.x() - startPointLayerCoords.x();
+        const double dy = stopPointLayerCoords.y() - startPointLayerCoords.y();
+
+        QgsGeometry geom = mGeom;
+
+        if ( geom.translate( dx, dy ) == Qgis::GeometryOperationResult::Success )
+        {
+          mRubberBand->setToGeometry( geom, vlayer );
+        }
+        else
+        {
+          mRubberBand->reset( vlayer->geometryType() );
+        }
       }
     }
   }
@@ -216,6 +218,13 @@ void QgsMapToolMoveFeature::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
         request.setFilterFids( mMovedFeatures ).setNoAttributes();
         QgsFeatureIterator fi = vlayer->getFeatures( request );
         QgsFeature f;
+
+        QgsAvoidIntersectionsOperation avoidIntersections;
+        connect( &avoidIntersections, &QgsAvoidIntersectionsOperation::messageEmitted, this, &QgsMapTool::messageEmitted );
+
+        // when removing intersections don't check for intersections with selected features
+        const QHash<QgsVectorLayer *, QSet<QgsFeatureId> > ignoreFeatures {{ vlayer, mMovedFeatures }};
+
         while ( fi.nextFeature( f ) )
         {
           if ( !f.hasGeometry() )
@@ -226,6 +235,23 @@ void QgsMapToolMoveFeature::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
             continue;
 
           const QgsFeatureId id = f.id();
+
+          if ( vlayer->geometryType() == Qgis::GeometryType::Polygon )
+          {
+            const QgsAvoidIntersectionsOperation::Result res = avoidIntersections.apply( vlayer, id, geom, ignoreFeatures );
+
+            if ( res.operationResult == Qgis::GeometryOperationResult::InvalidInputGeometryType || geom.isEmpty() )
+            {
+              const QString errorMessage = ( geom.isEmpty() ) ?
+                                           tr( "The feature cannot be moved because the resulting geometry would be empty" ) :
+                                           tr( "An error was reported during intersection removal" );
+
+              emit messageEmitted( errorMessage, Qgis::MessageLevel::Warning );
+              vlayer->destroyEditCommand();
+              return;
+            }
+          }
+
           vlayer->changeGeometry( id, geom );
 
           if ( QgsProject::instance()->topologicalEditing() )

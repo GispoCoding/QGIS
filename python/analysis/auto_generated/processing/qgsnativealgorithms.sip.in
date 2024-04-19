@@ -13,8 +13,6 @@ class QgsNativeAlgorithms: QgsProcessingProvider
 {
 %Docstring(signature="appended")
 Native c++ processing algorithm provider.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -38,6 +36,8 @@ Constructor for QgsNativeAlgorithms.
     virtual QString name() const;
 
     virtual bool supportsNonFileBasedOutput() const;
+
+    virtual Qgis::ProcessingProviderFlags flags() const;
 
 
   protected:

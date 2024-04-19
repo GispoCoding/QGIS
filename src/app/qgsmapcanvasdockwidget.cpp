@@ -30,6 +30,8 @@
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
 #include "qgsdockablewidgethelper.h"
+#include "qgsprojectviewsettings.h"
+#include "canvas/qgsappcanvasfiltering.h"
 
 #include <QMessageBox>
 #include <QMenu>
@@ -109,9 +111,15 @@ QgsMapCanvasDockWidget::QgsMapCanvasDockWidget( const QString &name, QWidget *pa
   settingsMenu->addAction( mActionShowCursor );
   settingsMenu->addAction( mActionShowExtent );
   settingsMenu->addAction( mActionShowLabels );
+  settingsMenu->addAction( mActionElevationController );
   settingsMenu->addSeparator();
   settingsMenu->addAction( mActionSetCrs );
   settingsMenu->addAction( mActionRename );
+
+  if ( QgisApp *app = QgisApp::instance() )
+  {
+    app->canvasFiltering()->setupElevationControllerAction( mActionElevationController, mMapCanvas );
+  }
 
   connect( settingsMenu, &QMenu::aboutToShow, this, &QgsMapCanvasDockWidget::settingsMenuAboutToShow );
 
@@ -590,6 +598,17 @@ QgsMapSettingsAction::QgsMapSettingsAction( QWidget *parent )
   gLayout->addWidget( label, 2, 0 );
 
   mScaleCombo = new QgsScaleComboBox();
+  // use either global scales or project scales
+  if ( QgsProject::instance()->viewSettings()->useProjectScales() )
+  {
+    mScaleCombo->setPredefinedScales( QgsProject::instance()->viewSettings()->mapScales() );
+  }
+  else
+  {
+    // use global scales
+    mScaleCombo->updateScales();
+  }
+
   gLayout->addWidget( mScaleCombo, 2, 1 );
 
   mRotationWidget = new QgsDoubleSpinBox();

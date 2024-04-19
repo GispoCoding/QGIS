@@ -72,6 +72,7 @@ void QgsPhongMaterialWidget::setTechnique( QgsMaterialSettingsRenderingTechnique
     {
       lblDiffuse->setVisible( true );
       btnDiffuse->setVisible( true );
+      mDiffuseCoefficientWidget->setVisible( true );
       mAmbientDataDefinedButton->setVisible( false );
       mDiffuseDataDefinedButton->setVisible( false );
       mSpecularDataDefinedButton->setVisible( false );
@@ -82,6 +83,7 @@ void QgsPhongMaterialWidget::setTechnique( QgsMaterialSettingsRenderingTechnique
     {
       lblDiffuse->setVisible( false );
       btnDiffuse->setVisible( false );
+      mDiffuseCoefficientWidget->setVisible( false );
       mAmbientDataDefinedButton->setVisible( false );
       mDiffuseDataDefinedButton->setVisible( false );
       mSpecularDataDefinedButton->setVisible( false );
@@ -92,6 +94,7 @@ void QgsPhongMaterialWidget::setTechnique( QgsMaterialSettingsRenderingTechnique
     {
       lblDiffuse->setVisible( true );
       btnDiffuse->setVisible( true );
+      mDiffuseCoefficientWidget->setVisible( true );
       mAmbientDataDefinedButton->setVisible( true );
       mDiffuseDataDefinedButton->setVisible( true );
       mSpecularDataDefinedButton->setVisible( true );
@@ -123,9 +126,9 @@ void QgsPhongMaterialWidget::setSettings( const QgsAbstractMaterialSettings *set
 
   mPropertyCollection = settings->dataDefinedProperties();
 
-  mDiffuseDataDefinedButton->init( QgsAbstractMaterialSettings::Diffuse, mPropertyCollection, settings->propertyDefinitions(), layer, true );
-  mAmbientDataDefinedButton->init( QgsAbstractMaterialSettings::Ambient, mPropertyCollection, settings->propertyDefinitions(), layer, true );
-  mSpecularDataDefinedButton->init( QgsAbstractMaterialSettings::Specular, mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mDiffuseDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Diffuse ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mAmbientDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Ambient ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mSpecularDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Specular ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
 
   updateWidgetState();
 }
@@ -145,9 +148,9 @@ QgsAbstractMaterialSettings *QgsPhongMaterialWidget::settings()
   float opacity = mHasOpacity ? static_cast<float>( mOpacityWidget->opacity() ) : 1.0f;
   m->setOpacity( opacity );
 
-  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Diffuse, mDiffuseDataDefinedButton->toProperty() );
-  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Ambient, mAmbientDataDefinedButton->toProperty() );
-  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Specular, mSpecularDataDefinedButton->toProperty() );
+  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::Diffuse, mDiffuseDataDefinedButton->toProperty() );
+  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::Ambient, mAmbientDataDefinedButton->toProperty() );
+  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::Specular, mSpecularDataDefinedButton->toProperty() );
   m->setDataDefinedProperties( mPropertyCollection );
 
   return m.release();

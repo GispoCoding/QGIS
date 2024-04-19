@@ -13,8 +13,6 @@ class QgsLayoutItemLabel: QgsLayoutItem
 {
 %Docstring(signature="appended")
 A layout item subclass for text labels.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -22,7 +20,7 @@ A layout item subclass for text labels.
 %End
   public:
 
-    enum Mode
+    enum Mode /BaseType=IntEnum/
     {
       ModeFont,
       ModeHtml,

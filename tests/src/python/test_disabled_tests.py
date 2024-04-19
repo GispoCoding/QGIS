@@ -79,6 +79,12 @@ class TestQgsDisabledTests(QgisTestCase):
         cls.vl = None
         super().tearDownClass()
 
+    def test_dummy(self):
+        """
+        Dummy test so that test suite contains at least one enabled test
+        """
+        pass
+
     @unittest.skipIf(QT_VERSION >= 0x050d00, 'Crashes on newer Qt/PyQt versions')
     def testPythonCreateChildrenCalledFromCplusplus(self):
         """
@@ -117,7 +123,7 @@ class TestQgsDisabledTests(QgisTestCase):
 
             # wait for populate() to have done its job
             item.stateChanged.connect(loop.quit)
-            loop.exec_()
+            loop.exec()
 
             # Python object PyQgsLayerItem should still be alive
             self.assertFalse(tabSetDestroyedFlag[0])
@@ -132,7 +138,7 @@ class TestQgsDisabledTests(QgisTestCase):
             # Delete the object and make sure all deferred deletions are processed
             item.destroyed.connect(loop.quit)
             item.deleteLater()
-            loop.exec_()
+            loop.exec()
 
             # Check that the PyQgsLayerItem Python object is now destroyed
             self.assertTrue(tabSetDestroyedFlag[0])

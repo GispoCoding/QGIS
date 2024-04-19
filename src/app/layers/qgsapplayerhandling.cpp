@@ -109,6 +109,7 @@ void QgsAppLayerHandling::postProcessAddedLayer( QgsMapLayer *layer )
       if ( QgsRasterLayerElevationProperties::layerLooksLikeDem( rasterLayer ) )
       {
         qgis::down_cast< QgsRasterLayerElevationProperties * >( rasterLayer->elevationProperties() )->setEnabled( true );
+        qgis::down_cast< QgsRasterLayerElevationProperties * >( rasterLayer->elevationProperties() )->setMode( Qgis::RasterElevationMode::RepresentsElevationSurface );
       }
 
       break;
@@ -1073,17 +1074,17 @@ QList< QgsMapLayer * > QgsAppLayerHandling::openLayer( const QString &fileName, 
   return openedLayers;
 }
 
-QgsVectorLayer *QgsAppLayerHandling::addVectorLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend )
+QList<QgsVectorLayer *>QgsAppLayerHandling::addVectorLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend )
 {
   return addLayerPrivate< QgsVectorLayer >( Qgis::LayerType::Vector, uri, baseName, !provider.isEmpty() ? provider : QLatin1String( "ogr" ), true, addToLegend );
 }
 
-QgsRasterLayer *QgsAppLayerHandling::addRasterLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend )
+QList<QgsRasterLayer *>QgsAppLayerHandling::addRasterLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend )
 {
   return addLayerPrivate< QgsRasterLayer >( Qgis::LayerType::Raster, uri, baseName, !provider.isEmpty() ? provider : QLatin1String( "gdal" ), true, addToLegend );
 }
 
-QgsMeshLayer *QgsAppLayerHandling::addMeshLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend )
+QList<QgsMeshLayer *>QgsAppLayerHandling::addMeshLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend )
 {
   return addLayerPrivate< QgsMeshLayer >( Qgis::LayerType::Mesh, uri, baseName, provider, true, addToLegend );
 }
@@ -1148,10 +1149,15 @@ QList<QgsMapLayer *> QgsAppLayerHandling::addGdalRasterLayers( const QStringList
 
       // try to create the layer
       cursorOverride.reset();
-      QgsRasterLayer *layer = addLayerPrivate< QgsRasterLayer >( Qgis::LayerType::Raster, uri, layerName, QStringLiteral( "gdal" ), showWarningOnInvalid );
-      res << layer;
+      const QList<QgsRasterLayer *> layersList { addLayerPrivate< QgsRasterLayer >( Qgis::LayerType::Raster, uri, layerName, QStringLiteral( "gdal" ), showWarningOnInvalid ) };
 
-      if ( layer && layer->isValid() )
+      // loop and cast
+      for ( QgsRasterLayer *layer : std::as_const( layersList ) )
+      {
+        res.append( layer );
+      }
+
+      if ( ! layersList.isEmpty() && layersList.first()->isValid() )
       {
         //only allow one copy of a ai grid file to be loaded at a
         //time to prevent the user selecting all adfs in 1 dir which
@@ -1203,7 +1209,7 @@ void QgsAppLayerHandling::addMapLayer( QgsMapLayer *mapLayer, bool addToLegend )
   }
 }
 
-void QgsAppLayerHandling::openLayerDefinition( const QString &filename )
+void QgsAppLayerHandling::openLayerDefinition( const QString &filename, const QgsLayerTreeRegistryBridge::InsertionPoint *insertPoint )
 {
   QString errorMessage;
   QgsReadWriteContext context;
@@ -1230,7 +1236,9 @@ void QgsAppLayerHandling::openLayerDefinition( const QString &filename )
       context.setPathResolver( QgsPathResolver( filename ) );
       context.setProjectTranslator( QgsProject::instance() );
 
-      loaded = QgsLayerDefinition::loadLayerDefinition( doc, QgsProject::instance(), QgsProject::instance()->layerTreeRoot(), errorMessage, context );
+      QgsSettings settings;
+      Qgis::LayerTreeInsertionMethod insertionMethod = settings.enumValue( QStringLiteral( "/qgis/layerTreeInsertionMethod" ), Qgis::LayerTreeInsertionMethod::OptimalInInsertionGroup );
+      loaded = QgsLayerDefinition::loadLayerDefinition( doc, QgsProject::instance(), QgsProject::instance()->layerTreeRoot(), errorMessage, context, insertionMethod, insertPoint );
     }
   }
 
@@ -1254,7 +1262,7 @@ void QgsAppLayerHandling::openLayerDefinition( const QString &filename )
   }
 }
 
-void QgsAppLayerHandling::addLayerDefinition()
+void QgsAppLayerHandling::addLayerDefinition( const QgsLayerTreeRegistryBridge::InsertionPoint *insertPoint )
 {
   QgsSettings settings;
   QString lastUsedDir = settings.value( QStringLiteral( "UI/lastQLRDir" ), QDir::homePath() ).toString();
@@ -1266,7 +1274,7 @@ void QgsAppLayerHandling::addLayerDefinition()
   QFileInfo fi( path );
   settings.setValue( QStringLiteral( "UI/lastQLRDir" ), fi.path() );
 
-  openLayerDefinition( path );
+  openLayerDefinition( path, insertPoint );
 }
 
 QList< QgsMapLayer * > QgsAppLayerHandling::addDatabaseLayers( const QStringList &layerPathList, const QString &providerKey, bool &ok )
@@ -1342,7 +1350,7 @@ QList< QgsMapLayer * > QgsAppLayerHandling::addDatabaseLayers( const QStringList
 }
 
 template<typename T>
-T *QgsAppLayerHandling::addLayerPrivate( Qgis::LayerType type, const QString &uri, const QString &name, const QString &providerKey, bool guiWarnings, bool addToLegend )
+QList<T *>QgsAppLayerHandling::addLayerPrivate( Qgis::LayerType type, const QString &uri, const QString &name, const QString &providerKey, bool guiWarnings, bool addToLegend )
 {
   QgsSettings settings;
 
@@ -1375,7 +1383,7 @@ T *QgsAppLayerHandling::addLayerPrivate( Qgis::LayerType type, const QString &ur
   const bool canQuerySublayers = providerMetadata &&
                                  ( providerMetadata->capabilities() & QgsProviderMetadata::QuerySublayers );
 
-  T *result = nullptr;
+  QList<T *> result;
   if ( canQuerySublayers )
   {
     // query sublayers
@@ -1398,7 +1406,7 @@ T *QgsAppLayerHandling::addLayerPrivate( Qgis::LayerType type, const QString &ur
       }
 
       // since the layer is bad, stomp on it
-      return nullptr;
+      return QList<T *>();
     }
     else if ( sublayers.size() > 1 || QgsProviderUtils::sublayerDetailsAreIncomplete( sublayers, QgsProviderUtils::SublayerCompletenessFlag::IgnoreUnknownFeatureCount ) )
     {
@@ -1416,14 +1424,22 @@ T *QgsAppLayerHandling::addLayerPrivate( Qgis::LayerType type, const QString &ur
             const QList< QgsProviderSublayerDetails > selectedLayers = dlg.selectedLayers();
             if ( !selectedLayers.isEmpty() )
             {
-              result = qobject_cast< T * >( addSublayers( selectedLayers, baseName, dlg.groupName(), addToLegend ).value( 0 ) );
+              const QList<QgsMapLayer *> layers { addSublayers( selectedLayers, baseName, dlg.groupName(), addToLegend ) };
+              for ( QgsMapLayer *layer : std::as_const( layers ) )
+              {
+                result << qobject_cast<T *>( layer );
+              }
             }
           }
           break;
         }
         case SublayerHandling::LoadAll:
         {
-          result = qobject_cast< T * >( addSublayers( sublayers, baseName, QString(), addToLegend ).value( 0 ) );
+          const QList<QgsMapLayer *> layers { addSublayers( sublayers, baseName, QString(), addToLegend ) };
+          for ( QgsMapLayer *layer : std::as_const( layers ) )
+          {
+            result << qobject_cast<T *>( layer );
+          }
           break;
         }
         case SublayerHandling::AbortLoading:
@@ -1432,36 +1448,42 @@ T *QgsAppLayerHandling::addLayerPrivate( Qgis::LayerType type, const QString &ur
     }
     else
     {
-      result = qobject_cast< T * >( addSublayers( sublayers, name, QString(), addToLegend ).value( 0 ) );
+      const QList<QgsMapLayer *> layers { addSublayers( sublayers, name, QString(), addToLegend ) };
 
-      if ( result )
+      if ( ! layers.isEmpty() )
       {
         QString base( baseName );
         if ( settings.value( QStringLiteral( "qgis/formatLayerName" ), false ).toBool() )
         {
           base = QgsMapLayer::formatLayerName( base );
         }
-        result->setName( base );
+        for ( QgsMapLayer *layer : std::as_const( layers ) )
+        {
+          layer->setName( base );
+          result << qobject_cast<T *>( layer );
+        }
       }
     }
   }
   else
   {
+    // Handle single layers (no sublayers available for this provider): result will
+    // contain at most one single layer
     QgsMapLayerFactory::LayerOptions options( QgsProject::instance()->transformContext() );
     options.loadDefaultStyle = false;
-    result = qobject_cast< T * >( QgsMapLayerFactory::createLayer( uri, name, type, options, providerKey ) );
-    if ( result )
+    result.push_back( qobject_cast< T * >( QgsMapLayerFactory::createLayer( uri, name, type, options, providerKey ) ) );
+    if ( ! result.isEmpty() )
     {
       QString base( baseName );
       if ( settings.value( QStringLiteral( "qgis/formatLayerName" ), false ).toBool() )
       {
         base = QgsMapLayer::formatLayerName( base );
       }
-      result->setName( base );
-      QgsProject::instance()->addMapLayer( result, addToLegend );
+      result.first()->setName( base );
+      QgsProject::instance()->addMapLayer( result.first(), addToLegend );
 
-      QgisApp::instance()->askUserForDatumTransform( result->crs(), QgsProject::instance()->crs(), result );
-      QgsAppLayerHandling::postProcessAddedLayer( result );
+      QgisApp::instance()->askUserForDatumTransform( result.first()->crs(), QgsProject::instance()->crs(), result.first() );
+      QgsAppLayerHandling::postProcessAddedLayer( result.first() );
     }
   }
 

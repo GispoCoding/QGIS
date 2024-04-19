@@ -233,6 +233,28 @@ class TestQgsServerWFS(QgsServerTestBase):
                 self.assertEqual(
                     "onlineResource=\"my_wfs_advertised_url\"" in item, True)
 
+    def test_wfs_getcapabilities_110_no_data(self):
+        """Check that GetCapabilities response is correct if a layer
+        does not contain data"""
+
+        project = self.testdata_path + "test_wfs_no_data.qgs"
+        self.assertTrue(os.path.exists(project), "Project file not found: " + project)
+
+        query_string = "?" + "&".join(["%s=%s" % i for i in list({
+            "MAP": urllib.parse.quote(project),
+            "SERVICE": "WFS",
+            "VERSION": "1.1.0",
+            "REQUEST": "GetCapabilities"
+        }.items())])
+
+        header, body = self._execute_request(query_string)
+
+        self.result_compare(
+            "wfs_getCapabilities_1_1_0_no_data.txt",
+            f"request {query_string} failed.\n Query: GetCapabilities",
+            header, body
+        )
+
     def result_compare(self, file_name, error_msg_header, header, body):
 
         self.assert_headers(header, body)
@@ -765,6 +787,7 @@ class TestQgsServerWFS(QgsServerTestBase):
         jdata['features'][0]['geometry']
         jdata['features'][0]['geometry']['coordinates']
         self.assertEqual(jdata['features'][0]['geometry']['coordinates'], [807305, 5592878])
+        self.assertEqual(jdata['crs']['properties']['name'], "urn:ogc:def:crs:EPSG:0:3857")
 
         query_string = "?" + "&".join(["%s=%s" % i for i in list({
             "SERVICE": "WFS",
@@ -781,6 +804,7 @@ class TestQgsServerWFS(QgsServerTestBase):
         jdata['features'][0]['geometry']
         jdata['features'][0]['geometry']['coordinates']
         self.assertEqual([int(i) for i in jdata['features'][0]['geometry']['coordinates']], [7, 44])
+        self.assertFalse('crs' in jdata)
 
         query_string = "?" + "&".join(["%s=%s" % i for i in list({
             "SERVICE": "WFS",
@@ -812,6 +836,7 @@ class TestQgsServerWFS(QgsServerTestBase):
         jdata['features'][0]['geometry']
         jdata['features'][0]['geometry']['coordinates']
         self.assertEqual([int(i) for i in jdata['features'][0]['geometry']['coordinates']], [361806, 4964192])
+        self.assertEqual(jdata['crs']['properties']['name'], "urn:ogc:def:crs:EPSG:0:32632")
 
         query_string = "?" + "&".join(["%s=%s" % i for i in list({
             "SERVICE": "WFS",
@@ -829,6 +854,7 @@ class TestQgsServerWFS(QgsServerTestBase):
         jdata['features'][0]['geometry']
         jdata['features'][0]['geometry']['coordinates']
         self.assertEqual([int(i) for i in jdata['features'][0]['geometry']['coordinates']], [812191, 5589555])
+        self.assertEqual(jdata['crs']['properties']['name'], "urn:ogc:def:crs:EPSG:0:3857")
 
     def test_insert_srsName(self):
         """Test srsName is respected when insering"""

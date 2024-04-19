@@ -40,16 +40,23 @@ class GUI_EXPORT QgsRecentCoordinateReferenceSystemsModel : public QAbstractItem
 
   public:
 
-    //! Custom roles used by the model
-    enum Roles
+    // *INDENT-OFF*
+
+    /**
+     * Custom model roles.
+     */
+    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsRecentCoordinateReferenceSystemsModel, Roles ) : int
     {
-      RoleCrs = Qt::UserRole, //!< Coordinate reference system
+      Crs SIP_MONKEYPATCH_COMPAT_NAME(RoleCrs) = Qt::UserRole, //!< Coordinate reference system
+      AuthId SIP_MONKEYPATCH_COMPAT_NAME(RoleAuthId), //!< CRS authority ID
     };
+    Q_ENUM( CustomRole )
+    // *INDENT-ON*
 
     /**
      * Constructor for QgsRecentCoordinateReferenceSystemsModel, with the specified \a parent object.
      */
-    QgsRecentCoordinateReferenceSystemsModel( QObject *parent SIP_TRANSFERTHIS = nullptr );
+    QgsRecentCoordinateReferenceSystemsModel( QObject *parent SIP_TRANSFERTHIS = nullptr, int subclassColumnCount SIP_PYARGREMOVE = 1 );
 
     Qt::ItemFlags flags( const QModelIndex &index ) const override;
     QVariant data( const QModelIndex &index, int role ) const override;
@@ -74,6 +81,7 @@ class GUI_EXPORT QgsRecentCoordinateReferenceSystemsModel : public QAbstractItem
   private:
 
     QList< QgsCoordinateReferenceSystem > mCrs;
+    int mColumnCount = 1;
 
 };
 
@@ -93,7 +101,7 @@ class GUI_EXPORT QgsRecentCoordinateReferenceSystemsProxyModel: public QSortFilt
     /**
      * Constructor for QgsRecentCoordinateReferenceSystemsProxyModel, with the given \a parent object.
      */
-    explicit QgsRecentCoordinateReferenceSystemsProxyModel( QObject *parent SIP_TRANSFERTHIS = nullptr );
+    explicit QgsRecentCoordinateReferenceSystemsProxyModel( QObject *parent SIP_TRANSFERTHIS = nullptr, int subclassColumnCount SIP_PYARGREMOVE = 1 );
 
     /**
      * Returns the underlying source model.
@@ -108,9 +116,19 @@ class GUI_EXPORT QgsRecentCoordinateReferenceSystemsProxyModel: public QSortFilt
 
     /**
      * Set \a filters that affect how CRS are filtered.
-     * \see filters()
      */
     void setFilters( QgsCoordinateReferenceSystemProxyModel::Filters filters );
+
+    /**
+     * Sets whether deprecated CRS should be filtered from the results.
+    */
+    void setFilterDeprecated( bool filter );
+
+    /**
+     * Sets a \a filter string, such that only coordinate reference systems matching the
+     * specified string will be shown.
+    */
+    void setFilterString( const QString &filter );
 
     /**
      * Returns any filters that affect how CRS are filtered.
@@ -131,6 +149,8 @@ class GUI_EXPORT QgsRecentCoordinateReferenceSystemsProxyModel: public QSortFilt
 
     QgsRecentCoordinateReferenceSystemsModel *mModel = nullptr;
     QgsCoordinateReferenceSystemProxyModel::Filters mFilters = QgsCoordinateReferenceSystemProxyModel::Filters();
+    bool mFilterDeprecated = false;
+    QString mFilterString;
 };
 
 

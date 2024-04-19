@@ -37,8 +37,6 @@ and various parameters and outputs.
 
 :py:class:`QgsProcessingRegistry` is not usually directly created, but rather accessed through
 :py:func:`QgsApplication.processingRegistry()`.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -87,7 +85,7 @@ Returns ``False`` if the provider could not be removed (eg provider does not exi
 .. seealso:: :py:func:`addProvider`
 %End
 
-    QgsProcessingProvider *providerById( const QString &id ) /HoldGIL/;
+    QgsProcessingProvider *providerById( const QString &id ) const /HoldGIL/;
 %Docstring
 Returns a matching provider by provider ID.
 %End

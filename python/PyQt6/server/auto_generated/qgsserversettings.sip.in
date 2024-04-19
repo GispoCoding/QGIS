@@ -15,22 +15,20 @@ class QgsServerSettingsEnv : QObject
 {
 %Docstring(signature="appended")
 Provides some enum describing the environment currently supported for configuration.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgsserversettings.h"
 %End
   public:
-    enum Source
+    enum Source /BaseType=IntEnum/
     {
       DEFAULT_VALUE,
       ENVIRONMENT_VARIABLE,
       INI_FILE
     };
 
-    enum EnvVar
+    enum EnvVar /BaseType=IntEnum/
     {
       QGIS_OPTIONS_PATH,
       QGIS_SERVER_PARALLEL_RENDERING,
@@ -72,8 +70,6 @@ class QgsServerSettings
 {
 %Docstring(signature="appended")
 Provides a way to retrieve settings by prioritizing according to environment variables, ini file and default values.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -313,7 +309,7 @@ Returns the service URL from the setting.
 
     int projectCacheCheckInterval() const;
 %Docstring
-Returns the config cache check interval for the 'periodic' strategy.
+Returns the config cache check interval (in ms) for the 'periodic' strategy.
 
 .. versionadded:: 3.26
 %End

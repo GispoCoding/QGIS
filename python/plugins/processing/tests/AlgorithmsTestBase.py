@@ -69,7 +69,7 @@ class AlgorithmsTest:
         """
         This is the main test function. All others will be executed based on the definitions in testdata/algorithm_tests.yaml
         """
-        with open(os.path.join(processingTestDataPath(), self.test_definition_file())) as stream:
+        with open(os.path.join(processingTestDataPath(), self.definition_file())) as stream:
             algorithm_tests = yaml.load(stream, Loader=yaml.SafeLoader)
 
         if 'tests' in algorithm_tests and algorithm_tests['tests'] is not None:
@@ -167,6 +167,12 @@ class AlgorithmsTest:
         # ignore user setting for invalid geometry handling
         context = QgsProcessingContext()
         context.setProject(QgsProject.instance())
+        if 'ellipsoid' in defs:
+            # depending on the project settings, we can't always rely
+            # on QgsProject.ellipsoid() returning the same ellipsoid as was
+            # specified in the test definition. So just force ensure that the
+            # context's ellipsoid is the desired one
+            context.setEllipsoid(defs['ellipsoid'])
 
         if 'skipInvalid' in defs and defs['skipInvalid']:
             context.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)

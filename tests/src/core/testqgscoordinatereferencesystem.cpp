@@ -43,12 +43,16 @@ class TestQgsCoordinateReferenceSystem: public QObject
     void idCtor();
     void copyCtor();
     void assignmentCtor();
+    void testDeprecated();
     void compoundCrs();
     void verticalCrs();
     void projectedCrs();
     void geocentricCrs();
     void geographic3d();
+    void toHorizontal();
+    void toVertical();
     void coordinateEpoch();
+    void createCompound();
     void saveAsUserCrs();
     void createFromId();
     void fromEpsgId();
@@ -261,6 +265,12 @@ void TestQgsCoordinateReferenceSystem::assignmentCtor()
   QCOMPARE( myCrs3.coordinateEpoch(), 2021.2 );
 }
 
+void TestQgsCoordinateReferenceSystem::testDeprecated()
+{
+  QVERIFY( !QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ).isDeprecated() );
+  QVERIFY( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4226" ) ).isDeprecated() );
+}
+
 void TestQgsCoordinateReferenceSystem::compoundCrs()
 {
   QgsCoordinateReferenceSystem crs;
@@ -270,6 +280,14 @@ void TestQgsCoordinateReferenceSystem::compoundCrs()
   crs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5500" ) );
   QVERIFY( crs.isValid() );
   QCOMPARE( crs.type(), Qgis::CrsType::Compound );
+  QVERIFY( crs.isGeographic() );
+  QCOMPARE( crs.mapUnits(), Qgis::DistanceUnit::Degrees );
+
+  crs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:9388" ) );
+  QVERIFY( crs.isValid() );
+  QCOMPARE( crs.type(), Qgis::CrsType::Compound );
+  QVERIFY( !crs.isGeographic() );
+  QCOMPARE( crs.mapUnits(), Qgis::DistanceUnit::Meters );
 }
 
 void TestQgsCoordinateReferenceSystem::verticalCrs()
@@ -282,6 +300,13 @@ void TestQgsCoordinateReferenceSystem::verticalCrs()
   QVERIFY( crs.isValid() );
 
   QCOMPARE( crs.type(), Qgis::CrsType::Vertical );
+  QCOMPARE( crs.mapUnits(), Qgis::DistanceUnit::Meters );
+
+  crs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:6358" ) );
+  QVERIFY( crs.isValid() );
+
+  QCOMPARE( crs.type(), Qgis::CrsType::Vertical );
+  QCOMPARE( crs.mapUnits(), Qgis::DistanceUnit::Feet );
 }
 
 void TestQgsCoordinateReferenceSystem::projectedCrs()
@@ -308,6 +333,34 @@ void TestQgsCoordinateReferenceSystem::geographic3d()
   QCOMPARE( crs.type(), Qgis::CrsType::Geographic3d );
 }
 
+void TestQgsCoordinateReferenceSystem::toHorizontal()
+{
+  // invalid
+  QVERIFY( !QgsCoordinateReferenceSystem().horizontalCrs().isValid() );
+  // vertical only
+  QVERIFY( !QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5703" ) ).horizontalCrs().isValid() );
+  // compound
+  QCOMPARE( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5500" ) ).horizontalCrs().authid(), QStringLiteral( "EPSG:4759" ) );
+  // already horizontal
+  QCOMPARE( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ).horizontalCrs().authid(), QStringLiteral( "EPSG:3111" ) );
+  // geographic 3d
+  QCOMPARE( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4979" ) ).horizontalCrs().authid(), QStringLiteral( "EPSG:4979" ) );
+}
+
+void TestQgsCoordinateReferenceSystem::toVertical()
+{
+  // invalid
+  QVERIFY( !QgsCoordinateReferenceSystem().verticalCrs().isValid() );
+  // horizontal only
+  QVERIFY( !QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ).verticalCrs().isValid() );
+  // compound
+  QCOMPARE( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5500" ) ).verticalCrs().authid(), QStringLiteral( "EPSG:5703" ) );
+  // already vertical
+  QCOMPARE( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5703" ) ).verticalCrs().authid(), QStringLiteral( "EPSG:5703" ) );
+  // geographic 3d
+  QVERIFY( !QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4979" ) ).verticalCrs().isValid() );
+}
+
 void TestQgsCoordinateReferenceSystem::coordinateEpoch()
 {
   QgsCoordinateReferenceSystem crs( QStringLiteral( "EPSG:4326" ) );
@@ -325,6 +378,27 @@ void TestQgsCoordinateReferenceSystem::coordinateEpoch()
   QCOMPARE( crs2.coordinateEpoch(), 2021.3 );
   QVERIFY( crs.projObject() );
   QVERIFY( crs2.projObject() );
+}
+
+void TestQgsCoordinateReferenceSystem::createCompound()
+{
+  //horizontal invalid / vertical invalid
+  QVERIFY( !QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem(), QgsCoordinateReferenceSystem() ).isValid() );
+  // horizontal valid / vertical invalid
+  QVERIFY( !QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ), QgsCoordinateReferenceSystem() ).isValid() );
+  // horizontal invalid / vertical valid
+  QVERIFY( !QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem(), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5703" ) ) ).isValid() );
+  // horizontal valid / vertical valid
+  const QgsCoordinateReferenceSystem compound = QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5703" ) ) );
+  QVERIFY( compound.isValid() );
+  QCOMPARE( compound.description(), QStringLiteral( "unnamed" ) );
+  QCOMPARE( compound.type(), Qgis::CrsType::Compound );
+  // horizontal / vertical flipped
+  QVERIFY( !QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5703" ) ), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ) ).isValid() );
+  // horizontal valid / not vertical
+  QVERIFY( !QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3113" ) ) ).isValid() );
+  // horizontal already a compound
+  QVERIFY( !QgsCoordinateReferenceSystem::createCompoundCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5500" ) ), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:5703" ) ) ).isValid() );
 }
 
 void TestQgsCoordinateReferenceSystem::createFromId()
@@ -945,6 +1019,8 @@ void TestQgsCoordinateReferenceSystem::comparison_data()
   QgsCoordinateReferenceSystem noAuthId;
   noAuthId.createFromWkt( QStringLiteral( "PROJCS[\"unnamed\",GEOGCS[\"unnamed\",DATUM[\"Geocentric_Datum_of_Australia_2020\",SPHEROID[\"GRS 80\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",0],PARAMETER[\"central_meridian\",147],PARAMETER[\"scale_factor\",0.1996],PARAMETER[\"false_easting\",500000],PARAMETER[\"false_northing\",10000000],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]" ) );
 
+  QgsCoordinateReferenceSystem noAuthId2;
+  noAuthId2.createFromProj( QStringLiteral( "+proj=ortho +lat_0=47.686 +lon_0=16.548 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs" ) );
 
   const QgsCoordinateReferenceSystem epsg4326( QStringLiteral( "EPSG:4326" ) );
   const QgsCoordinateReferenceSystem epsg3111( QStringLiteral( "EPSG:3111" ) );
@@ -964,6 +1040,8 @@ void TestQgsCoordinateReferenceSystem::comparison_data()
   QTest::newRow( "epsg4326 == epsg4326" ) << epsg4326 << epsg4326 << true;
   QTest::newRow( "user == user" ) << userCrs1 << userCrs1 << true;
   QTest::newRow( "noAuthId == noAuthId" ) << noAuthId << noAuthId << true;
+  QTest::newRow( "noAuthId == noAuthId" ) << noAuthId2 << noAuthId2 << true;
+  QTest::newRow( "noAuthId2 < noAuthId" ) << noAuthId2 << noAuthId << false;
 
   QTest::newRow( "invalid < epsg4326" ) << QgsCoordinateReferenceSystem() << epsg4326 << false;
   QTest::newRow( "invalid < user" ) << QgsCoordinateReferenceSystem() << userCrs1 << false;
@@ -1807,7 +1885,11 @@ void TestQgsCoordinateReferenceSystem::noProj()
   QVERIFY( crs.isValid() );
   QgsDebugMsgLevel( crs.toWkt(), 1 );
   QVERIFY( crs.toWkt().startsWith( QLatin1String( "PROJCS[\"Carthage (Paris) / Tunisia Mining Grid\"," ) ) );
+#if (PROJ_VERSION_MAJOR>9 || (PROJ_VERSION_MAJOR==9 && PROJ_VERSION_MINOR >= 2 ) )
+  QVERIFY( crs.toWkt().contains( QLatin1String( "PROJECTION[\"Tunisia_Mining_Grid\"]" ) ) );
+#else
   QVERIFY( crs.toWkt().contains( QLatin1String( "PROJECTION[\"Tunisia_Mapping_Grid\"]" ) ) );
+#endif
 }
 
 void TestQgsCoordinateReferenceSystem::customProjString()

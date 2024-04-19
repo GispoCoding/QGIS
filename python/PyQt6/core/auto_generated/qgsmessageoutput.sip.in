@@ -32,7 +32,7 @@ signal :py:func:`~destroyed` to notify the deletion
 %End
   public:
 
-    enum MessageType { MessageText, MessageHtml };
+    enum MessageType /BaseType=IntEnum/ { MessageText, MessageHtml };
 
     virtual ~QgsMessageOutput();
 
@@ -59,8 +59,6 @@ display the message to the user and deletes itself
     static void showMessage( const QString &title, const QString &message, MessageType msgType );
 %Docstring
 Display the blocking message to the user.
-
-.. versionadded:: 2.10
 %End
 
 

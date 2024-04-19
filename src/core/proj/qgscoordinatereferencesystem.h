@@ -283,7 +283,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * returned values can be safely passed to fromSrsId() to create a new, valid
      * QgsCoordinateReferenceSystem object.
      * \see fromSrsId()
-     * \since QGIS 3.0
      */
     static QList< long > validSrsIds();
 
@@ -294,7 +293,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * \param ogcCrs OGR compliant CRS definition, e.g., "EPSG:4326"
      * \returns matching CRS, or an invalid CRS if string could not be matched
      * \see createFromOgcWmsCrs()
-     * \since QGIS 3.0
     */
     static QgsCoordinateReferenceSystem fromOgcWmsCrs( const QString &ogcCrs );
 
@@ -302,7 +300,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * Creates a CRS from a given EPSG ID.
      * \param epsg epsg CRS ID
      * \returns matching CRS, or an invalid CRS if string could not be matched
-     * \since QGIS 3.0
     */
     Q_INVOKABLE static QgsCoordinateReferenceSystem fromEpsgId( long epsg );
 
@@ -328,7 +325,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * \param wkt WKT for the desired spatial reference system.
      * \returns matching CRS, or an invalid CRS if string could not be matched
      * \see createFromWkt()
-     * \since QGIS 3.0
     */
     static QgsCoordinateReferenceSystem fromWkt( const QString &wkt );
 
@@ -338,9 +334,19 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * \returns matching CRS, or an invalid CRS if ID could not be found
      * \see createFromSrsId()
      * \see validSrsIds()
-     * \since QGIS 3.0
     */
     static QgsCoordinateReferenceSystem fromSrsId( long srsId );
+
+    /**
+     * Given a horizontal and vertical CRS, attempts to create a compound CRS
+     * from them.
+     *
+     * Returns an invalid CRS if the inputs are not suitable for a compound CRS,
+     * or the compound CRS could not be created for the combination.
+     *
+     * \since QGIS 3.38
+     */
+    static QgsCoordinateReferenceSystem createCompoundCrs( const QgsCoordinateReferenceSystem &horizontalCrs, const QgsCoordinateReferenceSystem &verticalCrs );
 
     // Misc helper functions -----------------------
 
@@ -702,6 +708,13 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
     Qgis::CrsType type() const;
 
     /**
+     * Returns TRUE if the CRS is considered deprecated.
+     *
+     * \since QGIS 3.36
+     */
+    bool isDeprecated() const;
+
+    /**
      * Returns whether the CRS is a geographic CRS (using lat/lon coordinates)
      * \returns TRUE if CRS is geographic, or FALSE if it is a projected CRS
      */
@@ -882,7 +895,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * The returned bounds represent the latitude and longitude extent for the
      * projection in the WGS 84 CRS.
      *
-     * \since QGIS 3.0
      */
     QgsRectangle bounds() const;
 
@@ -893,6 +905,14 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * \since QGIS 3.30
      */
     QString toOgcUri() const;
+
+    /**
+     * Returns the crs as OGC URN (format: urn:ogc:def:crs:OGC:1.3:CRS84)
+     * Returns an empty string on failure.
+     *
+     * \since QGIS 3.38
+     */
+    QString toOgcUrn() const;
 
     // Mutators -----------------------------------
 
@@ -980,6 +1000,30 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      */
     QgsCoordinateReferenceSystem toGeographicCrs() const;
 
+    /**
+     * Returns the horizontal CRS associated with this CRS object.
+     *
+     * In the case of a compound CRS, this method will return just the horizontal CRS component.
+     *
+     * An invalid CRS will be returned if the object does not contain a horizontal component.
+     *
+     * \see verticalCrs()
+     * \since QGIS 3.38
+     */
+    QgsCoordinateReferenceSystem horizontalCrs() const;
+
+    /**
+     * Returns the vertical CRS associated with this CRS object.
+     *
+     * In the case of a compound CRS, this method will return just the vertical CRS component.
+     *
+     * An invalid CRS will be returned if the object does not contain a vertical component.
+     *
+     * \see horizontalCrs()
+     * \since QGIS 3.38
+     */
+    QgsCoordinateReferenceSystem verticalCrs() const;
+
     //! Returns auth id of related geographic CRS
     QString geographicCrsAuthId() const;
 
@@ -1060,9 +1104,10 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
 
     /**
      * Cleans the list of recently used CRS.
-     * \since QGIS 3.32
+     *
+     * \deprecated QGIS 3.36 Use QgsApplication::coordinateReferenceSystemRegistry()->clearRecent() instead.
      */
-    static void clearRecentCoordinateReferenceSystems();
+    Q_DECL_DEPRECATED static void clearRecentCoordinateReferenceSystems() SIP_DEPRECATED;
 
 #ifndef SIP_RUN
 
@@ -1074,7 +1119,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * If \a disableCache is TRUE then the inbuilt cache will be completely disabled. This
      * argument is for internal use only.
      *
-     * \since QGIS 3.0
      */
     static void invalidateCache( bool disableCache = false );
 #else
@@ -1084,7 +1128,6 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * This should be called whenever the srs database has been modified in order to ensure
      * that outdated CRS objects are not created.
      *
-     * \since QGIS 3.0
      */
     static void invalidateCache( bool disableCache SIP_PYARGREMOVE = false );
 #endif

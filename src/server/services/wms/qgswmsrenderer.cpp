@@ -155,7 +155,7 @@ namespace QgsWms
     }
     image.reset( createImage( size ) );
 
-    // configure painter and addapt to the context
+    // configure painter and adapt to the context
     QPainter painter( image.get() );
 
     context.setPainter( &painter );
@@ -260,7 +260,7 @@ namespace QgsWms
       {
         if ( vLayer->renderer() )
         {
-          const QString ruleKey { legendNode.data( QgsLayerTreeModelLegendNode::LegendNodeRoles::RuleKeyRole ).toString() };
+          const QString ruleKey { legendNode.data( static_cast< int >( QgsLayerTreeModelLegendNode::CustomRole::RuleKey ) ).toString() };
           bool ok;
           const QString ruleExp { vLayer->renderer()->legendKeyToExpression( ruleKey, vLayer, ok ) };
           if ( ok )
@@ -306,7 +306,7 @@ namespace QgsWms
     r->startRender( context, vl->fields() );
     QgsFeature f;
     QgsFeatureRequest request( context.extent() );
-    request.setFlags( QgsFeatureRequest::ExactIntersect );
+    request.setFlags( Qgis::FeatureRequestFlag::ExactIntersect );
     QgsFeatureIterator fi = vl->getFeatures( request );
     while ( fi.nextFeature( f ) )
     {
@@ -937,7 +937,7 @@ namespace QgsWms
       QgsLayoutFrame *htmlFrame = html->frame( 0 );
       bool ok = false;
       const QString htmlId = htmlFrame->id();
-      const QString url = mWmsParameters.layoutParameter( htmlId, ok );
+      const QString htmlValue = mWmsParameters.layoutParameter( htmlId, ok );
 
       if ( !ok )
       {
@@ -947,15 +947,22 @@ namespace QgsWms
 
       //remove exported Htmls referenced in the request
       //but with empty string
-      if ( url.isEmpty() )
+      if ( htmlValue.isEmpty() )
       {
         c->removeMultiFrame( html );
         delete html;
         continue;
       }
 
-      QUrl newUrl( url );
-      html->setUrl( newUrl );
+      if ( html->contentMode() == QgsLayoutItemHtml::Url )
+      {
+        QUrl newUrl( htmlValue );
+        html->setUrl( newUrl );
+      }
+      else if ( html->contentMode() == QgsLayoutItemHtml::ManualHtml )
+      {
+        html->setHtml( htmlValue );
+      }
       html->update();
     }
 
@@ -1316,7 +1323,7 @@ namespace QgsWms
     else if ( infoFormat == QgsWmsParameters::Format::HTML )
       ba = convertFeatureInfoToHtml( result );
     else if ( infoFormat == QgsWmsParameters::Format::JSON )
-      ba = convertFeatureInfoToJson( layers, result );
+      ba = convertFeatureInfoToJson( layers, result, mapSettings.destinationCrs() );
     else
       ba = result.toByteArray();
 
@@ -1649,7 +1656,7 @@ namespace QgsWms
             }
 
             layerElement.setAttribute( QStringLiteral( "name" ), layerName );
-            const QString layerTitle = layer->title();
+            const QString layerTitle = layer->serverProperties()->title();
             if ( !layerTitle.isEmpty() )
             {
               layerElement.setAttribute( QStringLiteral( "title" ), layerTitle );
@@ -1725,7 +1732,7 @@ namespace QgsWms
               const QList<QgsMapLayer *> constLayers { mContext.layerGroups()[ql] };
               for ( const QgsMapLayer *ml : constLayers )
               {
-                if ( ( ! ml->shortName().isEmpty() &&  ml->shortName() == queryLayer ) || ( ml->name() == queryLayer ) )
+                if ( ( ! ml->serverProperties()->shortName().isEmpty() &&  ml->serverProperties()->shortName() == queryLayer ) || ( ml->name() == queryLayer ) )
                 {
                   param.mValue = ql;
                 }
@@ -1850,7 +1857,7 @@ namespace QgsWms
     bool segmentizeWktGeometry = QgsServerProjectUtils::wmsFeatureInfoSegmentizeWktGeometry( *mProject );
 
     bool hasGeometry = QgsServerProjectUtils::wmsFeatureInfoAddWktGeometry( *mProject ) || addWktGeometry || featureBBox || layerFilterGeom;
-    fReq.setFlags( ( ( hasGeometry ) ? QgsFeatureRequest::NoFlags : QgsFeatureRequest::NoGeometry ) | QgsFeatureRequest::ExactIntersect );
+    fReq.setFlags( ( ( hasGeometry ) ? Qgis::FeatureRequestFlag::NoFlags : Qgis::FeatureRequestFlag::NoGeometry ) | Qgis::FeatureRequestFlag::ExactIntersect );
 
     if ( ! searchRect.isEmpty() )
     {
@@ -1858,7 +1865,7 @@ namespace QgsWms
     }
     else
     {
-      fReq.setFlags( fReq.flags() & ~ QgsFeatureRequest::ExactIntersect );
+      fReq.setFlags( fReq.flags() & ~ static_cast<int>( Qgis::FeatureRequestFlag::ExactIntersect ) );
     }
 
 
@@ -2670,7 +2677,7 @@ namespace QgsWms
 
               featureInfoString.append( featureInfoAttributeString );
             }
-            else if ( name == QStringLiteral( "maptip" ) )
+            else if ( name == QLatin1String( "maptip" ) )
             {
               featureInfoString.append( QStringLiteral( R"HTML(
       %1)HTML" ).arg( value ) );
@@ -2726,7 +2733,7 @@ namespace QgsWms
 
               featureInfoString.append( featureInfoAttributeString );
             }
-            else if ( name == QStringLiteral( "maptip" ) )
+            else if ( name == QLatin1String( "maptip" ) )
             {
               featureInfoString.append( QStringLiteral( R"HTML(
       %1)HTML" ).arg( value ) );
@@ -2813,7 +2820,7 @@ namespace QgsWms
     return featureInfoString.toUtf8();
   }
 
-  QByteArray QgsRenderer::convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc ) const
+  QByteArray QgsRenderer::convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc, const QgsCoordinateReferenceSystem &destCRS ) const
   {
     json json
     {
@@ -2866,7 +2873,7 @@ namespace QgsWms
           else
           {
             QgsFeatureRequest request { QgsExpression( expression )};
-            request.setFlags( QgsFeatureRequest::Flag::NoGeometry );
+            request.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
             vl->getFeatures( request ).nextFeature( feature );
           }
 
@@ -2914,6 +2921,8 @@ namespace QgsWms
         exporter.setAttributes( attributes );
         exporter.setIncludeGeometry( withGeometry );
         exporter.setTransformGeometries( false );
+
+        QgsJsonUtils::addCrsInfo( json, destCRS );
 
         for ( const auto &feature : std::as_const( features ) )
         {
@@ -3235,7 +3244,7 @@ namespace QgsWms
 
         if ( !qgsDoubleNear( param.mLabelRotation, 0 ) )
         {
-          QgsPalLayerSettings::Property pR = QgsPalLayerSettings::LabelRotation;
+          QgsPalLayerSettings::Property pR = QgsPalLayerSettings::Property::LabelRotation;
           palSettings.dataDefinedProperties().setProperty( pR, param.mLabelRotation );
         }
 
@@ -3252,15 +3261,15 @@ namespace QgsWms
             else //set label directly on point if there is hali/vali
             {
               QgsPointXY pt = param.mGeom.asPoint();
-              QgsPalLayerSettings::Property pX = QgsPalLayerSettings::PositionX;
+              QgsPalLayerSettings::Property pX = QgsPalLayerSettings::Property::PositionX;
               QVariant x( pt.x() );
               palSettings.dataDefinedProperties().setProperty( pX, x );
-              QgsPalLayerSettings::Property pY = QgsPalLayerSettings::PositionY;
+              QgsPalLayerSettings::Property pY = QgsPalLayerSettings::Property::PositionY;
               QVariant y( pt.y() );
               palSettings.dataDefinedProperties().setProperty( pY, y );
-              QgsPalLayerSettings::Property pHali = QgsPalLayerSettings::Hali;
+              QgsPalLayerSettings::Property pHali = QgsPalLayerSettings::Property::Hali;
               palSettings.dataDefinedProperties().setProperty( pHali, param.mHali );
-              QgsPalLayerSettings::Property pVali = QgsPalLayerSettings::Vali;
+              QgsPalLayerSettings::Property pVali = QgsPalLayerSettings::Property::Vali;
               palSettings.dataDefinedProperties().setProperty( pVali, param.mVali );
             }
 
@@ -3272,19 +3281,19 @@ namespace QgsWms
             QgsPointXY pt = point.asPoint();
             placement = Qgis::LabelPlacement::AroundPoint;
 
-            QgsPalLayerSettings::Property pX = QgsPalLayerSettings::PositionX;
+            QgsPalLayerSettings::Property pX = QgsPalLayerSettings::Property::PositionX;
             QVariant x( pt.x() );
             palSettings.dataDefinedProperties().setProperty( pX, x );
 
-            QgsPalLayerSettings::Property pY = QgsPalLayerSettings::PositionY;
+            QgsPalLayerSettings::Property pY = QgsPalLayerSettings::Property::PositionY;
             QVariant y( pt.y() );
             palSettings.dataDefinedProperties().setProperty( pY, y );
 
-            QgsPalLayerSettings::Property pHali = QgsPalLayerSettings::Hali;
+            QgsPalLayerSettings::Property pHali = QgsPalLayerSettings::Property::Hali;
             QVariant hali( "Center" );
             palSettings.dataDefinedProperties().setProperty( pHali, hali );
 
-            QgsPalLayerSettings::Property pVali = QgsPalLayerSettings::Vali;
+            QgsPalLayerSettings::Property pVali = QgsPalLayerSettings::Property::Vali;
             QVariant vali( "Half" );
             palSettings.dataDefinedProperties().setProperty( pVali, vali );
             break;

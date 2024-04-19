@@ -89,7 +89,7 @@ class ModelerNumberInputPanel(BASE, WIDGET):
         dlg = QgsExpressionBuilderDialog(None, str(self.leText.text()), self, 'generic', context)
 
         dlg.setWindowTitle(self.tr('Expression Based Input'))
-        if dlg.exec_() == QDialog.DialogCode.Accepted:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             exp = QgsExpression(dlg.expressionText())
             if not exp.hasParserError():
                 self.setValue(dlg.expressionText())
@@ -272,7 +272,7 @@ class DistanceInputPanel(NumberInputPanel):
                   QgsUnitTypes.DistanceUnit.DistanceYards):
             self.units_combo.addItem(QgsUnitTypes.toString(u), u)
 
-        label_margin = self.fontMetrics().width('X')
+        label_margin = self.fontMetrics().horizontalAdvance('X')
         self.layout().insertSpacing(1, int(label_margin / 2))
         self.layout().insertWidget(2, self.label)
         self.layout().insertWidget(3, self.units_combo)

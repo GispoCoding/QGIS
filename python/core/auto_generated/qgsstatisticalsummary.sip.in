@@ -19,8 +19,6 @@ Statistics are calculated by calling :py:func:`~calculate` and passing a list of
 individual statistics can then be retrieved using the associated methods. Note that not all statistics
 are calculated by default. Statistics which require slower computations are only calculated by
 specifying the statistic in the constructor or via :py:func:`~setStatistics`.
-
-.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -28,32 +26,7 @@ specifying the statistic in the constructor or via :py:func:`~setStatistics`.
 %End
   public:
 
-    enum Statistic
-    {
-      Count,
-      CountMissing,
-      Sum,
-      Mean,
-      Median,
-      StDev,
-      StDevSample,
-      Min,
-      Max,
-      Range,
-      Minority,
-      Majority,
-      Variety,
-      FirstQuartile,
-      ThirdQuartile,
-      InterQuartileRange,
-      First,
-      Last,
-      All
-    };
-    typedef QFlags<QgsStatisticalSummary::Statistic> Statistics;
-
-
-    QgsStatisticalSummary( QgsStatisticalSummary::Statistics stats = QgsStatisticalSummary::All );
+    QgsStatisticalSummary( Qgis::Statistics stats = Qgis::Statistic::All );
 %Docstring
 Constructor for QgsStatisticalSummary
 
@@ -62,7 +35,7 @@ Constructor for QgsStatisticalSummary
 
     virtual ~QgsStatisticalSummary();
 
-    Statistics statistics() const;
+    Qgis::Statistics statistics() const;
 %Docstring
 Returns flags which specify which statistics will be calculated. Some statistics
 are always calculated (e.g., sum, min and max).
@@ -70,7 +43,7 @@ are always calculated (e.g., sum, min and max).
 .. seealso:: :py:func:`setStatistics`
 %End
 
-    void setStatistics( QgsStatisticalSummary::Statistics stats );
+    void setStatistics( Qgis::Statistics stats );
 %Docstring
 Sets flags which specify which statistics will be calculated. Some statistics
 are always calculated (e.g., sum, min and max).
@@ -116,8 +89,6 @@ values to a list and calling :py:func:`~QgsStatisticalSummary.calculate`.
 .. seealso:: :py:func:`addVariant`
 
 .. seealso:: :py:func:`finalize`
-
-.. versionadded:: 2.16
 %End
 
     void addVariant( const QVariant &value );
@@ -144,8 +115,6 @@ values to a list and calling :py:func:`~QgsStatisticalSummary.calculate`.
 .. seealso:: :py:func:`calculate`
 
 .. seealso:: :py:func:`finalize`
-
-.. versionadded:: 2.16
 %End
 
     void finalize();
@@ -156,11 +125,9 @@ any calculated statistics.
 .. seealso:: :py:func:`addValue`
 
 .. seealso:: :py:func:`addVariant`
-
-.. versionadded:: 2.16
 %End
 
-    double statistic( QgsStatisticalSummary::Statistic stat ) const;
+    double statistic( Qgis::Statistic stat ) const;
 %Docstring
 Returns the value of a specified statistic
 
@@ -178,8 +145,6 @@ Returns calculated count of values
     int countMissing() const;
 %Docstring
 Returns the number of missing (null) values
-
-.. versionadded:: 2.16
 %End
 
     double sum() const;
@@ -314,14 +279,14 @@ be calculated.
 .. seealso:: :py:func:`thirdQuartile`
 %End
 
-    static QString displayName( QgsStatisticalSummary::Statistic statistic );
+    static QString displayName( Qgis::Statistic statistic );
 %Docstring
 Returns the friendly display name for a ``statistic``.
 
 .. seealso:: :py:func:`shortName`
 %End
 
-    static QString shortName( QgsStatisticalSummary::Statistic statistic );
+    static QString shortName( Qgis::Statistic statistic );
 %Docstring
 Returns a short, friendly display name for a ``statistic``, suitable for use in a field name.
 
@@ -331,9 +296,6 @@ Returns a short, friendly display name for a ``statistic``, suitable for use in 
 %End
 
 };
-
-QFlags<QgsStatisticalSummary::Statistic> operator|(QgsStatisticalSummary::Statistic f1, QFlags<QgsStatisticalSummary::Statistic> f2);
-
 
 /************************************************************************
  * This file has been generated automatically from                      *

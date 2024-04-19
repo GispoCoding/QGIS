@@ -26,8 +26,8 @@
 
 QgsJsonEditWidget::QgsJsonEditWidget( QWidget *parent )
   : QWidget( parent )
-  , mCopyValueAction( new QAction( tr( "Copy value" ), this ) )
-  , mCopyKeyAction( new QAction( tr( "Copy key" ), this ) )
+  , mCopyValueAction( new QAction( tr( "Copy Value" ), this ) )
+  , mCopyKeyAction( new QAction( tr( "Copy Key" ), this ) )
 {
   setupUi( this );
 
@@ -39,8 +39,6 @@ QgsJsonEditWidget::QgsJsonEditWidget( QWidget *parent )
   mCodeEditorJson->indicatorDefine( QsciScintilla::PlainIndicator, SCINTILLA_UNDERLINE_INDICATOR_INDEX );
   mCodeEditorJson->SendScintilla( QsciScintillaBase::SCI_SETINDICATORCURRENT, SCINTILLA_UNDERLINE_INDICATOR_INDEX );
   mCodeEditorJson->SendScintilla( QsciScintillaBase::SCI_SETMOUSEDWELLTIME, 400 );
-
-  mTreeWidget->setStyleSheet( QStringLiteral( "font-family: %1;" ).arg( QgsCodeEditor::getMonospaceFont().family() ) );
 
   mTreeWidget->setContextMenuPolicy( Qt::ActionsContextMenu );
   mTreeWidget->addAction( mCopyValueAction );
@@ -261,6 +259,7 @@ void QgsJsonEditWidget::refreshTreeView( const QJsonDocument &jsonDocument )
     {
       const QJsonValue jsonValue = jsonDocument.object().value( key );
       QTreeWidgetItem *treeWidgetItem = new QTreeWidgetItem( mTreeWidget, QStringList() << key );
+      treeWidgetItem->setFont( 0, monospaceFont() );
       refreshTreeViewItem( treeWidgetItem, jsonValue );
       mTreeWidget->addTopLevelItem( treeWidgetItem );
       mTreeWidget->expandItem( treeWidgetItem );
@@ -268,12 +267,33 @@ void QgsJsonEditWidget::refreshTreeView( const QJsonDocument &jsonDocument )
   }
   else if ( jsonDocument.isArray() )
   {
-    for ( int index = 0; index < jsonDocument.array().size(); index++ )
+    const QJsonArray array = jsonDocument.array();
+    const auto arraySize = array.size();
+    // Limit the number of rows we display, otherwise for pathological cases
+    // like https://github.com/qgis/QGIS/pull/55847#issuecomment-1902077683
+    // a unbounded number of elements will just stall the GUI forever.
+    constexpr decltype( arraySize ) MAX_ELTS = 200;
+    // If there are too many elements, disable URL highighting as it
+    // performs very poorly.
+    if ( arraySize > MAX_ELTS )
+      mEnableUrlHighlighting = false;
+    for ( auto index = decltype( arraySize ) {0}; index < arraySize; index++ )
     {
       QTreeWidgetItem *treeWidgetItem = new QTreeWidgetItem( mTreeWidget, QStringList() << QString::number( index ) );
-      refreshTreeViewItem( treeWidgetItem, jsonDocument.array().at( index ) );
-      mTreeWidget->addTopLevelItem( treeWidgetItem );
-      mTreeWidget->expandItem( treeWidgetItem );
+      treeWidgetItem->setFont( 0, monospaceFont() );
+      if ( arraySize <= MAX_ELTS || ( index < MAX_ELTS / 2 || index + MAX_ELTS / 2 > arraySize ) )
+      {
+        refreshTreeViewItem( treeWidgetItem, array.at( index ) );
+        mTreeWidget->addTopLevelItem( treeWidgetItem );
+        mTreeWidget->expandItem( treeWidgetItem );
+      }
+      else if ( index == MAX_ELTS / 2 )
+      {
+        index = arraySize - MAX_ELTS / 2;
+        refreshTreeViewItem( treeWidgetItem, tr( "... truncated ..." ) );
+        mTreeWidget->addTopLevelItem( treeWidgetItem );
+        mTreeWidget->expandItem( treeWidgetItem );
+      }
     }
   }
 
@@ -304,7 +324,7 @@ void QgsJsonEditWidget::refreshTreeViewItem( QTreeWidgetItem *treeWidgetItem, co
     case QJsonValue::String:
     {
       const QString jsonValueString = jsonValue.toString();
-      if ( QUrl( jsonValueString ).scheme().isEmpty() )
+      if ( !mEnableUrlHighlighting || QUrl( jsonValueString ).scheme().isEmpty() )
       {
         refreshTreeViewItemValue( treeWidgetItem,
                                   jsonValueString,
@@ -314,6 +334,7 @@ void QgsJsonEditWidget::refreshTreeViewItem( QTreeWidgetItem *treeWidgetItem, co
       {
         QLabel *label = new QLabel( QString( "<a href='%1'>%1</a>" ).arg( jsonValueString ) );
         label->setOpenExternalLinks( true );
+        label->setFont( monospaceFont() );
         mTreeWidget->setItemWidget( treeWidgetItem, static_cast<int>( TreeWidgetColumn::Value ), label );
 
         mClickableLinkList.append( jsonValueString );
@@ -327,12 +348,32 @@ void QgsJsonEditWidget::refreshTreeViewItem( QTreeWidgetItem *treeWidgetItem, co
     case QJsonValue::Array:
     {
       const QJsonArray jsonArray = jsonValue.toArray();
-      for ( int index = 0; index < jsonArray.size(); index++ )
+      const auto arraySize = jsonArray.size();
+      // Limit the number of rows we display, otherwise for pathological cases
+      // like https://github.com/qgis/QGIS/pull/55847#issuecomment-1902077683
+      // a unbounded number of elements will just stall the GUI forever.
+      constexpr decltype( arraySize ) MAX_ELTS = 200;
+      // If there are too many elements, disable URL highighting as it
+      // performs very poorly.
+      if ( arraySize > MAX_ELTS )
+        mEnableUrlHighlighting = false;
+      for ( auto index = decltype( arraySize ) {0}; index < arraySize; index++ )
       {
         QTreeWidgetItem *treeWidgetItemChild = new QTreeWidgetItem( treeWidgetItem, QStringList() << QString::number( index ) );
-        refreshTreeViewItem( treeWidgetItemChild, jsonArray.at( index ) );
-        treeWidgetItem->addChild( treeWidgetItemChild );
-        treeWidgetItem->setExpanded( true );
+        treeWidgetItemChild->setFont( 0, monospaceFont() );
+        if ( arraySize <= MAX_ELTS || ( index < MAX_ELTS / 2 || index + MAX_ELTS / 2 > arraySize ) )
+        {
+          refreshTreeViewItem( treeWidgetItemChild, jsonArray.at( index ) );
+          treeWidgetItem->addChild( treeWidgetItemChild );
+          treeWidgetItem->setExpanded( true );
+        }
+        else if ( index == MAX_ELTS / 2 )
+        {
+          index = arraySize - MAX_ELTS / 2;
+          refreshTreeViewItem( treeWidgetItemChild, tr( "... truncated ..." ) );
+          treeWidgetItem->addChild( treeWidgetItemChild );
+          treeWidgetItem->setExpanded( true );
+        }
       }
     }
     break;
@@ -343,6 +384,7 @@ void QgsJsonEditWidget::refreshTreeViewItem( QTreeWidgetItem *treeWidgetItem, co
       for ( const QString &key : keys )
       {
         QTreeWidgetItem *treeWidgetItemChild = new QTreeWidgetItem( treeWidgetItem, QStringList() << key );
+        treeWidgetItemChild->setFont( 0, monospaceFont() );
         refreshTreeViewItem( treeWidgetItemChild, jsonObject.value( key ) );
         treeWidgetItem->addChild( treeWidgetItemChild );
         treeWidgetItem->setExpanded( true );
@@ -360,7 +402,17 @@ void QgsJsonEditWidget::refreshTreeViewItem( QTreeWidgetItem *treeWidgetItem, co
 void QgsJsonEditWidget::refreshTreeViewItemValue( QTreeWidgetItem *treeWidgetItem, const QString &jsonValueString, const QColor &textColor )
 {
   QLabel *label = new QLabel( jsonValueString );
+  label->setFont( monospaceFont() );
+
   if ( textColor.isValid() )
     label->setStyleSheet( QStringLiteral( "color: %1;" ).arg( textColor.name() ) );
   mTreeWidget->setItemWidget( treeWidgetItem, static_cast<int>( TreeWidgetColumn::Value ), label );
+}
+
+QFont QgsJsonEditWidget::monospaceFont() const
+{
+  QFont f = QgsCodeEditor::getMonospaceFont();
+  // use standard widget font size, not code editor font size
+  f.setPointSize( font().pointSize() );
+  return f;
 }

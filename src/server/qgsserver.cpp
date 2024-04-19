@@ -368,6 +368,8 @@ bool QgsServer::init()
   // Initialize config cache
   QgsConfigCache::initialize( sSettings );
 
+  QObject::connect( QgsConfigCache::instance(), &QgsConfigCache::projectRemovedFromCache, sCapabilitiesCache, &QgsCapabilitiesCache::removeCapabilitiesDocument );
+
   sInitialized = true;
   QgsMessageLog::logMessage( QStringLiteral( "Server initialized" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   return true;
@@ -444,7 +446,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       sServerInterface->setConfigFilePath( project->fileName() );
     }
 
-    // Call  requestReady() method (if enabled)
+    // Call requestReady() method (if enabled)
     // This may also throw exceptions if there are errors in python plugins code
     try
     {
@@ -489,6 +491,10 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
         {
           sServerInterface->setConfigFilePath( QString() );
         }
+
+        // Call projectReady() method (if enabled)
+        // This may also throw exceptions if there are errors in python plugins code
+        responseDecorator.ready();
 
         // Note that at this point we still might not have set a valid project.
         // There are APIs that work without a project (e.g. the landing page catalog API that
@@ -572,9 +578,9 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       {
         QgsMessageLog::logMessage( QStringLiteral( "Profile: %1%2, %3 : %4 ms" )
                                    .arg( level > 0 ? QString().fill( '-', level ) + ' ' : QString() )
-                                   .arg( QgsApplication::profiler()->data( idx, QgsRuntimeProfilerNode::Roles::Group ).toString() )
-                                   .arg( QgsApplication::profiler()->data( idx, QgsRuntimeProfilerNode::Roles::Name ).toString() )
-                                   .arg( QString::number( QgsApplication::profiler()->data( idx, QgsRuntimeProfilerNode::Roles::Elapsed ).toDouble() * 1000.0 ) ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+                                   .arg( QgsApplication::profiler()->data( idx, static_cast< int >( QgsRuntimeProfilerNode::CustomRole::Group ) ).toString() )
+                                   .arg( QgsApplication::profiler()->data( idx, static_cast< int >( QgsRuntimeProfilerNode::CustomRole::Name ) ).toString() )
+                                   .arg( QString::number( QgsApplication::profiler()->data( idx, static_cast< int >( QgsRuntimeProfilerNode::CustomRole::Elapsed ) ).toDouble() * 1000.0 ) ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
 
         for ( int subRow = 0; subRow < QgsApplication::profiler()->rowCount( idx ); subRow++ )
         {
@@ -617,4 +623,3 @@ void QgsServer::initPython()
   }
 }
 #endif
-

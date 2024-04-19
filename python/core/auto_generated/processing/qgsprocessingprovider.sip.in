@@ -16,21 +16,12 @@ Abstract base class for processing providers.
 
 An algorithm provider is a set of related algorithms, typically from the same external application or related
 to a common area of analysis.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgsprocessingprovider.h"
 %End
   public:
-
-    enum Flag
-    {
-      FlagDeemphasiseSearchResults,
-    };
-    typedef QFlags<QgsProcessingProvider::Flag> Flags;
-
 
     QgsProcessingProvider( QObject *parent /TransferThis/ = 0 );
 %Docstring
@@ -54,7 +45,7 @@ Returns a path to an SVG version of the provider's icon.
 .. seealso:: :py:func:`icon`
 %End
 
-    virtual Flags flags() const /HoldGIL/;
+    virtual Qgis::ProcessingProviderFlags flags() const /HoldGIL/;
 %Docstring
 Returns the flags indicating how and when the provider operates and should be exposed to users.
 Default is no flags.
@@ -393,9 +384,6 @@ Adds an ``algorithm`` to the provider. Ownership of the algorithm is transferred
   private:
     QgsProcessingProvider( const QgsProcessingProvider &other );
 };
-
-QFlags<QgsProcessingProvider::Flag> operator|(QgsProcessingProvider::Flag f1, QFlags<QgsProcessingProvider::Flag> f2);
-
 
 
 

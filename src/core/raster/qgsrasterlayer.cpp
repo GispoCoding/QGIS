@@ -525,9 +525,9 @@ QString QgsRasterLayer::htmlMetadata() const
       myMetadata += tr( "n/a" );
     myMetadata += QLatin1String( "</td>" );
 
-    if ( provider->hasStatistics( i, QgsRasterBandStats::Min | QgsRasterBandStats::Max, provider->extent(), static_cast<int>( SAMPLE_SIZE ) ) )
+    if ( provider->hasStatistics( i, Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max, provider->extent(), static_cast<int>( SAMPLE_SIZE ) ) )
     {
-      const QgsRasterBandStats myRasterBandStats = provider->bandStatistics( i, QgsRasterBandStats::Min | QgsRasterBandStats::Max, provider->extent(), static_cast<int>( SAMPLE_SIZE ) );
+      const QgsRasterBandStats myRasterBandStats = provider->bandStatistics( i, Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max, provider->extent(), static_cast<int>( SAMPLE_SIZE ) );
       myMetadata += QStringLiteral( "<td>" ) % QString::number( myRasterBandStats.minimumValue, 'f', 10 ) % QStringLiteral( "</td>" ) %
                     QStringLiteral( "<td>" ) % QString::number( myRasterBandStats.maximumValue, 'f', 10 ) % QStringLiteral( "</td>" );
     }
@@ -1218,9 +1218,9 @@ void QgsRasterLayer::computeMinMax( int band,
 
   if ( limits == QgsRasterMinMaxOrigin::MinMax )
   {
-    QgsRasterBandStats myRasterBandStats = mDataProvider->bandStatistics( band, QgsRasterBandStats::Min | QgsRasterBandStats::Max, extent, sampleSize );
+    QgsRasterBandStats myRasterBandStats = mDataProvider->bandStatistics( band, Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max, extent, sampleSize );
     // Check if statistics were actually gathered, None means a failure
-    if ( myRasterBandStats.statsGathered == QgsRasterBandStats::Stats::None )
+    if ( myRasterBandStats.statsGathered == static_cast< int >( Qgis::RasterBandStatistic::NoStatistic ) )
     {
       // Best guess we can do
       switch ( mDataProvider->dataType( band ) )
@@ -1291,7 +1291,7 @@ void QgsRasterLayer::computeMinMax( int band,
   }
   else if ( limits == QgsRasterMinMaxOrigin::StdDev )
   {
-    const QgsRasterBandStats myRasterBandStats = mDataProvider->bandStatistics( band, QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev, extent, sampleSize );
+    const QgsRasterBandStats myRasterBandStats = mDataProvider->bandStatistics( band, Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev, extent, sampleSize );
     min = myRasterBandStats.mean - ( mmo.stdDevFactor() * myRasterBandStats.stdDev );
     max = myRasterBandStats.mean + ( mmo.stdDevFactor() * myRasterBandStats.stdDev );
   }
@@ -1369,7 +1369,7 @@ void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnh
     {
       return;
     }
-    myBands << myGrayRenderer->grayBand();
+    myBands << myGrayRenderer->inputBand();
     myRasterRenderer = myGrayRenderer;
     myMinMaxOrigin = myGrayRenderer->minMaxOrigin();
   }
@@ -1391,7 +1391,7 @@ void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnh
     {
       return;
     }
-    myBands << myPseudoColorRenderer->band();
+    myBands << myPseudoColorRenderer->inputBand();
     myRasterRenderer = myPseudoColorRenderer;
     myMinMaxOrigin = myPseudoColorRenderer->minMaxOrigin();
   }
@@ -1442,7 +1442,7 @@ void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnh
           QgsColorRampShader *colorRampShader = dynamic_cast<QgsColorRampShader *>( myPseudoColorRenderer->shader()->rasterShaderFunction() );
           if ( colorRampShader )
           {
-            colorRampShader->classifyColorRamp( myPseudoColorRenderer->band(), extent, myPseudoColorRenderer->input() );
+            colorRampShader->classifyColorRamp( myPseudoColorRenderer->inputBand(), extent, myPseudoColorRenderer->input() );
           }
         }
       }
@@ -1573,7 +1573,7 @@ void QgsRasterLayer::refreshRenderer( QgsRasterRenderer *rasterRenderer, const Q
       mLastRectangleUsedByRefreshContrastEnhancementIfNeeded = extent;
       double min;
       double max;
-      computeMinMax( sbpcr->band(),
+      computeMinMax( sbpcr->inputBand(),
                      rasterRenderer->minMaxOrigin(),
                      rasterRenderer->minMaxOrigin().limits(), extent,
                      static_cast<int>( SAMPLE_SIZE ), min, max );
@@ -1585,7 +1585,7 @@ void QgsRasterLayer::refreshRenderer( QgsRasterRenderer *rasterRenderer, const Q
         QgsColorRampShader *colorRampShader = dynamic_cast<QgsColorRampShader *>( sbpcr->shader()->rasterShaderFunction() );
         if ( colorRampShader )
         {
-          colorRampShader->classifyColorRamp( sbpcr->band(), extent, rasterRenderer->input() );
+          colorRampShader->classifyColorRamp( sbpcr->inputBand(), extent, rasterRenderer->input() );
         }
       }
 
@@ -1598,7 +1598,7 @@ void QgsRasterLayer::refreshRenderer( QgsRasterRenderer *rasterRenderer, const Q
         QgsColorRampShader *colorRampShader = dynamic_cast<QgsColorRampShader *>( r->shader()->rasterShaderFunction() );
         if ( colorRampShader )
         {
-          colorRampShader->classifyColorRamp( sbpcr->band(), extent, rasterRenderer->input() );
+          colorRampShader->classifyColorRamp( sbpcr->inputBand(), extent, rasterRenderer->input() );
         }
       }
 
@@ -1849,17 +1849,19 @@ bool QgsRasterLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &error
       userStyleElem.appendChild( nameElem );
     }
 
-    if ( !abstract().isEmpty() )
+    const QString abstract = !metadata().abstract().isEmpty() ? metadata().abstract() : serverProperties()->abstract();
+    if ( !abstract.isEmpty() )
     {
       QDomElement abstractElem = doc.createElement( QStringLiteral( "sld:Abstract" ) );
-      abstractElem.appendChild( doc.createTextNode( abstract() ) );
+      abstractElem.appendChild( doc.createTextNode( abstract ) );
       userStyleElem.appendChild( abstractElem );
     }
 
-    if ( !title().isEmpty() )
+    const QString title = !metadata().title().isEmpty() ? metadata().title() : serverProperties()->title();
+    if ( !title.isEmpty() )
     {
       QDomElement titleElem = doc.createElement( QStringLiteral( "sld:Title" ) );
-      titleElem.appendChild( doc.createTextNode( title() ) );
+      titleElem.appendChild( doc.createTextNode( title ) );
       userStyleElem.appendChild( titleElem );
     }
 

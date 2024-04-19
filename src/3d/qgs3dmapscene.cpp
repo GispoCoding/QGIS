@@ -72,7 +72,7 @@
 #include "qgs3dsceneexporter.h"
 #include "qgs3dmapexportsettings.h"
 #include "qgsmessageoutput.h"
-#include "qgsshadowrenderingframegraph.h"
+#include "qgsframegraph.h"
 
 #include "qgsskyboxentity.h"
 #include "qgsskyboxsettings.h"
@@ -698,6 +698,8 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
         connect( sceneNewEntity, &Qgs3DMapSceneEntity::newEntityCreated, this, [this]( Qt3DCore::QEntity * entity )
         {
           finalizeNewEntity( entity );
+          // this ensures to update the near/far planes with the exact bounding box of the new entity.
+          updateCameraNearFarPlanes();
         } );
 
         connect( sceneNewEntity, &Qgs3DMapSceneEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
@@ -792,7 +794,7 @@ void Qgs3DMapScene::finalizeNewEntity( Qt3DCore::QEntity *newEntity )
   }
 
   // Finalize adding the 3D transparent objects by adding the layer components to the entities
-  QgsShadowRenderingFrameGraph *frameGraph = mEngine->frameGraph();
+  QgsFrameGraph *frameGraph = mEngine->frameGraph();
   Qt3DRender::QLayer *transparentLayer = frameGraph->transparentObjectLayer();
   const QList< Qt3DRender::QMaterial *> childMaterials = newEntity->findChildren<Qt3DRender::QMaterial *>();
   for ( Qt3DRender::QMaterial *material : childMaterials )
@@ -945,7 +947,7 @@ void Qgs3DMapScene::onSkyboxSettingsChanged()
 
 void Qgs3DMapScene::onShadowSettingsChanged()
 {
-  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
+  QgsFrameGraph *frameGraph = mEngine->frameGraph();
 
   const QList< QgsLightSource * > lightSources = mMap.lightSources();
   QList< QgsDirectionalLightSettings * > directionalLightSources;
@@ -961,52 +963,47 @@ void Qgs3DMapScene::onShadowSettingsChanged()
   int selectedLight = shadowSettings.selectedDirectionalLight();
   if ( shadowSettings.renderShadows() && selectedLight >= 0 && selectedLight < directionalLightSources.count() )
   {
-    shadowRenderingFrameGraph->setShadowRenderingEnabled( true );
-    shadowRenderingFrameGraph->setShadowBias( shadowSettings.shadowBias() );
-    shadowRenderingFrameGraph->setShadowMapResolution( shadowSettings.shadowMapResolution() );
+    frameGraph->setShadowRenderingEnabled( true );
+    frameGraph->setShadowBias( shadowSettings.shadowBias() );
+    frameGraph->setShadowMapResolution( shadowSettings.shadowMapResolution() );
     QgsDirectionalLightSettings light = *directionalLightSources.at( selectedLight );
-    shadowRenderingFrameGraph->setupDirectionalLight( light, shadowSettings.maximumShadowRenderingDistance() );
+    frameGraph->setupDirectionalLight( light, shadowSettings.maximumShadowRenderingDistance() );
   }
   else
-    shadowRenderingFrameGraph->setShadowRenderingEnabled( false );
+    frameGraph->setShadowRenderingEnabled( false );
 }
 
 void Qgs3DMapScene::onAmbientOcclusionSettingsChanged()
 {
-  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
+  QgsFrameGraph *frameGraph = mEngine->frameGraph();
   QgsAmbientOcclusionSettings ambientOcclusionSettings = mMap.ambientOcclusionSettings();
-  shadowRenderingFrameGraph->setAmbientOcclusionEnabled( ambientOcclusionSettings.isEnabled() );
-  shadowRenderingFrameGraph->setAmbientOcclusionRadius( ambientOcclusionSettings.radius() );
-  shadowRenderingFrameGraph->setAmbientOcclusionIntensity( ambientOcclusionSettings.intensity() );
-  shadowRenderingFrameGraph->setAmbientOcclusionThreshold( ambientOcclusionSettings.threshold() );
+  frameGraph->setAmbientOcclusionEnabled( ambientOcclusionSettings.isEnabled() );
+  frameGraph->setAmbientOcclusionRadius( ambientOcclusionSettings.radius() );
+  frameGraph->setAmbientOcclusionIntensity( ambientOcclusionSettings.intensity() );
+  frameGraph->setAmbientOcclusionThreshold( ambientOcclusionSettings.threshold() );
 }
 
 void Qgs3DMapScene::onDebugShadowMapSettingsChanged()
 {
-  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
-  shadowRenderingFrameGraph->setupShadowMapDebugging( mMap.debugShadowMapEnabled(), mMap.debugShadowMapCorner(), mMap.debugShadowMapSize() );
+  mEngine->frameGraph()->setupShadowMapDebugging( mMap.debugShadowMapEnabled(), mMap.debugShadowMapCorner(), mMap.debugShadowMapSize() );
 }
 
 void Qgs3DMapScene::onDebugDepthMapSettingsChanged()
 {
-  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
-  shadowRenderingFrameGraph->setupDepthMapDebugging( mMap.debugDepthMapEnabled(), mMap.debugDepthMapCorner(), mMap.debugDepthMapSize() );
+  mEngine->frameGraph()->setupDepthMapDebugging( mMap.debugDepthMapEnabled(), mMap.debugDepthMapCorner(), mMap.debugDepthMapSize() );
 }
 
 void Qgs3DMapScene::onDebugOverlayEnabledChanged()
 {
-  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
-  shadowRenderingFrameGraph->setDebugOverlayEnabled( mMap.isDebugOverlayEnabled() );
+  mEngine->frameGraph()->setDebugOverlayEnabled( mMap.isDebugOverlayEnabled() );
 }
 
 void Qgs3DMapScene::onEyeDomeShadingSettingsChanged()
 {
-  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
-
   bool edlEnabled = mMap.eyeDomeLightingEnabled();
   double edlStrength = mMap.eyeDomeLightingStrength();
   double edlDistance = mMap.eyeDomeLightingDistance();
-  shadowRenderingFrameGraph->setupEyeDomeLighting( edlEnabled, edlStrength, edlDistance );
+  mEngine->frameGraph()->setupEyeDomeLighting( edlEnabled, edlStrength, edlDistance );
 }
 
 void Qgs3DMapScene::onCameraMovementSpeedChanged()
@@ -1160,23 +1157,21 @@ void Qgs3DMapScene::addCameraRotationCenterEntity( QgsCameraController *controll
 {
   mEntityRotationCenter = new Qt3DCore::QEntity;
 
-  Qt3DCore::QTransform *trCameraViewCenter = new Qt3DCore::QTransform;
-  mEntityRotationCenter->addComponent( trCameraViewCenter );
-  Qt3DExtras::QPhongMaterial *materialCameraViewCenter = new Qt3DExtras::QPhongMaterial;
-  materialCameraViewCenter->setAmbient( Qt::blue );
-  mEntityRotationCenter->addComponent( materialCameraViewCenter );
-  Qt3DExtras::QSphereMesh *rendererCameraViewCenter = new Qt3DExtras::QSphereMesh;
-  rendererCameraViewCenter->setRadius( 10 );
-  mEntityRotationCenter->addComponent( rendererCameraViewCenter );
-  mEntityRotationCenter->setEnabled( true );
+  Qt3DCore::QTransform *trRotationCenter = new Qt3DCore::QTransform;
+  mEntityRotationCenter->addComponent( trRotationCenter );
+  Qt3DExtras::QPhongMaterial *materialRotationCenter = new Qt3DExtras::QPhongMaterial;
+  materialRotationCenter->setAmbient( Qt::blue );
+  mEntityRotationCenter->addComponent( materialRotationCenter );
+  Qt3DExtras::QSphereMesh *rendererRotationCenter = new Qt3DExtras::QSphereMesh;
+  rendererRotationCenter->setRadius( 10 );
+  mEntityRotationCenter->addComponent( rendererRotationCenter );
+  mEntityRotationCenter->setEnabled( false );
   mEntityRotationCenter->setParent( this );
 
-  connect( controller, &QgsCameraController::cameraRotationCenterChanged, this, [trCameraViewCenter]( QVector3D center )
+  connect( controller, &QgsCameraController::cameraRotationCenterChanged, this, [trRotationCenter]( QVector3D center )
   {
-    trCameraViewCenter->setTranslation( center );
+    trRotationCenter->setTranslation( center );
   } );
-
-  mEntityRotationCenter->setEnabled( mMap.showCameraRotationCenter() );
 
   connect( &mMap, &Qgs3DMapSettings::showCameraRotationCenterChanged, this, [this]
   {

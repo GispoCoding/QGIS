@@ -49,6 +49,7 @@
 #include "qgsrastertransparency.h"
 #include "qgssinglebandgrayrendererwidget.h"
 #include "qgssinglebandpseudocolorrendererwidget.h"
+#include "qgsrastersinglecolorrendererwidget.h"
 #include "qgshuesaturationfilter.h"
 #include "qgshillshaderendererwidget.h"
 #include "qgssettings.h"
@@ -462,6 +463,7 @@ QgsRasterLayerProperties::QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanv
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "singlebandgray" ), QgsSingleBandGrayRendererWidget::create );
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "hillshade" ), QgsHillshadeRendererWidget::create );
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "contour" ), QgsRasterContourRendererWidget::create );
+  QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "singlecolor" ), QgsRasterSingleColorRendererWidget::create );
 
   //fill available renderers into combo box
   QgsRasterRendererRegistryEntry entry;
@@ -527,7 +529,7 @@ QgsRasterLayerProperties::QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanv
 
 #endif
 
-  initializeDataDefinedButton( mRasterTransparencyWidget->mOpacityDDBtn, QgsRasterPipe::RendererOpacity );
+  initializeDataDefinedButton( mRasterTransparencyWidget->mOpacityDDBtn, QgsRasterPipe::Property::RendererOpacity );
 
   mRenderTypeComboBox_currentIndexChanged( widgetIndex );
 
@@ -659,6 +661,7 @@ void QgsRasterLayerProperties::setRendererWidget( const QString &rendererName )
   int alphaBand = -1;
   double opacity = 1;
   QColor nodataColor;
+  const QList<int> oldBands = oldRenderer ? oldRenderer->usesBands() : QList<int>();
   if ( oldRenderer )
   {
     // Retain alpha band and opacity when switching renderer
@@ -697,11 +700,8 @@ void QgsRasterLayerProperties::setRendererWidget( const QString &rendererName )
       if ( oldWidget )
       {
         //compare used bands in new and old renderer and reset transparency dialog if different
-        std::unique_ptr<QgsRasterRenderer> oldRenderer;
-        oldRenderer.reset( oldWidget->renderer() );
         std::unique_ptr<QgsRasterRenderer> newRenderer;
         newRenderer.reset( mRendererWidget->renderer() );
-        const QList<int> oldBands = oldRenderer->usesBands();
         const QList<int> newBands = newRenderer->usesBands();
         if ( oldBands != newBands )
         {
@@ -844,25 +844,25 @@ void QgsRasterLayerProperties::sync()
   updateInformationContent();
 
   // WMS Name as layer short name
-  mLayerShortNameLineEdit->setText( mRasterLayer->shortName() );
+  mLayerShortNameLineEdit->setText( mRasterLayer->serverProperties()->shortName() );
   // WMS Name validator
   QValidator *shortNameValidator = new QRegularExpressionValidator( QgsApplication::shortNameRegularExpression(), this );
   mLayerShortNameLineEdit->setValidator( shortNameValidator );
 
   //layer title and abstract
-  mLayerTitleLineEdit->setText( mRasterLayer->title() );
-  mLayerAbstractTextEdit->setPlainText( mRasterLayer->abstract() );
-  mLayerKeywordListLineEdit->setText( mRasterLayer->keywordList() );
-  mLayerDataUrlLineEdit->setText( mRasterLayer->dataUrl() );
+  mLayerTitleLineEdit->setText( mRasterLayer->serverProperties()->title() );
+  mLayerAbstractTextEdit->setPlainText( mRasterLayer->serverProperties()->abstract() );
+  mLayerKeywordListLineEdit->setText( mRasterLayer->serverProperties()->keywordList() );
+  mLayerDataUrlLineEdit->setText( mRasterLayer->serverProperties()->dataUrl() );
   mLayerDataUrlFormatComboBox->setCurrentIndex(
     mLayerDataUrlFormatComboBox->findText(
-      mRasterLayer->dataUrlFormat()
+      mRasterLayer->serverProperties()->dataUrlFormat()
     )
   );
 
   //layer attribution
-  mLayerAttributionLineEdit->setText( mRasterLayer->attribution() );
-  mLayerAttributionUrlLineEdit->setText( mRasterLayer->attributionUrl() );
+  mLayerAttributionLineEdit->setText( mRasterLayer->serverProperties()->attribution() );
+  mLayerAttributionUrlLineEdit->setText( mRasterLayer->serverProperties()->attributionUrl() );
 
   // layer metadata url
   const QList<QgsMapLayerServerProperties::MetadataUrl> &metaUrls = mRasterLayer->serverProperties()->metadataUrls();
@@ -997,29 +997,31 @@ void QgsRasterLayerProperties::apply()
     QgsRasterTransparency *rasterTransparency = new QgsRasterTransparency();
     if ( mRasterTransparencyWidget->tableTransparency->columnCount() == 4 )
     {
-      QgsRasterTransparency::TransparentThreeValuePixel myTransparentPixel;
-      QList<QgsRasterTransparency::TransparentThreeValuePixel> myTransparentThreeValuePixelList;
+      QVector<QgsRasterTransparency::TransparentThreeValuePixel> myTransparentThreeValuePixelList;
       for ( int myListRunner = 0; myListRunner < mRasterTransparencyWidget->tableTransparency->rowCount(); myListRunner++ )
       {
-        myTransparentPixel.red = transparencyCellValue( myListRunner, 0 );
-        myTransparentPixel.green = transparencyCellValue( myListRunner, 1 );
-        myTransparentPixel.blue = transparencyCellValue( myListRunner, 2 );
-        myTransparentPixel.percentTransparent = transparencyCellValue( myListRunner, 3 );
-        myTransparentThreeValuePixelList.append( myTransparentPixel );
+        const double red = transparencyCellValue( myListRunner, 0 );
+        const double green = transparencyCellValue( myListRunner, 1 );
+        const double blue = transparencyCellValue( myListRunner, 2 );
+        const double opacity = 1.0 - transparencyCellValue( myListRunner, 3 ) / 100.0;
+        myTransparentThreeValuePixelList.append(
+          QgsRasterTransparency::TransparentThreeValuePixel( red, green, blue, opacity )
+        );
       }
       rasterTransparency->setTransparentThreeValuePixelList( myTransparentThreeValuePixelList );
     }
     else if ( mRasterTransparencyWidget->tableTransparency->columnCount() == 3 )
     {
-      QgsRasterTransparency::TransparentSingleValuePixel myTransparentPixel;
-      QList<QgsRasterTransparency::TransparentSingleValuePixel> myTransparentSingleValuePixelList;
+      QVector<QgsRasterTransparency::TransparentSingleValuePixel> myTransparentSingleValuePixelList;
       for ( int myListRunner = 0; myListRunner < mRasterTransparencyWidget->tableTransparency->rowCount(); myListRunner++ )
       {
-        myTransparentPixel.min = transparencyCellValue( myListRunner, 0 );
-        myTransparentPixel.max = transparencyCellValue( myListRunner, 1 );
-        myTransparentPixel.percentTransparent = transparencyCellValue( myListRunner, 2 );
+        const double min = transparencyCellValue( myListRunner, 0 );
+        const double max = transparencyCellValue( myListRunner, 1 );
+        const double opacity = 1.0 - transparencyCellValue( myListRunner, 2 ) / 100.0;
 
-        myTransparentSingleValuePixelList.append( myTransparentPixel );
+        myTransparentSingleValuePixelList.append(
+          QgsRasterTransparency::TransparentSingleValuePixel( min, max, opacity )
+        );
       }
       rasterTransparency->setTransparentSingleValuePixelList( myTransparentSingleValuePixelList );
     }
@@ -1073,38 +1075,38 @@ void QgsRasterLayerProperties::apply()
 
   mRasterLayer->setCrs( mCrsSelector->crs() );
 
-  if ( mRasterLayer->shortName() != mLayerShortNameLineEdit->text() )
+  if ( mRasterLayer->serverProperties()->shortName() != mLayerShortNameLineEdit->text() )
     mMetadataFilled = false;
-  mRasterLayer->setShortName( mLayerShortNameLineEdit->text() );
+  mRasterLayer->serverProperties()->setShortName( mLayerShortNameLineEdit->text() );
 
-  if ( mRasterLayer->title() != mLayerTitleLineEdit->text() )
+  if ( mRasterLayer->serverProperties()->title() != mLayerTitleLineEdit->text() )
     mMetadataFilled = false;
-  mRasterLayer->setTitle( mLayerTitleLineEdit->text() );
+  mRasterLayer->serverProperties()->setTitle( mLayerTitleLineEdit->text() );
 
-  if ( mRasterLayer->abstract() != mLayerAbstractTextEdit->toPlainText() )
+  if ( mRasterLayer->serverProperties()->abstract() != mLayerAbstractTextEdit->toPlainText() )
     mMetadataFilled = false;
-  mRasterLayer->setAbstract( mLayerAbstractTextEdit->toPlainText() );
+  mRasterLayer->serverProperties()->setAbstract( mLayerAbstractTextEdit->toPlainText() );
 
-  if ( mRasterLayer->keywordList() != mLayerKeywordListLineEdit->text() )
+  if ( mRasterLayer->serverProperties()->keywordList() != mLayerKeywordListLineEdit->text() )
     mMetadataFilled = false;
-  mRasterLayer->setKeywordList( mLayerKeywordListLineEdit->text() );
+  mRasterLayer->serverProperties()->setKeywordList( mLayerKeywordListLineEdit->text() );
 
-  if ( mRasterLayer->dataUrl() != mLayerDataUrlLineEdit->text() )
+  if ( mRasterLayer->serverProperties()->dataUrl() != mLayerDataUrlLineEdit->text() )
     mMetadataFilled = false;
-  mRasterLayer->setDataUrl( mLayerDataUrlLineEdit->text() );
+  mRasterLayer->serverProperties()->setDataUrl( mLayerDataUrlLineEdit->text() );
 
-  if ( mRasterLayer->dataUrlFormat() != mLayerDataUrlFormatComboBox->currentText() )
+  if ( mRasterLayer->serverProperties()->dataUrlFormat() != mLayerDataUrlFormatComboBox->currentText() )
     mMetadataFilled = false;
-  mRasterLayer->setDataUrlFormat( mLayerDataUrlFormatComboBox->currentText() );
+  mRasterLayer->serverProperties()->setDataUrlFormat( mLayerDataUrlFormatComboBox->currentText() );
 
   //layer attribution
-  if ( mRasterLayer->attribution() != mLayerAttributionLineEdit->text() )
+  if ( mRasterLayer->serverProperties()->attribution() != mLayerAttributionLineEdit->text() )
     mMetadataFilled = false;
-  mRasterLayer->setAttribution( mLayerAttributionLineEdit->text() );
+  mRasterLayer->serverProperties()->setAttribution( mLayerAttributionLineEdit->text() );
 
-  if ( mRasterLayer->attributionUrl() != mLayerAttributionUrlLineEdit->text() )
+  if ( mRasterLayer->serverProperties()->attributionUrl() != mLayerAttributionUrlLineEdit->text() )
     mMetadataFilled = false;
-  mRasterLayer->setAttributionUrl( mLayerAttributionUrlLineEdit->text() );
+  mRasterLayer->serverProperties()->setAttributionUrl( mLayerAttributionUrlLineEdit->text() );
 
   // Metadata URL
   QList<QgsMapLayerServerProperties::MetadataUrl> metaUrls;
@@ -1472,7 +1474,7 @@ void QgsRasterLayerProperties::optionsStackedWidget_CurrentChanged( int index )
 void QgsRasterLayerProperties::initializeDataDefinedButton( QgsPropertyOverrideButton *button, QgsRasterPipe::Property key )
 {
   button->blockSignals( true );
-  button->init( key, mPropertyCollection, QgsRasterPipe::propertyDefinitions(), nullptr );
+  button->init( static_cast< int >( key ), mPropertyCollection, QgsRasterPipe::propertyDefinitions(), nullptr );
   connect( button, &QgsPropertyOverrideButton::changed, this, &QgsRasterLayerProperties::updateProperty );
   button->registerExpressionContextGenerator( this );
   button->blockSignals( false );

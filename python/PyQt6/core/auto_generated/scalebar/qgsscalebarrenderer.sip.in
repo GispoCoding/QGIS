@@ -16,8 +16,6 @@ Abstract base class for scale bar renderers.
 
 Scalebar renderer subclasses implement custom drawing logic, with the possibility to implement
 custom labeling.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -25,7 +23,7 @@ custom labeling.
 %End
   public:
 
-    enum class Flag
+    enum class Flag /BaseType=IntFlag/
     {
       FlagUsesLineSymbol,
       FlagUsesFillSymbol,

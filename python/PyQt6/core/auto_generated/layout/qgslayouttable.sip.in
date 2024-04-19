@@ -26,8 +26,6 @@ class QgsLayoutTableStyle
 {
 %Docstring(signature="appended")
 Styling option for a layout table cell
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -70,8 +68,6 @@ class QgsLayoutTable: QgsLayoutMultiFrame
 %Docstring(signature="appended")
 A class to display a table in the print layout, and allow
 the table to span over multiple frames
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -79,7 +75,7 @@ the table to span over multiple frames
 %End
   public:
 
-    enum HeaderHAlignment
+    enum HeaderHAlignment /BaseType=IntEnum/
     {
       FollowColumn,
       HeaderLeft,
@@ -87,27 +83,27 @@ the table to span over multiple frames
       HeaderRight
     };
 
-    enum HeaderMode
+    enum HeaderMode /BaseType=IntEnum/
     {
       FirstFrame,
       AllFrames,
       NoHeaders
     };
 
-    enum EmptyTableMode
+    enum EmptyTableMode /BaseType=IntEnum/
     {
       HeadersOnly,
       HideTable,
       ShowMessage
     };
 
-    enum WrapBehavior
+    enum WrapBehavior /BaseType=IntEnum/
     {
       TruncateText,
       WrapText
     };
 
-    enum CellStyleGroup
+    enum CellStyleGroup /BaseType=IntEnum/
     {
       OddColumns,
       EvenColumns,

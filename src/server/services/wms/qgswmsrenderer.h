@@ -63,7 +63,6 @@ namespace QgsWms
    * \ingroup server
    * \class QgsWms::QgsRenderer
    * \brief Map renderer for WMS requests
-   * \since QGIS 3.0
    */
   class QgsRenderer
   {
@@ -139,7 +138,6 @@ namespace QgsWms
       /**
        * Returns the map as DXF data
        * \returns the map as DXF data
-       * \since QGIS 3.0
       */
       std::unique_ptr<QgsDxfExport> getDxf();
 
@@ -325,7 +323,7 @@ namespace QgsWms
       QByteArray convertFeatureInfoToText( const QDomDocument &doc ) const;
 
       //! Converts a feature info xml document to json
-      QByteArray convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc ) const;
+      QByteArray convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc, const QgsCoordinateReferenceSystem &destCRS ) const;
 
       QDomElement createFeatureGML(
         const QgsFeature *feat,

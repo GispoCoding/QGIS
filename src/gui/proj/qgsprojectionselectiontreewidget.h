@@ -20,8 +20,43 @@
 #include "qgis_gui.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatereferencesystemmodel.h"
+#include "qgsrecentcoordinatereferencesystemsmodel.h"
+
+#include <QIdentityProxyModel>
+#include <QStyledItemDelegate>
 
 class QResizeEvent;
+class QTreeWidgetItem;
+
+///@cond PRIVATE
+// proxy to expand base recent crs model to three column model
+class QgsRecentCoordinateReferenceSystemTableModel : public QgsRecentCoordinateReferenceSystemsProxyModel SIP_SKIP
+{
+    Q_OBJECT
+  public:
+    QgsRecentCoordinateReferenceSystemTableModel( QObject *parent );
+    QVariant headerData( int section, Qt::Orientation orientation, int role ) const override;
+    QVariant data( const QModelIndex &index, int role ) const override;
+};
+
+class RemoveRecentCrsDelegate : public QStyledItemDelegate SIP_SKIP
+{
+    Q_OBJECT
+
+  public:
+    RemoveRecentCrsDelegate( QObject *parent );
+    bool eventFilter( QObject *obj, QEvent *event ) override;
+  protected:
+    void paint( QPainter *painter,
+                const QStyleOptionViewItem &option, const QModelIndex &index ) const override;
+  private:
+    void setHoveredIndex( const QModelIndex &index );
+
+    QModelIndex mHoveredIndex;
+};
+
+
+///@endcond PRIVATE
 
 /**
  * \class QgsProjectionSelectionTreeWidget
@@ -34,7 +69,6 @@ class QResizeEvent;
  *
  * \see QgsProjectionSelectionDialog.
  * \see QgsProjectionSelectionWidget
- * \since QGIS 3.0
  */
 
 class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::QgsProjectionSelectorBase
@@ -58,7 +92,6 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
     /**
      * Returns the CRS currently selected in the widget.
      * \see setCrs()
-     * \since QGIS 3.0
      */
     QgsCoordinateReferenceSystem crs() const;
 
@@ -66,14 +99,12 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
      * Sets whether a "no/invalid" projection option should be shown. If this
      * option is selected, calling crs() will return an invalid QgsCoordinateReferenceSystem.
      * \see showNoProjection()
-     * \since QGIS 3.0
      */
     void setShowNoProjection( bool show );
 
     /**
      * Sets whether to show the bounds preview map.
      * \see showBoundsMap()
-     * \since QGIS 3.0
      */
     void setShowBoundsMap( bool show );
 
@@ -81,7 +112,6 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
      * Returns whether the "no/invalid" projection option is shown. If this
      * option is selected, calling crs() will return an invalid QgsCoordinateReferenceSystem.
      * \see setShowNoProjection()
-     * \since QGIS 3.0
      */
     bool showNoProjection() const;
 
@@ -95,7 +125,6 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
     /**
      * Returns whether the bounds preview map is shown.
      * \see setShowBoundsMap()
-     * \since QGIS 3.0
      */
     bool showBoundsMap() const;
 
@@ -110,7 +139,6 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
     /**
      * The initial "preview" rectangle for the bounds overview map.
      * \see previewRect()
-     * \since QGIS 3.0
      */
     QgsRectangle previewRect() const;
 
@@ -135,14 +163,12 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
     /**
      * Sets the initial \a crs to show within the dialog.
      * \see crs()
-     * \since QGIS 3.0
      */
     void setCrs( const QgsCoordinateReferenceSystem &crs );
 
     /**
      * Sets the initial "preview" rectangle for the bounds overview map.
      * \see previewRect()
-     * \since QGIS 3.0
      */
     void setPreviewRect( const QgsRectangle &rect );
 
@@ -186,7 +212,6 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
 
     /**
      * Emitted when a projection is double clicked in the list.
-     * \since QGIS 2.14
      */
     void projectionDoubleClicked();
 
@@ -219,14 +244,9 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
     };
 
     QgsCoordinateReferenceSystemProxyModel *mCrsModel = nullptr;
+    QgsRecentCoordinateReferenceSystemTableModel *mRecentCrsModel = nullptr;
 
-    //! add recently used CRS
-    void insertRecent( const QgsCoordinateReferenceSystem &crs );
-
-    enum Columns { NameColumn, AuthidColumn, QgisCrsIdColumn, ClearColumn };
-
-    //! Most recently used projections
-    QList< QgsCoordinateReferenceSystem > mRecentProjections;
+    enum Columns { NameColumn, AuthidColumn, ClearColumn };
 
     bool mShowMap = true;
 
@@ -238,12 +258,12 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
 
     //! Apply projection on double-click
     void lstCoordinateSystemsDoubleClicked( const QModelIndex &index );
-    void lstRecent_itemDoubleClicked( QTreeWidgetItem *current, int column );
+    void lstRecentDoubleClicked( const QModelIndex &index );
+    void lstRecentClicked( const QModelIndex &index );
     void lstCoordinateSystemsSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
-    void lstRecent_currentItemChanged( QTreeWidgetItem *current, QTreeWidgetItem *prev );
-    void filterRecentCrsList();
+    void lstRecentSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
 
-    void removeRecentCrsItem( QTreeWidgetItem *item );
+    void removeRecentCrsItem( const QModelIndex &index );
 };
 
 #endif

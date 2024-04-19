@@ -23,7 +23,6 @@
 #include "qgsprocessingparameters.h"
 #include "qgsprocessingoutputs.h"
 #include "qgsprocessingcontext.h"
-#include "qgsfeaturesource.h"
 #include "qgsprocessingutils.h"
 #include <QString>
 #include <QVariant>
@@ -47,7 +46,6 @@ class QgsPointCloudLayer;
  * \class QgsProcessingAlgorithm
  * \ingroup core
  * \brief Abstract base class for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingAlgorithm
 {
@@ -64,27 +62,6 @@ class CORE_EXPORT QgsProcessingAlgorithm
 #endif
 
   public:
-
-    //! Flags indicating how and when an algorithm operates and should be exposed to users
-    enum Flag
-    {
-      FlagHideFromToolbox = 1 << 1, //!< Algorithm should be hidden from the toolbox
-      FlagHideFromModeler = 1 << 2, //!< Algorithm should be hidden from the modeler
-      FlagSupportsBatch = 1 << 3,  //!< Algorithm supports batch mode
-      FlagCanCancel = 1 << 4, //!< Algorithm can be canceled
-      FlagRequiresMatchingCrs = 1 << 5, //!< Algorithm requires that all input layers have matching coordinate reference systems
-      FlagNoThreading = 1 << 6, //!< Algorithm is not thread safe and cannot be run in a background thread, e.g. for algorithms which manipulate the current project, layer selections, or with external dependencies which are not thread-safe.
-      FlagDisplayNameIsLiteral = 1 << 7, //!< Algorithm's display name is a static literal string, and should not be translated or automatically formatted. For use with algorithms named after commands, e.g. GRASS 'v.in.ogr'.
-      FlagSupportsInPlaceEdits = 1 << 8, //!< Algorithm supports in-place editing
-      FlagKnownIssues = 1 << 9, //!< Algorithm has known issues
-      FlagCustomException = 1 << 10, //!< Algorithm raises custom exception notices, don't use the standard ones
-      FlagPruneModelBranchesBasedOnAlgorithmResults = 1 << 11, //!< Algorithm results will cause remaining model branches to be pruned based on the results of running the algorithm
-      FlagSkipGenericModelLogging = 1 << 12, //!< When running as part of a model, the generic algorithm setup and results logging should be skipped
-      FlagNotAvailableInStandaloneTool = 1 << 13, //!< Algorithm should not be available from the standalone "qgis_process" tool. Used to flag algorithms which make no sense outside of the QGIS application, such as "select by..." style algorithms.
-      FlagRequiresProject = 1 << 14, //!< The algorithm requires that a valid QgsProject is available from the processing context in order to execute
-      FlagDeprecated = FlagHideFromToolbox | FlagHideFromModeler, //!< Algorithm is deprecated
-    };
-    Q_DECLARE_FLAGS( Flags, Flag )
 
     /**
      * Constructor for QgsProcessingAlgorithm.
@@ -237,7 +214,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * Returns the flags indicating how and when the algorithm operates and should be exposed to users.
      * Default flags are FlagSupportsBatch and FlagCanCancel.
      */
-    virtual Flags flags() const SIP_HOLDGIL;
+    virtual Qgis::ProcessingAlgorithmFlags flags() const SIP_HOLDGIL;
 
     /**
      * Returns TRUE if the algorithm can execute. Algorithm subclasses can return FALSE
@@ -318,15 +295,6 @@ class CORE_EXPORT QgsProcessingAlgorithm
      */
     bool hasHtmlOutputs() const SIP_HOLDGIL;
 
-    /**
-     * Property availability, used for QgsProcessingAlgorithm::VectorProperties
-     * in order to determine if properties are available or not
-     */
-    enum PropertyAvailability
-    {
-      NotAvailable, //!< Properties are not available
-      Available, //!< Properties are available
-    };
 
     /**
      * Properties of a vector source or sink used in an algorithm.
@@ -345,7 +313,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
       QgsCoordinateReferenceSystem crs;
 
       //! Availability of the properties. By default properties are not available.
-      QgsProcessingAlgorithm::PropertyAvailability availability = QgsProcessingAlgorithm::NotAvailable;
+      Qgis::ProcessingPropertyAvailability availability = Qgis::ProcessingPropertyAvailability::NotAvailable;
     };
 
     /**
@@ -1142,8 +1110,6 @@ class CORE_EXPORT QgsProcessingAlgorithm
 #endif
 
 };
-Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProcessingAlgorithm::Flags )
-
 
 
 /**
@@ -1166,7 +1132,6 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProcessingAlgorithm::Flags )
  * (for instance allowing automatic multi-thread processing of the algorithm, or use of the
  * algorithm in "chains", avoiding the need for temporary outputs in multi-step models).
  *
- * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsProcessingFeatureBasedAlgorithm : public QgsProcessingAlgorithm
@@ -1178,7 +1143,7 @@ class CORE_EXPORT QgsProcessingFeatureBasedAlgorithm : public QgsProcessingAlgor
       */
     QgsProcessingFeatureBasedAlgorithm() = default;
 
-    QgsProcessingAlgorithm::Flags flags() const override SIP_HOLDGIL;
+    Qgis::ProcessingAlgorithmFlags flags() const override SIP_HOLDGIL;
 
     /**
      * Processes an individual input \a feature from the source. Algorithms should implement their
@@ -1245,12 +1210,12 @@ class CORE_EXPORT QgsProcessingFeatureBasedAlgorithm : public QgsProcessingAlgor
      * Returns the layer type for layers generated by this algorithm, if
      * this is possible to determine in advance.
      */
-    virtual QgsProcessing::SourceType outputLayerType() const SIP_HOLDGIL;
+    virtual Qgis::ProcessingSourceType outputLayerType() const SIP_HOLDGIL;
 
     /**
      * Returns the processing feature source flags to be used in the algorithm.
      */
-    virtual QgsProcessingFeatureSource::Flag sourceFlags() const SIP_HOLDGIL;
+    virtual Qgis::ProcessingFeatureSourceFlags sourceFlags() const SIP_HOLDGIL;
 
     /**
      * Returns the feature sink flags to be used for the output.

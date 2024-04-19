@@ -15,8 +15,6 @@ class QgsLayoutItemPage : QgsLayoutItem
 {
 %Docstring(signature="appended")
 Item representing the paper in a layout.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -24,13 +22,13 @@ Item representing the paper in a layout.
 %End
   public:
 
-    enum Orientation
+    enum Orientation /BaseType=IntEnum/
     {
       Portrait,
       Landscape
     };
 
-    enum UndoCommand
+    enum UndoCommand /BaseType=IntEnum/
     {
       UndoPageSymbol,
     };

@@ -48,7 +48,7 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Flag to determine what should be loaded
      * \since QGIS 3.14
      */
-    enum Flag
+    enum Flag SIP_ENUM_BASETYPE( IntFlag )
     {
       LoadNothing = 0, //!< Do not load anything
       LoadRecent = 1 << 1, //!< Load recent expressions given the collection key
@@ -102,7 +102,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
 
     /**
      * Loads field names and values from the specified map.
-     *  \since QGIS 2.12
      * \deprecated since QGIS 3.14 this will not do anything, use setLayer() instead
      */
     Q_DECL_DEPRECATED void loadFieldsAndValues( const QMap<QString, QStringList> &fieldValues ) SIP_DEPRECATED;
@@ -138,7 +137,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Returns the expression context for the widget. The context is used for the expression
      * preview result and for populating the list of available functions and variables.
      * \see setExpressionContext
-     * \since QGIS 2.12
      */
     QgsExpressionContext expressionContext() const { return mExpressionContext; }
 
@@ -147,12 +145,68 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * preview result and to populate the list of available functions and variables.
      * \param context expression context
      * \see expressionContext
-     * \since QGIS 2.12
      */
     void setExpressionContext( const QgsExpressionContext &context );
 
     //! Returns if the expression is valid
     bool isExpressionValid();
+
+#ifndef SIP_RUN
+
+    /**
+     * Sets the widget to run using a custom preview generator.
+     *
+     * In this mode, the widget will call a callback function to generate a new QgsExpressionContext
+     * as the previewed object changes. This can be used to provide custom preview values for different
+     * objects (i.e. for objects which aren't vector layer features).
+     *
+     * \param label The label to display for the combo box presenting choices of objects. This should be a representative name, eg "Band" if the widget is showing choices of raster layer bands
+     * \param choices A list of choices to present to the user. Each choice is a pair of a human-readable label and a QVariant representing the object to preview.
+     * \param previewContextGenerator A function which takes a QVariant representing the object to preview, and returns a QgsExpressionContext to use for previewing the object.
+     *
+     * \since QGIS 3.38
+     */
+    void setCustomPreviewGenerator( const QString &label, const QList< QPair< QString, QVariant > > &choices, const std::function< QgsExpressionContext( const QVariant & ) > &previewContextGenerator );
+#else
+
+    /**
+     * Sets the widget to run using a custom preview generator.
+     *
+     * In this mode, the widget will call a callback function to generate a new QgsExpressionContext
+     * as the previewed object changes. This can be used to provide custom preview values for different
+     * objects (i.e. for objects which aren't vector layer features).
+     *
+     * \param label The label to display for the combo box presenting choices of objects. This should be a representative name, eg "Band" if the widget is showing choices of raster layer bands
+     * \param choices A list of choices to present to the user. Each choice is a pair of a human-readable label and a QVariant representing the object to preview.
+     * \param previewContextGenerator A function which takes a QVariant representing the object to preview, and returns a QgsExpressionContext to use for previewing the object.
+     *
+     * \since QGIS 3.38
+     */
+    void setCustomPreviewGenerator( const QString &label, const QList< QPair< QString, QVariant > > &choices, SIP_PYCALLABLE );
+    % MethodCode
+    Py_XINCREF( a2 );
+    Py_BEGIN_ALLOW_THREADS
+    sipCpp->setCustomPreviewGenerator( *a0, *a1, [a2]( const QVariant &value )->QgsExpressionContext
+    {
+      QgsExpressionContext res;
+      SIP_BLOCK_THREADS
+      PyObject *s = sipCallMethod( NULL, a2, "D", &value, sipType_QVariant, NULL );
+      int state;
+      int sipIsError = 0;
+      QgsExpressionContext *t1 = reinterpret_cast<QgsExpressionContext *>( sipConvertToType( s, sipType_QgsExpressionContext, 0, SIP_NOT_NONE, &state, &sipIsError ) );
+      if ( sipIsError == 0 )
+      {
+        res = QgsExpressionContext( *t1 );
+      }
+      sipReleaseType( t1, sipType_QgsExpressionContext, state );
+      SIP_UNBLOCK_THREADS
+      return res;
+    } );
+
+    Py_END_ALLOW_THREADS
+    % End
+#endif
+
 
     /**
      * Adds the current expression to the given \a collection.
@@ -223,7 +277,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
     /**
      * Returns a pointer to the dialog's function item model.
      * This method is exposed for testing purposes only - it should not be used to modify the model.
-     * \since QGIS 3.0
      * \deprecated since QGIS 3.14
      */
     Q_DECL_DEPRECATED QStandardItemModel *model() SIP_DEPRECATED;
@@ -231,7 +284,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
     /**
      * Returns the project currently associated with the widget.
      * \see setProject()
-     * \since QGIS 3.0
      */
     QgsProject *project();
 
@@ -239,7 +291,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Sets the \a project currently associated with the widget. This
      * controls which layers and relations and other project-specific items are shown in the widget.
      * \see project()
-     * \since QGIS 3.0
      */
     void setProject( QgsProject *project );
 
@@ -247,7 +298,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Will be set to TRUE if the current expression text reported an eval error
      * with the context.
      *
-     * \since QGIS 3.0
      */
     bool evalError() const;
 
@@ -255,7 +305,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Will be set to TRUE if the current expression text reports a parser error
      * with the context.
      *
-     * \since QGIS 3.0
      */
     bool parserError() const;
 
@@ -383,7 +432,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Will be set to TRUE if the current expression text reported an eval error
      * with the context.
      *
-     * \since QGIS 3.0
      */
     void evalErrorChanged();
 
@@ -391,7 +439,6 @@ class GUI_EXPORT QgsExpressionBuilderWidget : public QWidget, private Ui::QgsExp
      * Will be set to TRUE if the current expression text reported a parser error
      * with the context.
      *
-     * \since QGIS 3.0
      */
     void parserErrorChanged();
 

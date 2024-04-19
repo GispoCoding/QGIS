@@ -19,8 +19,8 @@ email                : brush.tyler@gmail.com
 """
 
 from qgis.PyQt.QtCore import (Qt,
-                              QTime,
-                              QRegExp,
+                              QElapsedTimer,
+                              QRegularExpression,
                               QAbstractTableModel,
                               pyqtSignal,
                               QObject)
@@ -185,7 +185,7 @@ class SqlResultModel(BaseTableModel):
     def __init__(self, db, sql, parent=None):
         self.db = db.connector
 
-        t = QTime()
+        t = QElapsedTimer()
         t.start()
         c = self.db._execute(None, sql)
 
@@ -286,11 +286,11 @@ class TableFieldsModel(SimpleTableModel):
         fld = val if val is not None else self._getNewObject()
         fld.name = self.data(self.index(row, 0)) or ""
         typestr = self.data(self.index(row, 1)) or ""
-        regex = QRegExp("([^\\(]+)\\(([^\\)]+)\\)")
-        startpos = regex.indexIn(typestr)
-        if startpos >= 0:
-            fld.dataType = regex.cap(1).strip()
-            fld.modifier = regex.cap(2).strip()
+        regex = QRegularExpression(r"([^\(]+)\(([^\)]+)\)")
+        match = regex.match(typestr)
+        if match.hasMatch():
+            fld.dataType = match.captured(1).strip()
+            fld.modifier = match.captured(2).strip()
         else:
             fld.modifier = None
             fld.dataType = typestr

@@ -14,8 +14,6 @@ class QgsScaleBarSettings
 %Docstring(signature="appended")
 The :py:class:`QgsScaleBarSettings` class stores the appearance and layout settings
 for scalebar drawing with :py:class:`QgsScaleBarRenderer`.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -23,26 +21,26 @@ for scalebar drawing with :py:class:`QgsScaleBarRenderer`.
 %End
   public:
 
-    enum Alignment
+    enum Alignment /BaseType=IntEnum/
     {
       AlignLeft,
       AlignMiddle,
       AlignRight,
     };
 
-    enum SegmentSizeMode
+    enum SegmentSizeMode /BaseType=IntEnum/
     {
       SegmentSizeFixed,
       SegmentSizeFitWidth
     };
 
-    enum LabelVerticalPlacement
+    enum LabelVerticalPlacement /BaseType=IntEnum/
     {
       LabelAboveSegment,
       LabelBelowSegment,
     };
 
-    enum LabelHorizontalPlacement
+    enum LabelHorizontalPlacement /BaseType=IntEnum/
     {
       LabelCenteredEdge,
       LabelCenteredSegment,

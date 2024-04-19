@@ -22,7 +22,9 @@ set(TESTS
   testqgslayerpropertiesdialogs.cpp
   testqgsmapcanvasdockwidget.cpp
   testqgsmaptooladdpart.cpp
+  testqgsmaptooldeletepart.cpp
   testqgsmaptooladdring.cpp
+  testqgsmaptooldeletering.cpp
   testqgsmaptooleditannotation.cpp
   testqgsmaptoolidentifyaction.cpp
   testqgsmaptoollabel.cpp
@@ -39,6 +41,7 @@ set(TESTS
   testqgsmaptoolregularpolygon.cpp
   testqgsmaptoolsplitparts.cpp
   testqgsmaptoolsplitfeatures.cpp
+  testqgsmaptooloffsetcurve.cpp
   testqgsmeasuretool.cpp
   testqgsmeasurebearingtool.cpp
   testqgsvertexeditor.cpp

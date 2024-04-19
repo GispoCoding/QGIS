@@ -250,7 +250,6 @@ class CORE_EXPORT QgsFeature
      *
      * \see setAttributes()
      * \see attributeMap()
-     * \since QGIS 2.9
      */
     QgsAttributes attributes() const;
 
@@ -296,7 +295,8 @@ class CORE_EXPORT QgsFeature
     else
     {
       QVariantMap *v = new QVariantMap( sipCpp->attributeMap() );
-      sipRes = sipConvertFromNewType( v, sipType_QVariantMap, Py_None );
+      const sipTypeDef *qvariantmap_type = sipFindType( "QMap<QString,QVariant>" );
+      sipRes = sipConvertFromNewType( v, qvariantmap_type, Py_None );
     }
     % End
 #endif
@@ -337,7 +337,7 @@ class CORE_EXPORT QgsFeature
      * \returns FALSE, if the field index does not exist
      * \see setAttributes()
      */
-    bool setAttribute( int field, const QVariant &attr );
+    Q_INVOKABLE bool setAttribute( int field, const QVariant &attr );
 #else
 
     /**
@@ -491,7 +491,6 @@ class CORE_EXPORT QgsFeature
     /**
      * Returns TRUE if the feature has an associated geometry.
      * \see geometry()
-     * \since QGIS 3.0.
      */
     bool hasGeometry() const;
 
@@ -557,7 +556,6 @@ class CORE_EXPORT QgsFeature
      * Removes any geometry associated with the feature.
      * \see setGeometry()
      * \see hasGeometry()
-     * \since QGIS 3.0
      */
     void clearGeometry();
 
@@ -566,7 +564,6 @@ class CORE_EXPORT QgsFeature
      * \param fields The attribute fields which this feature holds
      * \param initAttributes If TRUE, attributes are initialized. Clears any data previously assigned.
      * \see fields()
-     * \since QGIS 2.9
      */
     void setFields( const QgsFields &fields, bool initAttributes = false SIP_PYARGDEFAULT( true ) );
 
@@ -592,7 +589,7 @@ class CORE_EXPORT QgsFeature
      * \returns FALSE if attribute name could not be converted to index
      * \see setFields()
      */
-    bool setAttribute( const QString &name, const QVariant &value );
+    Q_INVOKABLE bool setAttribute( const QString &name, const QVariant &value );
 #else
 
     /**
@@ -714,7 +711,7 @@ class CORE_EXPORT QgsFeature
      * \returns The value of the attribute, or an invalid/null variant if no such name exists
      * \see setFields
      */
-    QVariant attribute( const QString &name ) const;
+    Q_INVOKABLE QVariant attribute( const QString &name ) const;
 #else
 
     /**
@@ -742,7 +739,7 @@ class CORE_EXPORT QgsFeature
      * \throws KeyError if the field is not found
      * \see setFields
      */
-    SIP_PYOBJECT attribute( const QString &name ) const;
+    Q_INVOKABLE SIP_PYOBJECT attribute( const QString &name ) const;
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )

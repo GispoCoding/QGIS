@@ -12,8 +12,6 @@ class QgsTicksScaleBarRenderer: QgsScaleBarRenderer
 {
 %Docstring(signature="appended")
 A scale bar that draws segments using short ticks.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -21,7 +19,7 @@ A scale bar that draws segments using short ticks.
 %End
   public:
 
-    enum TickPosition
+    enum TickPosition /BaseType=IntEnum/
     {
       TicksUp,
       TicksDown,

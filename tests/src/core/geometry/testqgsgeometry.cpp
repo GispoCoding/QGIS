@@ -152,6 +152,8 @@ class TestQgsGeometry : public QgsTest
     void isSimple_data();
     void isSimple();
 
+    void contains();
+
     void reshapeGeometryLineMerge();
     void createCollectionOfType();
 
@@ -590,7 +592,7 @@ void TestQgsGeometry::geos()
   polyWithEmptyParts.addGeometry( new QgsPolygon( new QgsLineString() ) );
   polyWithEmptyParts.addGeometry( new QgsPolygon( new QgsLineString( QVector< QgsPoint >() << QgsPoint( 10, 0 ) << QgsPoint( 10, 1 ) << QgsPoint( 11, 1 ) << QgsPoint( 10, 0 ) ) ) );
   asGeos = QgsGeos::asGeos( &polyWithEmptyParts );
-  QCOMPARE( GEOSGetNumGeometries_r( QgsGeos::getGEOSHandler(), asGeos.get() ), 2 );
+  QCOMPARE( GEOSGetNumGeometries_r( QgsGeosContext::get(), asGeos.get() ), 2 );
   res = QgsGeometry( QgsGeos::fromGeos( asGeos.get() ) );
   QCOMPARE( res.asWkt(), QStringLiteral( "MultiPolygon (((0 0, 0 1, 1 1, 0 0)),((10 0, 10 1, 11 1, 10 0)))" ) );
 
@@ -1347,7 +1349,7 @@ void TestQgsGeometry::simplifyCheck1()
   initPainterTest();
   QVERIFY( mpPolylineGeometryD->simplify( 0.5 ) );
   // should be a single polygon as A intersect B
-  QgsGeometry *mypSimplifyGeometry  =  mpPolylineGeometryD->simplify( 0.5 );
+  QgsGeometry *mypSimplifyGeometry = mpPolylineGeometryD->simplify( 0.5 );
   qDebug( "Geometry Type: %s", Qgis::WkbType::displayString( mypSimplifyGeometry->wkbType() ) );
   QVERIFY( mypSimplifyGeometry->wkbType() == Qgis::WkbType::LineString );
   QgsPolyline myLine = mypSimplifyGeometry->asPolyline();
@@ -1369,7 +1371,7 @@ void TestQgsGeometry::intersectionCheck1()
   QVERIFY( engine->intersects( mpPolygonGeometryB.constGet() ) );
 
   // should be a single polygon as A intersect B
-  QgsGeometry mypIntersectionGeometry  =  mpPolygonGeometryA.intersection( mpPolygonGeometryB );
+  QgsGeometry mypIntersectionGeometry = mpPolygonGeometryA.intersection( mpPolygonGeometryB );
   QVERIFY( mypIntersectionGeometry.wkbType() == Qgis::WkbType::Polygon );
   QgsPolygonXY myPolygon = mypIntersectionGeometry.asPolygon();
   QVERIFY( myPolygon.size() > 0 ); //check that the union created a feature
@@ -1460,7 +1462,7 @@ void TestQgsGeometry::unionCheck1()
 {
   initPainterTest();
   // should be a multipolygon with 2 parts as A does not intersect C
-  QgsGeometry mypUnionGeometry  =  mpPolygonGeometryA.combine( mpPolygonGeometryC );
+  QgsGeometry mypUnionGeometry = mpPolygonGeometryA.combine( mpPolygonGeometryC );
   QVERIFY( mypUnionGeometry.wkbType() == Qgis::WkbType::MultiPolygon );
   QgsMultiPolygonXY myMultiPolygon = mypUnionGeometry.asMultiPolygon();
   QVERIFY( myMultiPolygon.size() > 0 ); //check that the union did not fail
@@ -1472,7 +1474,7 @@ void TestQgsGeometry::unionCheck2()
 {
   initPainterTest();
   // should be a single polygon as A intersect B
-  QgsGeometry mypUnionGeometry  =  mpPolygonGeometryA.combine( mpPolygonGeometryB );
+  QgsGeometry mypUnionGeometry = mpPolygonGeometryA.combine( mpPolygonGeometryB );
   QVERIFY( mypUnionGeometry.wkbType() == Qgis::WkbType::Polygon );
   QgsPolygonXY myPolygon = mypUnionGeometry.asPolygon();
   QVERIFY( myPolygon.size() > 0 ); //check that the union created a feature
@@ -2074,6 +2076,21 @@ void TestQgsGeometry::isSimple()
 
   bool res = gInput.isSimple();
   QCOMPARE( res, simple );
+}
+
+void TestQgsGeometry::contains()
+{
+  QgsGeometry geomTest = QgsGeometry::fromWkt( QStringLiteral( "Polygon((0 0, 5 5, -2.1 12.1, -7.1 7.1))" ) );
+
+  QgsPointXY pointInside( 1, 2 );
+  QVERIFY( geomTest.contains( &pointInside ) );
+  QVERIFY( geomTest.contains( QgsGeometry::fromWkt( QStringLiteral( "Point(1 2)" ) ) ) );
+  QVERIFY( geomTest.contains( pointInside.x(), pointInside.y() ) );
+
+  QgsPointXY pointOutside( 3, 1 );
+  QVERIFY( !geomTest.contains( &pointOutside ) );
+  QVERIFY( !geomTest.contains( QgsGeometry::fromWkt( QStringLiteral( "Point(3 1)" ) ) ) );
+  QVERIFY( !geomTest.contains( pointOutside.x(), pointOutside.y() ) );
 }
 
 void TestQgsGeometry::reshapeGeometryLineMerge()

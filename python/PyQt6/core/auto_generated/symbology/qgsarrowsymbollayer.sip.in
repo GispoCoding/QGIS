@@ -15,8 +15,6 @@ class QgsArrowSymbolLayer : QgsLineSymbolLayer
 {
 %Docstring(signature="appended")
 Line symbol layer used for representing lines as arrows.
-
-.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -171,7 +169,7 @@ Returns whether the arrow is repeated along the line or not
 Sets whether the arrow is repeated along the line
 %End
 
-    enum HeadType
+    enum HeadType /BaseType=IntEnum/
     {
       HeadSingle,
       HeadReversed,
@@ -187,7 +185,7 @@ Gets the current head type
 Sets the head type
 %End
 
-    enum ArrowType
+    enum ArrowType /BaseType=IntEnum/
     {
       ArrowPlain,
       ArrowLeftHalf,

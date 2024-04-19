@@ -29,7 +29,6 @@
  * \ingroup gui
  * \brief Table model to edit a QVariantList.
  * \note not available in Python bindings
- * \since QGIS 3.0
  */
 class GUI_EXPORT QgsListModel : public QAbstractTableModel
 {
@@ -49,8 +48,9 @@ class GUI_EXPORT QgsListModel : public QAbstractTableModel
     Qt::ItemFlags flags( const QModelIndex &index ) const override;
     bool insertRows( int position, int rows, const QModelIndex &parent = QModelIndex() ) override;
     bool removeRows( int position, int rows, const QModelIndex &parent = QModelIndex() ) override;
-
+    void setReadOnly( bool readOnly );
   private:
+    bool mReadOnly = false;
     QVariantList mLines;
     QVariant::Type mSubType;
 };
@@ -61,7 +61,6 @@ class GUI_EXPORT QgsListModel : public QAbstractTableModel
 /**
  * \ingroup gui
  * \brief Widget allowing to edit a QVariantList, using a table.
- * \since QGIS 3.0
  */
 class GUI_EXPORT QgsListWidget: public QgsTableWidgetBase
 {
@@ -90,6 +89,10 @@ class GUI_EXPORT QgsListWidget: public QgsTableWidgetBase
      * \returns TRUE if valid
      */
     bool valid() const { return mModel.valid(); }
+
+  public slots:
+
+    void setReadOnly( bool readOnly ) override;
 
   private:
     QgsListModel mModel;

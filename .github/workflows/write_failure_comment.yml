@@ -9,11 +9,17 @@ on:
       - 'master'
       - 'release*'
 
+permissions:
+  contents: read
+
 jobs:
   on-failure:
     strategy:
       matrix:
         qt-version: [ 5, 6 ]
+
+    permissions:
+      pull-requests: write
 
     runs-on: ubuntu-latest
     steps:

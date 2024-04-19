@@ -43,7 +43,7 @@ as instances of :py:class:`QgsServerOgcApiHandler`.
 
   public:
 
-    enum Rel
+    enum Rel /BaseType=IntEnum/
     {
       // The following registered link relation types are used
       alternate,
@@ -62,7 +62,7 @@ as instances of :py:class:`QgsServerOgcApiHandler`.
       data
     };
 
-    enum ContentType
+    enum ContentType /BaseType=IntEnum/
     {
       GEOJSON,
       OPENAPI3,
@@ -132,9 +132,19 @@ Returns the string representation of a ``ct`` (Content-Type) attribute.
 Returns the file extension for a ``ct`` (Content-Type).
 %End
 
-    static QgsServerOgcApi::ContentType contenTypeFromExtension( const std::string &extension );
+ static QgsServerOgcApi::ContentType contenTypeFromExtension( const std::string &extension ) /Deprecated/;
 %Docstring
 Returns the Content-Type value corresponding to ``extension``.
+
+.. deprecated::
+   Use :py:func:`~QgsServerOgcApi.contentTypeFromExtension`
+%End
+
+    static QgsServerOgcApi::ContentType contentTypeFromExtension( const std::string &extension );
+%Docstring
+Returns the Content-Type value corresponding to ``extension``.
+
+.. versionadded:: 3.38
 %End
 
     static std::string mimeType( const QgsServerOgcApi::ContentType &contentType );

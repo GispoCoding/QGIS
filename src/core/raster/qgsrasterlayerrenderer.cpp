@@ -33,6 +33,11 @@
 #include "qgsrasterlayerelevationproperties.h"
 #include "qgsruntimeprofiler.h"
 #include "qgsapplication.h"
+#include "qgsrastertransparency.h"
+#include "qgsrasterlayerutils.h"
+#include "qgsinterval.h"
+#include "qgsunittypes.h"
+#include "qgsrasternuller.h"
 
 #include <QElapsedTimer>
 #include <QPointer>
@@ -254,7 +259,7 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   // TODO R->mLastViewPort = *mRasterViewPort;
 
   // TODO: is it necessary? Probably WMS only?
-  layer->dataProvider()->setDpi( dpi );
+  layer->dataProvider()->setDpi( std::floor( dpi * rendererContext.devicePixelRatio() ) );
 
   // copy the whole raster pipe!
   mPipe.reset( new QgsRasterPipe( *layer->pipe() ) );
@@ -271,12 +276,56 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   mPipe->evaluateDataDefinedProperties( rendererContext.expressionContext() );
 
   const QgsRasterLayerTemporalProperties *temporalProperties = qobject_cast< const QgsRasterLayerTemporalProperties * >( layer->temporalProperties() );
+  const QgsRasterLayerElevationProperties *elevationProperties = qobject_cast<QgsRasterLayerElevationProperties *>( layer->elevationProperties() );
+
+  if ( ( temporalProperties->isActive() && renderContext()->isTemporal() )
+       || ( elevationProperties->hasElevation() && !renderContext()->zRange().isInfinite() ) )
+  {
+    // temporal and/or elevation band filtering may be applicable
+    bool matched = false;
+    const int matchedBand = QgsRasterLayerUtils::renderedBandForElevationAndTemporalRange(
+                              layer,
+                              rendererContext.temporalRange(),
+                              rendererContext.zRange(),
+                              matched
+                            );
+    if ( matched && matchedBand > 0 )
+    {
+      mPipe->renderer()->setInputBand( matchedBand );
+    }
+  }
+
   if ( temporalProperties->isActive() && renderContext()->isTemporal() )
   {
     switch ( temporalProperties->mode() )
     {
       case Qgis::RasterTemporalMode::FixedTemporalRange:
       case Qgis::RasterTemporalMode::RedrawLayerOnly:
+      case Qgis::RasterTemporalMode::FixedRangePerBand:
+        break;
+
+      case Qgis::RasterTemporalMode::RepresentsTemporalValues:
+        if ( mPipe->renderer()->usesBands().contains( temporalProperties->bandNumber() ) )
+        {
+          // if layer has elevation settings and we are only rendering a temporal range => we need to filter pixels by temporal values
+          std::unique_ptr< QgsRasterTransparency > transparency;
+          if ( const QgsRasterTransparency *rendererTransparency = mPipe->renderer()->rasterTransparency() )
+            transparency = std::make_unique< QgsRasterTransparency >( *rendererTransparency );
+          else
+            transparency = std::make_unique< QgsRasterTransparency >();
+
+          QVector<QgsRasterTransparency::TransparentSingleValuePixel> transparentPixels = transparency->transparentSingleValuePixelList();
+
+          const QDateTime &offset = temporalProperties->temporalRepresentationOffset();
+          const QgsInterval &scale = temporalProperties->temporalRepresentationScale();
+          const double adjustedLower = static_cast< double >( offset.msecsTo( rendererContext.temporalRange().begin() ) ) * QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit::Milliseconds, scale.originalUnit() ) / scale.originalDuration();
+          const double adjustedUpper = static_cast< double >( offset.msecsTo( rendererContext.temporalRange().end() ) ) * QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit::Milliseconds, scale.originalUnit() ) / scale.originalDuration();
+          transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( std::numeric_limits<double>::lowest(), adjustedLower, 0, true, !rendererContext.zRange().includeLower() ) );
+          transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( adjustedUpper, std::numeric_limits<double>::max(), 0, !rendererContext.zRange().includeUpper(), true ) );
+
+          transparency->setTransparentSingleValuePixelList( transparentPixels );
+          mPipe->renderer()->setRasterTransparency( transparency.release() );
+        }
         break;
 
       case Qgis::RasterTemporalMode::TemporalRangeFromDataProvider:
@@ -297,14 +346,82 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
 
   mClippingRegions = QgsMapClippingUtils::collectClippingRegionsForLayer( *renderContext(), layer );
 
-  if ( layer->elevationProperties() && layer->elevationProperties()->hasElevation() )
+  if ( elevationProperties && elevationProperties->hasElevation() )
   {
-    QgsRasterLayerElevationProperties *elevProp
-      = static_cast<QgsRasterLayerElevationProperties *>( layer->elevationProperties() );
     mDrawElevationMap = true;
-    mElevationScale = elevProp->zScale();
-    mElevationOffset = elevProp->zOffset();
-    mElevationBand = elevProp->bandNumber();
+    mElevationScale = elevationProperties->zScale();
+    mElevationOffset = elevationProperties->zOffset();
+    mElevationBand = elevationProperties->bandNumber();
+
+    if ( !rendererContext.zRange().isInfinite() )
+    {
+      // NOLINTBEGIN(bugprone-branch-clone)
+      switch ( elevationProperties->mode() )
+      {
+        case Qgis::RasterElevationMode::FixedElevationRange:
+          // don't need to handle anything here -- the layer renderer will never be created if the
+          // render context range doesn't match the layer's fixed elevation range
+          break;
+
+        case Qgis::RasterElevationMode::FixedRangePerBand:
+        case Qgis::RasterElevationMode::DynamicRangePerBand:
+          // temporal/elevation band based filtering was already handled earlier in this method
+          break;
+
+        case Qgis::RasterElevationMode::RepresentsElevationSurface:
+        {
+          if ( mPipe->renderer()->usesBands().contains( mElevationBand ) )
+          {
+            // if layer has elevation settings and we are only rendering a slice of z values => we need to filter pixels by elevation
+            if ( mPipe->renderer()->flags() & Qgis::RasterRendererFlag::UseNoDataForOutOfRangePixels )
+            {
+              std::unique_ptr< QgsRasterNuller> nuller;
+              if ( const QgsRasterNuller *existingNuller = mPipe->nuller() )
+                nuller.reset( existingNuller->clone() );
+              else
+                nuller = std::make_unique< QgsRasterNuller >();
+
+              // account for z offset/zscale by reversing these calculations, so that we get the z range in
+              // raw pixel values
+              QgsRasterRangeList nullRanges;
+              const double adjustedLower = ( rendererContext.zRange().lower() - mElevationOffset ) / mElevationScale;
+              const double adjustedUpper = ( rendererContext.zRange().upper() - mElevationOffset ) / mElevationScale;
+              nullRanges.append( QgsRasterRange( std::numeric_limits<double>::lowest(), adjustedLower, rendererContext.zRange().includeLower() ? QgsRasterRange::BoundsType::IncludeMin : QgsRasterRange::BoundsType::IncludeMinAndMax ) );
+              nullRanges.append( QgsRasterRange( adjustedUpper, std::numeric_limits<double>::max(), rendererContext.zRange().includeUpper() ? QgsRasterRange::BoundsType::IncludeMax : QgsRasterRange::BoundsType::IncludeMinAndMax ) );
+              nuller->setOutputNoDataValue( mElevationBand, static_cast< int >( adjustedLower - 1 ) );
+              nuller->setNoData( mElevationBand, nullRanges );
+
+              if ( !mPipe->insert( 1, nuller.release() ) )
+              {
+                QgsDebugError( QStringLiteral( "Cannot set pipe nuller" ) );
+              }
+            }
+            else
+            {
+              std::unique_ptr< QgsRasterTransparency > transparency;
+              if ( const QgsRasterTransparency *rendererTransparency = mPipe->renderer()->rasterTransparency() )
+                transparency = std::make_unique< QgsRasterTransparency >( *rendererTransparency );
+              else
+                transparency = std::make_unique< QgsRasterTransparency >();
+
+              QVector<QgsRasterTransparency::TransparentSingleValuePixel> transparentPixels = transparency->transparentSingleValuePixelList();
+
+              // account for z offset/zscale by reversing these calculations, so that we get the z range in
+              // raw pixel values
+              const double adjustedLower = ( rendererContext.zRange().lower() - mElevationOffset ) / mElevationScale;
+              const double adjustedUpper = ( rendererContext.zRange().upper() - mElevationOffset ) / mElevationScale;
+              transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( std::numeric_limits<double>::lowest(), adjustedLower, 0, true, !rendererContext.zRange().includeLower() ) );
+              transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( adjustedUpper, std::numeric_limits<double>::max(), 0, !rendererContext.zRange().includeUpper(), true ) );
+
+              transparency->setTransparentSingleValuePixelList( transparentPixels );
+              mPipe->renderer()->setRasterTransparency( transparency.release() );
+            }
+          }
+          break;
+        }
+      }
+      // NOLINTEND(bugprone-branch-clone)
+    }
   }
 
   mFeedback->setRenderContext( rendererContext );

@@ -9,7 +9,7 @@ From build dir, run: ctest -R PyQgsAuthManagerPKIPostgresTest -V
 
 It uses a docker container as postgres/postgis server with certificates from tests/testdata/auth_system/certs_keys_2048
 
-Use docker-compose -f .docker/docker-compose-testing-postgres.yml up postgres to start the server.
+Use docker compose -f .docker/docker-compose-testing-postgres.yml up postgres to start the server.
 
 TODO:
     - Document how to restore the server data
@@ -139,7 +139,7 @@ class TestAuthManager(QgisTestCase):
             pkies = glob.glob(os.path.join(tempfile.gettempdir(), 'tmp*_{*}.pem'))
             for fn in pkies:
                 f = QFile(fn)
-                f.setPermissions(QFile.WriteOwner)
+                f.setPermissions(QFile.Permission.WriteOwner)
                 f.remove()
 
         # remove any temppki in temporary path to check that no

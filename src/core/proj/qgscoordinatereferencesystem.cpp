@@ -241,6 +241,19 @@ QgsCoordinateReferenceSystem QgsCoordinateReferenceSystem::fromSrsId( long srsId
   return crs;
 }
 
+QgsCoordinateReferenceSystem QgsCoordinateReferenceSystem::createCompoundCrs( const QgsCoordinateReferenceSystem &horizontalCrs, const QgsCoordinateReferenceSystem &verticalCrs )
+{
+  PJ *horizontalObj = horizontalCrs.projObject();
+  PJ *verticalObj = verticalCrs.projObject();
+  if ( horizontalObj && verticalObj )
+  {
+    QgsProjUtils::proj_pj_unique_ptr compoundCrs = QgsProjUtils::createCompoundCrs( horizontalObj, verticalObj );
+    if ( compoundCrs )
+      return QgsCoordinateReferenceSystem::fromProjObject( compoundCrs.get() );
+  }
+  return QgsCoordinateReferenceSystem();
+}
+
 QgsCoordinateReferenceSystem::~QgsCoordinateReferenceSystem() //NOLINT
 {
 }
@@ -1374,6 +1387,15 @@ Qgis::CrsType QgsCoordinateReferenceSystem::type() const
   // NOLINTEND(bugprone-branch-clone)
 }
 
+bool QgsCoordinateReferenceSystem::isDeprecated() const
+{
+  const PJ *pj = projObject();
+  if ( !pj )
+    return false;
+
+  return proj_is_deprecated( pj );
+}
+
 bool QgsCoordinateReferenceSystem::isGeographic() const
 {
   return d->mIsGeographic;
@@ -1591,6 +1613,30 @@ QString QgsCoordinateReferenceSystem::toOgcUri() const
   return QString();
 }
 
+QString QgsCoordinateReferenceSystem::toOgcUrn() const
+{
+  const auto parts { authid().split( ':' ) };
+  if ( parts.length() == 2 )
+  {
+    if ( parts[0] == QLatin1String( "EPSG" ) )
+      return  QStringLiteral( "urn:ogc:def:crs:EPSG:0:%1" ).arg( parts[1] );
+    else if ( parts[0] == QLatin1String( "OGC" ) )
+    {
+      return  QStringLiteral( "urn:ogc:def:crs:OGC:1.3:%1" ).arg( parts[1] );
+    }
+    else
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "Error converting published CRS to URN %1: (not OGC or EPSG)" ).arg( authid() ), QStringLiteral( "CRS" ), Qgis::MessageLevel::Critical );
+    }
+  }
+  else
+  {
+    QgsMessageLog::logMessage( QStringLiteral( "Error converting published CRS to URN: %1" ).arg( authid() ), QStringLiteral( "CRS" ), Qgis::MessageLevel::Critical );
+  }
+  return QString();
+}
+
+
 void QgsCoordinateReferenceSystem::updateDefinition()
 {
   if ( !d->mIsValid )
@@ -1647,9 +1693,9 @@ bool QgsCoordinateReferenceSystem::setWktString( const QString &wkt )
   d->mWktPreferred.clear();
 
   PROJ_STRING_LIST warnings = nullptr;
-  PROJ_STRING_LIST grammerErrors = nullptr;
+  PROJ_STRING_LIST grammarErrors = nullptr;
   {
-    d->setPj( QgsProjUtils::proj_pj_unique_ptr( proj_create_from_wkt( QgsProjContext::get(), wkt.toLatin1().constData(), nullptr, &warnings, &grammerErrors ) ) );
+    d->setPj( QgsProjUtils::proj_pj_unique_ptr( proj_create_from_wkt( QgsProjContext::get(), wkt.toLatin1().constData(), nullptr, &warnings, &grammarErrors ) ) );
   }
 
   res = d->hasPj();
@@ -1660,12 +1706,12 @@ bool QgsCoordinateReferenceSystem::setWktString( const QString &wkt )
     QgsDebugMsgLevel( "INPUT: " + wkt, 2 );
     for ( auto iter = warnings; iter && *iter; ++iter )
       QgsDebugMsgLevel( *iter, 2 );
-    for ( auto iter = grammerErrors; iter && *iter; ++iter )
+    for ( auto iter = grammarErrors; iter && *iter; ++iter )
       QgsDebugMsgLevel( *iter, 2 );
     QgsDebugMsgLevel( QStringLiteral( "---------------------------------------------------------------\n" ), 2 );
   }
   proj_string_list_destroy( warnings );
-  proj_string_list_destroy( grammerErrors );
+  proj_string_list_destroy( grammarErrors );
 
   QgsReadWriteLocker locker( *sProj4CacheLock(), QgsReadWriteLocker::Unlocked );
   if ( !res )
@@ -2308,7 +2354,13 @@ bool testIsGeographic( PJ *crs )
 {
   PJ_CONTEXT *pjContext = QgsProjContext::get();
   bool isGeographic = false;
-  QgsProjUtils::proj_pj_unique_ptr coordinateSystem( proj_crs_get_coordinate_system( pjContext, crs ) );
+
+  // check horizontal CRS units
+  QgsProjUtils::proj_pj_unique_ptr horizontalCrs( QgsProjUtils::crsToHorizontalCrs( crs ) );
+  if ( !horizontalCrs )
+    return false;
+
+  QgsProjUtils::proj_pj_unique_ptr coordinateSystem( proj_crs_get_coordinate_system( pjContext, horizontalCrs.get() ) );
   if ( coordinateSystem )
   {
     const int axisCount = proj_cs_get_axis_count( pjContext, coordinateSystem.get() );
@@ -2586,8 +2638,8 @@ int QgsCoordinateReferenceSystem::syncDatabase()
 
   PROJ_STRING_LIST authorities = proj_get_authorities_from_database( pjContext );
 
-  int nextSrsId = 63561;
-  int nextSrId = 520003561;
+  int nextSrsId = 67218;
+  int nextSrId = 520007218;
   for ( auto authIter = authorities; authIter && *authIter; ++authIter )
   {
     const QString authority( *authIter );
@@ -2702,7 +2754,7 @@ int QgsCoordinateReferenceSystem::syncDatabase()
         proj4 = "";
       }
 
-      // there's a not-null contraint on these columns, so we must use empty strings instead
+      // there's a not-null constraint on these columns, so we must use empty strings instead
       QString operation = "";
       QString ellps = "";
       getOperationAndEllipsoidFromProjString( proj4, operation, ellps );
@@ -2952,6 +3004,72 @@ QgsCoordinateReferenceSystem QgsCoordinateReferenceSystem::toGeographicCrs() con
   }
 }
 
+QgsCoordinateReferenceSystem QgsCoordinateReferenceSystem::horizontalCrs() const
+{
+  switch ( type() )
+  {
+    case Qgis::CrsType::Unknown:
+    case Qgis::CrsType::Geodetic:
+    case Qgis::CrsType::Geocentric:
+    case Qgis::CrsType::Geographic2d:
+    case Qgis::CrsType::Projected:
+    case Qgis::CrsType::Temporal:
+    case Qgis::CrsType::Engineering:
+    case Qgis::CrsType::Bound:
+    case Qgis::CrsType::Other:
+    case Qgis::CrsType::DerivedProjected:
+    case Qgis::CrsType::Geographic3d:
+      return *this;
+
+    case Qgis::CrsType::Vertical:
+      return QgsCoordinateReferenceSystem();
+
+    case Qgis::CrsType::Compound:
+      break;
+  }
+
+  if ( PJ *obj = d->threadLocalProjObject() )
+  {
+    QgsProjUtils::proj_pj_unique_ptr hozCrs = QgsProjUtils::crsToHorizontalCrs( obj );
+    if ( hozCrs )
+      return QgsCoordinateReferenceSystem::fromProjObject( hozCrs.get() );
+  }
+  return QgsCoordinateReferenceSystem();
+}
+
+QgsCoordinateReferenceSystem QgsCoordinateReferenceSystem::verticalCrs() const
+{
+  switch ( type() )
+  {
+    case Qgis::CrsType::Unknown:
+    case Qgis::CrsType::Geodetic:
+    case Qgis::CrsType::Geocentric:
+    case Qgis::CrsType::Geographic2d:
+    case Qgis::CrsType::Projected:
+    case Qgis::CrsType::Temporal:
+    case Qgis::CrsType::Engineering:
+    case Qgis::CrsType::Bound:
+    case Qgis::CrsType::Other:
+    case Qgis::CrsType::DerivedProjected:
+    case Qgis::CrsType::Geographic3d:
+      return QgsCoordinateReferenceSystem();
+
+    case Qgis::CrsType::Vertical:
+      return *this;
+
+    case Qgis::CrsType::Compound:
+      break;
+  }
+
+  if ( PJ *obj = d->threadLocalProjObject() )
+  {
+    QgsProjUtils::proj_pj_unique_ptr vertCrs = QgsProjUtils::crsToVerticalCrs( obj );
+    if ( vertCrs )
+      return QgsCoordinateReferenceSystem::fromProjObject( vertCrs.get() );
+  }
+  return QgsCoordinateReferenceSystem();
+}
+
 QString QgsCoordinateReferenceSystem::geographicCrsAuthId() const
 {
   if ( isGeographic() )
@@ -3154,18 +3272,16 @@ bool operator> ( const QgsCoordinateReferenceSystem &c1, const QgsCoordinateRefe
   if ( !c1IsUser && c2IsUser )
     return false;
 
-  if ( !c1IsUser && !c2IsUser )
+  if ( !c1IsUser && !c2IsUser && !c1.d->mAuthId.isEmpty() && !c2.d->mAuthId.isEmpty() )
   {
     if ( c1.d->mAuthId != c2.d->mAuthId )
       return c1.d->mAuthId > c2.d->mAuthId;
   }
-  else
-  {
-    const QString wkt1 = c1.toWkt( Qgis::CrsWktVariant::Preferred );
-    const QString wkt2 = c2.toWkt( Qgis::CrsWktVariant::Preferred );
-    if ( wkt1 != wkt2 )
-      return wkt1 > wkt2;
-  }
+
+  const QString wkt1 = c1.toWkt( Qgis::CrsWktVariant::Preferred );
+  const QString wkt2 = c2.toWkt( Qgis::CrsWktVariant::Preferred );
+  if ( wkt1 != wkt2 )
+    return wkt1 > wkt2;
 
   if ( c1.d->mCoordinateEpoch == c2.d->mCoordinateEpoch )
     return false;
@@ -3205,18 +3321,16 @@ bool operator< ( const QgsCoordinateReferenceSystem &c1, const QgsCoordinateRefe
   if ( c1IsUser && !c2IsUser )
     return false;
 
-  if ( !c1IsUser && !c2IsUser )
+  if ( !c1IsUser && !c2IsUser && !c1.d->mAuthId.isEmpty() && !c2.d->mAuthId.isEmpty() )
   {
     if ( c1.d->mAuthId != c2.d->mAuthId )
       return c1.d->mAuthId < c2.d->mAuthId;
   }
-  else
-  {
-    const QString wkt1 = c1.toWkt( Qgis::CrsWktVariant::Preferred );
-    const QString wkt2 = c2.toWkt( Qgis::CrsWktVariant::Preferred );
-    if ( wkt1 != wkt2 )
-      return wkt1 < wkt2;
-  }
+
+  const QString wkt1 = c1.toWkt( Qgis::CrsWktVariant::Preferred );
+  const QString wkt2 = c2.toWkt( Qgis::CrsWktVariant::Preferred );
+  if ( wkt1 != wkt2 )
+    return wkt1 < wkt2;
 
   if ( c1.d->mCoordinateEpoch == c2.d->mCoordinateEpoch )
     return false;

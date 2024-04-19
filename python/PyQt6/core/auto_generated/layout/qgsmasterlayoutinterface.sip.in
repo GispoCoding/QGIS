@@ -17,8 +17,6 @@ class QgsMasterLayoutInterface
 {
 %Docstring(signature="appended")
 Interface for master layout type objects, such as print layouts and reports.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -41,7 +39,7 @@ Interface for master layout type objects, such as print layouts and reports.
 %End
   public:
 
-    enum Type
+    enum Type /BaseType=IntEnum/
     {
       PrintLayout,
       Report,

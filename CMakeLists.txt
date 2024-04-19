@@ -22,7 +22,7 @@ set(CMAKE_LINK_DEPENDS_NO_SHARED ON)
 #############################################################
 # Project and version
 set(CPACK_PACKAGE_VERSION_MAJOR "3")
-set(CPACK_PACKAGE_VERSION_MINOR "35")
+set(CPACK_PACKAGE_VERSION_MINOR "37")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(COMPLETE_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
 set(RELEASE_NAME "Master")
@@ -375,9 +375,6 @@ if(WITH_CORE)
 
   find_package(Protobuf CONFIG)
   find_package(Protobuf REQUIRED)
-  if(Protobuf_VERSION GREATER_EQUAL 4.23)
-    set(Protobuf_LITE_LIBRARY protobuf::libprotobuf-lite)
-  endif()
 
   message(STATUS "Found Protobuf: ${Protobuf_LIBRARIES}")
   if (NOT Protobuf_PROTOC_EXECUTABLE)
@@ -398,7 +395,7 @@ if(WITH_CORE)
   endif()
 
   if (NOT WITH_INTERNAL_POLY2TRI)
-    find_package(Poly2Tri REQUIRED)
+    find_package(poly2tri REQUIRED)
   endif()
 
   if (WITH_SPATIALITE)
@@ -492,15 +489,30 @@ if(WITH_CORE)
       set (HAVE_QTGAMEPAD TRUE)
   endif()
 
+  set (WITH_PDF4QT FALSE CACHE BOOL "Determines whether the embedded PDF4Qt library should be build for PDF and HTML to QPainter conversion")
+  if (WITH_PDF4QT)
+    set(HAVE_PDF4QT TRUE)  # used in qgisconfig.h
+    message(STATUS "PDF4Qt enabled")
+  else()
+    message(STATUS "PDF4Qt disabled")
+  endif()
+
   find_package(${QT_VERSION_BASE} COMPONENTS Core Gui Widgets Network Xml Svg Concurrent Test Sql Positioning REQUIRED)
   if (BUILD_WITH_QT6)
     find_package(${QT_VERSION_BASE} COMPONENTS Core5Compat REQUIRED)
   endif()
+
   if (NOT IOS)
-    find_package(${QT_VERSION_BASE} COMPONENTS PrintSupport REQUIRED)
-  else()
-    add_definitions(-DQT_NO_PRINTER)
+    set (DEFAULT_WITH_QTPRINTER TRUE)
+  else ()
+    set (DEFAULT_WITH_QTPRINTER FALSE)
   endif()
+  set (WITH_QTPRINTER ${DEFAULT_WITH_QTPRINTER} CACHE BOOL "Enable QtPrinter support")
+  if (WITH_QTPRINTER)
+    find_package(${QT_VERSION_BASE} COMPONENTS PrintSupport REQUIRED)
+    set (HAVE_QTPRINTER TRUE)
+  endif()
+
   if (WITH_QTWEBKIT)
     if(BUILD_WITH_QT6)
       message(FATAL_ERROR "Qt WebKit support cannot be enabled on Qt 6 builds")
@@ -561,7 +573,11 @@ if(WITH_CORE)
   endif()
 
   # Password helper
-  find_package(QtKeychain REQUIRED)
+  if(BUILD_WITH_QT6)
+    find_package(Qt6Keychain CONFIG REQUIRED)
+  else()
+    find_package(Qt5Keychain CONFIG REQUIRED)
+  endif()
   # Master password hash and authentication encryption
   find_package(QCA REQUIRED)
   # Check for runtime dependency of qca-ossl plugin
@@ -1086,7 +1102,7 @@ if (WITH_CORE AND WITH_BINDINGS)
   include(SIPMacros)
 
   set(SIP_INCLUDES ${PYQT_SIP_DIR} ${CMAKE_SOURCE_DIR}/python)
-  set(SIP_CONCAT_PARTS 26)
+  set(SIP_CONCAT_PARTS 25)
 
   if (NOT BINDINGS_GLOBAL_INSTALL)
     set(Python_SITEARCH ${QGIS_DATA_DIR}/python)

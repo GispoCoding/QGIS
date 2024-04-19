@@ -53,10 +53,11 @@ class SERVER_EXPORT QgsCapabilitiesCache : public QObject
      */
     void insertCapabilitiesDocument( const QString &configFilePath, const QString &key, const QDomDocument *doc );
 
+  public slots:
+
     /**
-     * Remove capabilities document
+     * Removes capabilities document
      * \param path the project file path
-     * \since QGIS 2.16
      */
     void removeCapabilitiesDocument( const QString &path );
 

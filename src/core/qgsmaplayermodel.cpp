@@ -17,7 +17,6 @@
 
 #include "qgsmaplayermodel.h"
 #include "qgsproject.h"
-#include "qgsapplication.h"
 #include "qgsvectorlayer.h"
 #include "qgsiconutils.h"
 #include "qgsmaplayerlistutils_p.h"
@@ -152,7 +151,7 @@ QModelIndex QgsMapLayerModel::indexFromLayer( QgsMapLayer *layer ) const
 
 QgsMapLayer *QgsMapLayerModel::layerFromIndex( const QModelIndex &index ) const
 {
-  return mProject->mapLayer( index.data( LayerIdRole ).toString() );
+  return mProject->mapLayer( index.data( static_cast< int >( CustomRole::LayerId ) ).toString() );
 }
 
 void QgsMapLayerModel::setAdditionalItems( const QStringList &items )
@@ -220,7 +219,7 @@ void QgsMapLayerModel::removeLayers( const QStringList &layerIds )
   for ( const QString &layerId : layerIds )
   {
     QModelIndex startIndex = index( 0, 0 );
-    QModelIndexList list = match( startIndex, LayerIdRole, layerId, 1 );
+    QModelIndexList list = match( startIndex, static_cast< int >( CustomRole::LayerId ), layerId, 1 );
     if ( !list.isEmpty() )
     {
       QModelIndex index = list[0];
@@ -325,7 +324,7 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
       }
     }
 
-    case LayerIdRole:
+    case static_cast< int >( CustomRole::LayerId ):
     {
       if ( isEmpty || additionalIndex >= 0 )
         return QVariant();
@@ -334,7 +333,7 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
       return layer ? layer->id() : QVariant();
     }
 
-    case LayerRole:
+    case static_cast< int >( CustomRole::Layer ):
     {
       if ( isEmpty || additionalIndex >= 0 )
         return QVariant();
@@ -342,10 +341,10 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
       return QVariant::fromValue<QgsMapLayer *>( mLayers.value( index.row() - ( mAllowEmpty ? 1 : 0 ) ) );
     }
 
-    case EmptyRole:
+    case static_cast< int >( CustomRole::Empty ):
       return isEmpty;
 
-    case AdditionalRole:
+    case static_cast< int >( CustomRole::Additional ):
       return additionalIndex >= 0;
 
     case Qt::CheckStateRole:
@@ -368,7 +367,7 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
       if ( layer )
       {
         QStringList parts;
-        QString title = layer->title().isEmpty() ? layer->shortName() : layer->title();
+        QString title = !layer->metadata().title().isEmpty() ? layer->metadata().title() : ( layer->serverProperties()->title().isEmpty() ? layer->serverProperties()->shortName() : layer->serverProperties()->title() );
         if ( title.isEmpty() )
           title = layer->name();
         title = "<b>" + title + "</b>";
@@ -381,8 +380,9 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
         }
         parts << title;
 
-        if ( !layer->abstract().isEmpty() )
-          parts << "<br/>" + layer->abstract().replace( QLatin1String( "\n" ), QLatin1String( "<br/>" ) );
+        QString abstract = !layer->metadata().abstract().isEmpty() ? layer->metadata().abstract() : layer->serverProperties()->abstract();
+        if ( !abstract.isEmpty() )
+          parts << "<br/>" + abstract.replace( QLatin1String( "\n" ), QLatin1String( "<br/>" ) );
         parts << "<i>" + layer->publicSource() + "</i>";
         return parts.join( QLatin1String( "<br/>" ) );
       }
@@ -403,6 +403,9 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
 
       return iconForLayer( layer );
     }
+
+    default:
+      break;
   }
 
   return QVariant();
@@ -411,8 +414,8 @@ QVariant QgsMapLayerModel::data( const QModelIndex &index, int role ) const
 QHash<int, QByteArray> QgsMapLayerModel::roleNames() const
 {
   QHash<int, QByteArray> roles  = QAbstractItemModel::roleNames();
-  roles[LayerIdRole]  = "layerId";
-  roles[LayerRole] = "layer";
+  roles[static_cast< int >( CustomRole::LayerId ) ]  = "layerId";
+  roles[static_cast< int >( CustomRole::Layer )] = "layer";
 
   return roles;
 }
@@ -514,7 +517,7 @@ QMimeData *QgsMapLayerModel::mimeData( const QModelIndexList &indexes ) const
   {
     if ( i.isValid() )
     {
-      const QString id = data( index( i.row(), 0, i.parent() ), LayerIdRole ).toString();
+      const QString id = data( index( i.row(), 0, i.parent() ), static_cast< int >( CustomRole::LayerId ) ).toString();
       if ( !addedLayers.contains( id ) )
       {
         addedLayers.insert( id );
@@ -553,7 +556,7 @@ bool QgsMapLayerModel::dropMimeData( const QMimeData *data, Qt::DropAction actio
   for ( const QString &text : std::as_const( newItems ) )
   {
     QModelIndex idx = index( row, 0, QModelIndex() );
-    setData( idx, text, LayerIdRole );
+    setData( idx, text, static_cast< int >( CustomRole::LayerId ) );
     row++;
   }
 
@@ -592,13 +595,16 @@ bool QgsMapLayerModel::setData( const QModelIndex &index, const QVariant &value,
       break;
     }
 
-    case LayerIdRole:
+    case static_cast< int >( CustomRole::LayerId ):
       if ( !isEmpty && additionalIndex < 0 )
       {
         mLayers[index.row() - ( mAllowEmpty ? 1 : 0 )] = mProject->mapLayer( value.toString() );
         emit dataChanged( index, index );
         return true;
       }
+      break;
+
+    default:
       break;
   }
 

@@ -291,7 +291,7 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
     {
       pbnIndex->setEnabled( false );
     }
-    if ( mLayer->dataProvider()->hasSpatialIndex() == QgsFeatureSource::SpatialIndexPresent )
+    if ( mLayer->dataProvider()->hasSpatialIndex() == Qgis::SpatialIndexPresence::Present )
     {
       pbnIndex->setEnabled( false );
       pbnIndex->setText( tr( "Spatial Index Exists" ) );
@@ -348,24 +348,24 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   mLegendConfigEmbeddedWidget->setLayer( mLayer );
 
   // WMS Name as layer short name
-  mLayerShortNameLineEdit->setText( mLayer->shortName() );
+  mLayerShortNameLineEdit->setText( mLayer->serverProperties()->shortName() );
   // WMS Name validator
   QValidator *shortNameValidator = new QRegularExpressionValidator( QgsApplication::shortNameRegularExpression(), this );
   mLayerShortNameLineEdit->setValidator( shortNameValidator );
 
   //layer title and abstract
-  mLayerTitleLineEdit->setText( mLayer->title() );
-  mLayerAbstractTextEdit->setPlainText( mLayer->abstract() );
-  mLayerKeywordListLineEdit->setText( mLayer->keywordList() );
-  mLayerDataUrlLineEdit->setText( mLayer->dataUrl() );
+  mLayerTitleLineEdit->setText( mLayer->serverProperties()->title() );
+  mLayerAbstractTextEdit->setPlainText( mLayer->serverProperties()->abstract() );
+  mLayerKeywordListLineEdit->setText( mLayer->serverProperties()->keywordList() );
+  mLayerDataUrlLineEdit->setText( mLayer->serverProperties()->dataUrl() );
   mLayerDataUrlFormatComboBox->setCurrentIndex(
     mLayerDataUrlFormatComboBox->findText(
-      mLayer->dataUrlFormat()
+      mLayer->serverProperties()->dataUrlFormat()
     )
   );
   //layer attribution
-  mLayerAttributionLineEdit->setText( mLayer->attribution() );
-  mLayerAttributionUrlLineEdit->setText( mLayer->attributionUrl() );
+  mLayerAttributionLineEdit->setText( mLayer->serverProperties()->attribution() );
+  mLayerAttributionUrlLineEdit->setText( mLayer->serverProperties()->attributionUrl() );
 
   // Setup the layer metadata URL
   tableViewMetadataUrl->setSelectionMode( QAbstractItemView::SingleSelection );
@@ -574,7 +574,10 @@ void QgsVectorLayerProperties::syncToLayer()
   }
 
   if ( mSourceWidget )
+  {
+    mSourceWidget->setMapCanvas( mCanvas );
     mSourceWidget->setSourceUri( mLayer->source() );
+  }
 
   // populate the general information
   mLayerOrigNameLineEdit->setText( mLayer->name() );
@@ -759,19 +762,6 @@ void QgsVectorLayerProperties::apply()
   if ( mMaskingWidget && mMaskingWidget->hasBeenPopulated() )
     mMaskingWidget->apply();
 
-  //
-  // Set up sql subset query if applicable
-  //
-  mSubsetGroupBox->setEnabled( true );
-
-  if ( txtSubsetSQL->text() != mLayer->subsetString() )
-  {
-    // set the subset sql for the layer
-    mLayer->setSubsetString( txtSubsetSQL->text() );
-    mMetadataFilled = false;
-  }
-  mOriginalSubsetSQL = mLayer->subsetString();
-
   // set up the scale based layer visibility stuff....
   mLayer->setScaleBasedVisibility( mScaleVisibilityGroupBox->isChecked() );
   mLayer->setMaximumScale( mScaleRangeWidget->maximumScale() );
@@ -837,38 +827,38 @@ void QgsVectorLayerProperties::apply()
   }
 
   //layer title and abstract
-  if ( mLayer->shortName() != mLayerShortNameLineEdit->text() )
+  if ( mLayer->serverProperties()->shortName() != mLayerShortNameLineEdit->text() )
     mMetadataFilled = false;
-  mLayer->setShortName( mLayerShortNameLineEdit->text() );
+  mLayer->serverProperties()->setShortName( mLayerShortNameLineEdit->text() );
 
-  if ( mLayer->title() != mLayerTitleLineEdit->text() )
+  if ( mLayer->serverProperties()->title() != mLayerTitleLineEdit->text() )
     mMetadataFilled = false;
-  mLayer->setTitle( mLayerTitleLineEdit->text() );
+  mLayer->serverProperties()->setTitle( mLayerTitleLineEdit->text() );
 
-  if ( mLayer->abstract() != mLayerAbstractTextEdit->toPlainText() )
+  if ( mLayer->serverProperties()->abstract() != mLayerAbstractTextEdit->toPlainText() )
     mMetadataFilled = false;
-  mLayer->setAbstract( mLayerAbstractTextEdit->toPlainText() );
+  mLayer->serverProperties()->setAbstract( mLayerAbstractTextEdit->toPlainText() );
 
-  if ( mLayer->keywordList() != mLayerKeywordListLineEdit->text() )
+  if ( mLayer->serverProperties()->keywordList() != mLayerKeywordListLineEdit->text() )
     mMetadataFilled = false;
-  mLayer->setKeywordList( mLayerKeywordListLineEdit->text() );
+  mLayer->serverProperties()->setKeywordList( mLayerKeywordListLineEdit->text() );
 
-  if ( mLayer->dataUrl() != mLayerDataUrlLineEdit->text() )
+  if ( mLayer->serverProperties()->dataUrl() != mLayerDataUrlLineEdit->text() )
     mMetadataFilled = false;
-  mLayer->setDataUrl( mLayerDataUrlLineEdit->text() );
+  mLayer->serverProperties()->setDataUrl( mLayerDataUrlLineEdit->text() );
 
-  if ( mLayer->dataUrlFormat() != mLayerDataUrlFormatComboBox->currentText() )
+  if ( mLayer->serverProperties()->dataUrlFormat() != mLayerDataUrlFormatComboBox->currentText() )
     mMetadataFilled = false;
-  mLayer->setDataUrlFormat( mLayerDataUrlFormatComboBox->currentText() );
+  mLayer->serverProperties()->setDataUrlFormat( mLayerDataUrlFormatComboBox->currentText() );
 
   //layer attribution
-  if ( mLayer->attribution() != mLayerAttributionLineEdit->text() )
+  if ( mLayer->serverProperties()->attribution() != mLayerAttributionLineEdit->text() )
     mMetadataFilled = false;
-  mLayer->setAttribution( mLayerAttributionLineEdit->text() );
+  mLayer->serverProperties()->setAttribution( mLayerAttributionLineEdit->text() );
 
-  if ( mLayer->attributionUrl() != mLayerAttributionUrlLineEdit->text() )
+  if ( mLayer->serverProperties()->attributionUrl() != mLayerAttributionUrlLineEdit->text() )
     mMetadataFilled = false;
-  mLayer->setAttributionUrl( mLayerAttributionUrlLineEdit->text() );
+  mLayer->serverProperties()->setAttributionUrl( mLayerAttributionUrlLineEdit->text() );
 
   // Metadata URL
   QList<QgsMapLayerServerProperties::MetadataUrl> metaUrls;
@@ -961,6 +951,7 @@ void QgsVectorLayerProperties::apply()
   // happens BEFORE we change the source, otherwise we might end up with a renderer which is not
   // compatible with the new geometry type of the layer. (And likewise for other properties like
   // fields!)
+  bool dialogNeedsResync = false;
   if ( mSourceWidget )
   {
     const QString newSource = mSourceWidget->sourceUri();
@@ -972,9 +963,25 @@ void QgsVectorLayerProperties::apply()
       // resync dialog to layer's new state -- this allows any changed layer properties
       // (such as a forced creation of a new renderer compatible with the new layer, new field configuration, etc)
       // to show in the dialog correctly
-      syncToLayer();
+      dialogNeedsResync = true;
     }
   }
+  // now apply the subset string AFTER setting the layer's source. It's messy, but the subset string
+  // can form part of the layer's source, but it WON'T be present in the URI returned by the source widget!
+  // If we don't apply the subset string AFTER changing the source, then the subset string will be lost.
+  mSubsetGroupBox->setEnabled( true );
+  if ( txtSubsetSQL->text() != mLayer->subsetString() )
+  {
+    // set the subset sql for the layer
+    mLayer->setSubsetString( txtSubsetSQL->text() );
+    mMetadataFilled = false;
+    // need to resync the dialog, the subset string may have changed the layer's geometry type!
+    dialogNeedsResync = true;
+  }
+  mOriginalSubsetSQL = mLayer->subsetString();
+
+  if ( dialogNeedsResync )
+    syncToLayer();
 
   mLayer->triggerRepaint();
   // notify the project we've made a change
@@ -1688,10 +1695,15 @@ void QgsVectorLayerProperties::optionsStackedWidget_CurrentChanged( int index )
 
   if ( index == mOptStackedWidget->indexOf( mOptsPage_Information ) && ! mMetadataFilled )
   {
-    //set the metadata contents (which can be expensive)
+    // set the metadata contents (which can be expensive)
     teMetadataViewer->clear();
     teMetadataViewer->setHtml( htmlMetadata() );
     mMetadataFilled = true;
+  }
+  else if ( index == mOptStackedWidget->indexOf( mOptsPage_SourceFields ) || index == mOptStackedWidget->indexOf( mOptsPage_Joins ) )
+  {
+    // store any edited attribute form field configuration to prevent loss of edits when adding/removing fields and/or joins
+    mAttributesFormPropertiesDialog->store();
   }
 
   resizeAlltabs( index );

@@ -556,7 +556,7 @@ void QgsExpressionBuilderWidget::fillFieldValues( const QString &fieldName, QgsV
     bool forceRepresentedValue = false;
     if ( QgsVariantUtils::isNull( value ) )
       strValue = QStringLiteral( "NULL" );
-    else if ( value.type() == QVariant::Int || value.type() == QVariant::Double || value.type() == QVariant::LongLong )
+    else if ( value.type() == QVariant::Int || value.type() == QVariant::Double || value.type() == QVariant::LongLong || value.type() == QVariant::Bool )
       strValue = value.toString();
     else if ( value.type() == QVariant::StringList )
     {
@@ -615,6 +615,11 @@ QString QgsExpressionBuilderWidget::getFunctionHelp( QgsExpressionFunction *func
 bool QgsExpressionBuilderWidget::isExpressionValid()
 {
   return mExpressionValid;
+}
+
+void QgsExpressionBuilderWidget::setCustomPreviewGenerator( const QString &label, const QList<QPair<QString, QVariant> > &choices, const std::function<QgsExpressionContext( const QVariant & )> &previewContextGenerator )
+{
+  mExpressionPreviewWidget->setCustomPreviewGenerator( label, choices, previewContextGenerator );
 }
 
 void QgsExpressionBuilderWidget::saveToRecent( const QString &collection )

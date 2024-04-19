@@ -21,6 +21,7 @@ email                : marco.hugentobler at sourcepole dot com
 #include "qgis_core.h"
 #include "qgsgeometryengine.h"
 #include "qgsgeometry.h"
+#include "qgsconfig.h"
 #include <geos_c.h>
 
 class QgsLineString;
@@ -28,10 +29,47 @@ class QgsPolygon;
 class QgsGeometry;
 class QgsGeometryCollection;
 
+#if !defined(USE_THREAD_LOCAL) || defined(Q_OS_WIN)
+#include <QThreadStorage>
+#endif
+
+/**
+   * \class QgsGeosContext
+   * \ingroup core
+   * \brief Used to create and store a proj context object, correctly freeing the context upon destruction.
+   * \note Not available in Python bindings
+   * \since QGIS 3.38
+   */
+class CORE_EXPORT QgsGeosContext
+{
+  public:
+
+    QgsGeosContext();
+    ~QgsGeosContext();
+
+    /**
+     * Returns a thread local instance of a GEOS context, safe for use in the current thread.
+     */
+    static GEOSContextHandle_t get();
+
+  private:
+    GEOSContextHandle_t mContext = nullptr;
+
+    /**
+     * Thread local GEOS context storage. A new GEOS context will be created
+     * for every thread.
+     */
+
+#if defined(USE_THREAD_LOCAL) && !defined(Q_OS_WIN)
+    static thread_local QgsGeosContext sGeosContext;
+#else
+    static QThreadStorage< QgsGeosContext * > sGeosContext;
+#endif
+};
+
 /**
  * Contains geos related utilities and functions.
  * \note not available in Python bindings.
- * \since QGIS 3.0
  */
 namespace geos
 {
@@ -103,8 +141,9 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * GEOS geometry engine constructor
      * \param geometry The geometry
      * \param precision The precision of the grid to which to snap the geometry vertices. If 0, no snapping is performed.
+     * \param allowInvalidSubGeom Whether invalid sub-geometries should be skipped without error (since QGIS 3.38)
      */
-    QgsGeos( const QgsAbstractGeometry *geometry, double precision = 0 );
+    QgsGeos( const QgsAbstractGeometry *geometry, double precision = 0, bool allowInvalidSubGeom = true );
 
     /**
      * Creates a new QgsGeometry object, feeding in a geometry in GEOS format.
@@ -163,7 +202,6 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * \param errorMsg Error message returned by GEOS
      * \param parameters can be used to specify parameters which control the subdivision results (since QGIS 3.28)
      *
-     * \since QGIS 3.0
      */
     std::unique_ptr< QgsAbstractGeometry > subdivide( int maxNodes, QString *errorMsg = nullptr, const QgsGeometryParameters &parameters = QgsGeometryParameters() ) const;
 
@@ -213,7 +251,6 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * If the default approximate provided by this method is insufficient, use hausdorffDistanceDensify() instead.
      *
      * \see hausdorffDistanceDensify()
-     * \since QGIS 3.0
      */
     double hausdorffDistance( const QgsAbstractGeometry *geom, QString *errorMsg = nullptr ) const;
 
@@ -231,7 +268,6 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * distance returned approach the true Hausdorff distance for the geometries.
      *
      * \see hausdorffDistance()
-     * \since QGIS 3.0
      */
     double hausdorffDistanceDensify( const QgsAbstractGeometry *geom, double densifyFraction, QString *errorMsg = nullptr ) const;
 
@@ -308,7 +344,6 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * \param errorMsg error messages emitted, if any
      * \returns buffered geometry, or an NULLPTR if buffer could not be
      * calculated
-     * \since QGIS 3.0
      */
     std::unique_ptr< QgsAbstractGeometry > singleSidedBuffer( double distance, int segments, Qgis::BufferSide side,
         Qgis::JoinStyle joinStyle, double miterLimit,
@@ -461,21 +496,18 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * \returns a LineString or MultiLineString geometry, with any connected lines
      * joined. An empty geometry will be returned if the input geometry was not a
      * LineString/MultiLineString geometry.
-     * \since QGIS 3.0
      */
     QgsGeometry mergeLines( QString *errorMsg = nullptr ) const;
 
     /**
      * Returns the closest point on the geometry to the other geometry.
      * \see shortestLine()
-     * \since QGIS 2.14
      */
     QgsGeometry closestPoint( const QgsGeometry &other, QString *errorMsg = nullptr ) const;
 
     /**
      * Returns the shortest line joining this geometry to the other geometry.
      * \see closestPoint()
-     * \since QGIS 2.14
      */
     QgsGeometry shortestLine( const QgsGeometry &other, QString *errorMsg = nullptr ) const;
 
@@ -519,7 +551,6 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * unary union these geometries by calling combine() on the set of input geometries and then
      * pass the result to polygonize().
      * An empty geometry will be returned in the case of errors.
-     * \since QGIS 3.0
      */
     static QgsGeometry polygonize( const QVector<const QgsAbstractGeometry *> &geometries, QString *errorMsg = nullptr );
 
@@ -536,7 +567,6 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * If \a edgesOnly is TRUE than line string boundary geometries will be returned
      * instead of polygons.
      * An empty geometry will be returned if the diagram could not be calculated.
-     * \since QGIS 3.0
      */
     QgsGeometry voronoiDiagram( const QgsAbstractGeometry *extent = nullptr, double tolerance = 0.0, bool edgesOnly = false, QString *errorMsg = nullptr ) const;
 
@@ -547,9 +577,23 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * If \a edgesOnly is TRUE than line string boundary geometries will be returned
      * instead of polygons.
      * An empty geometry will be returned if the diagram could not be calculated.
-     * \since QGIS 3.0
+     * \see constrainedDelaunayTriangulation()
      */
     QgsGeometry delaunayTriangulation( double tolerance = 0.0, bool edgesOnly = false, QString *errorMsg = nullptr ) const;
+
+    /**
+     * Returns a constrained Delaunay triangulation for the vertices of the geometry.
+     *
+     * An empty geometry will be returned if the triangulation could not be calculated.
+     *
+     * This method requires a QGIS build based on GEOS 3.11 or later.
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.10 or earlier.
+     * \see delaunayTriangulation()
+     *
+     * \since QGIS 3.36
+     */
+    std::unique_ptr< QgsAbstractGeometry > constrainedDelaunayTriangulation( QString *errorMsg = nullptr ) const;
 
     /**
      * Returns a possibly concave geometry that encloses the input geometry.
@@ -572,7 +616,7 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * \see convexHull()
      * \since QGIS 3.28
      */
-    QgsAbstractGeometry  *concaveHull( double targetPercent, bool allowHoles = false, QString *errorMsg = nullptr ) const;
+    QgsAbstractGeometry *concaveHull( double targetPercent, bool allowHoles = false, QString *errorMsg = nullptr ) const;
 
     /**
      * Analyze a coverage (represented as a collection of polygonal geometry with exactly matching edge
@@ -650,12 +694,10 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
      * Returns a geos geometry - caller takes ownership of the object (should be deleted with GEOSGeom_destroy_r)
      * \param geometry geometry to convert to GEOS representation
      * \param precision The precision of the grid to which to snap the geometry vertices. If 0, no snapping is performed.
+     * \param allowInvalidSubGeom Whether invalid sub-geometries should be skipped without error (since QGIS 3.38)
      */
-    static geos::unique_ptr asGeos( const QgsAbstractGeometry *geometry, double precision = 0 );
+    static geos::unique_ptr asGeos( const QgsAbstractGeometry *geometry, double precision = 0, bool allowInvalidSubGeom = true );
     static QgsPoint coordSeqPoint( const GEOSCoordSequence *cs, int i, bool hasZ, bool hasM );
-
-    static GEOSContextHandle_t getGEOSHandler();
-
 
   private:
     mutable geos::unique_ptr mGeos;
@@ -682,7 +724,7 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
     };
 
     //geos util functions
-    void cacheGeos() const;
+    void cacheGeos( bool allowInvalidSubGeom ) const;
 
     /**
      * Returns a geometry representing the overlay operation with \a geom.
@@ -697,12 +739,12 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
     static std::unique_ptr< QgsLineString > sequenceToLinestring( const GEOSGeometry *geos, bool hasZ, bool hasM );
     static int numberOfGeometries( GEOSGeometry *g );
     static geos::unique_ptr nodeGeometries( const GEOSGeometry *splitLine, const GEOSGeometry *geom );
-    int mergeGeometriesMultiTypeSplit( QVector<GEOSGeometry *> &splitResult ) const;
+    int mergeGeometriesMultiTypeSplit( std::vector<geos::unique_ptr> &splitResult ) const;
 
     /**
      * Ownership of geoms is transferred
      */
-    static geos::unique_ptr createGeosCollection( int typeId, const QVector<GEOSGeometry *> &geoms );
+    static geos::unique_ptr createGeosCollection( int typeId, std::vector<geos::unique_ptr> &geoms );
 
     static geos::unique_ptr createGeosPointXY( double x, double y, bool hasZ, double z, bool hasM, double m, int coordDims, double precision );
     static geos::unique_ptr createGeosPoint( const QgsAbstractGeometry *point, int coordDims, double precision );
@@ -712,8 +754,8 @@ class CORE_EXPORT QgsGeos: public QgsGeometryEngine
     //utils for geometry split
     bool topologicalTestPointsSplit( const GEOSGeometry *splitLine, QgsPointSequence &testPoints, QString *errorMsg = nullptr ) const;
     geos::unique_ptr linePointDifference( GEOSGeometry *GEOSsplitPoint ) const;
-    EngineOperationResult splitLinearGeometry( GEOSGeometry *splitLine, QVector<QgsGeometry > &newGeometries, bool skipIntersectionCheck ) const;
-    EngineOperationResult splitPolygonGeometry( GEOSGeometry *splitLine, QVector<QgsGeometry > &newGeometries, bool skipIntersectionCheck ) const;
+    EngineOperationResult splitLinearGeometry( const GEOSGeometry *splitLine, QVector<QgsGeometry > &newGeometries, bool skipIntersectionCheck ) const;
+    EngineOperationResult splitPolygonGeometry( const GEOSGeometry *splitLine, QVector<QgsGeometry > &newGeometries, bool skipIntersectionCheck ) const;
 
     //utils for reshape
     static geos::unique_ptr reshapeLine( const GEOSGeometry *line, const GEOSGeometry *reshapeLineGeos, double precision );

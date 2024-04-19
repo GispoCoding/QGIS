@@ -20,7 +20,6 @@
 
 #include "qgis_core.h"
 #include "qgsfeedback.h"
-#include "qgsmessagelog.h"
 
 class QgsProcessingProvider;
 class QgsProcessingAlgorithm;
@@ -34,7 +33,6 @@ class QgsProcessingContext;
  * This base class implementation silently ignores all feedback reported by algorithms.
  * Subclasses of QgsProcessingFeedback can be used to log this feedback or report
  * it to users via the GUI.
- * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingFeedback : public QgsFeedback
 {
@@ -188,7 +186,6 @@ class CORE_EXPORT QgsProcessingFeedback : public QgsFeedback
  * feedback object, but scales overall progress reports to account
  * for a number of child steps which each report their own feedback.
  *
- * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingMultiStepFeedback : public QgsProcessingFeedback
 {

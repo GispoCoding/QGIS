@@ -83,6 +83,12 @@ QgsAttributesFormProperties::QgsAttributesFormProperties( QgsVectorLayer *layer,
   connect( mEditorLayoutComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsAttributesFormProperties::mEditorLayoutComboBox_currentIndexChanged );
   connect( pbnSelectEditForm, &QToolButton::clicked, this, &QgsAttributesFormProperties::pbnSelectEditForm_clicked );
   connect( mTbInitCode, &QPushButton::clicked, this, &QgsAttributesFormProperties::mTbInitCode_clicked );
+
+  connect( mLayer, &QgsVectorLayer::updatedFields, this, [this]
+  {
+    if ( !mBlockUpdates )
+      updatedFields();
+  } );
 }
 
 void QgsAttributesFormProperties::init()
@@ -372,16 +378,17 @@ void QgsAttributesFormProperties::storeAttributeTypeDialog()
   constraints.setConstraintStrength( QgsFieldConstraints::ConstraintExpression, mAttributeTypeDialog->constraintExpressionEnforced() ?
                                      QgsFieldConstraints::ConstraintStrengthHard : QgsFieldConstraints::ConstraintStrengthSoft );
 
+  // The call to mLayer->setDefaultValueDefinition will possibly emit updatedFields
+  // which will set mAttributeTypeDialog to nullptr so we need to store any value before calling it
   cfg.mFieldConstraints = constraints;
-
-  mLayer->setDefaultValueDefinition( mAttributeTypeDialog->fieldIdx(), QgsDefaultValue( mAttributeTypeDialog->defaultValueExpression(), mAttributeTypeDialog->applyDefaultValueOnUpdate() ) );
-
   cfg.mEditorWidgetType = mAttributeTypeDialog->editorWidgetType();
   cfg.mEditorWidgetConfig = mAttributeTypeDialog->editorWidgetConfig();
-
   cfg.mSplitPolicy = mAttributeTypeDialog->splitPolicy();
+  const int fieldIndex = mAttributeTypeDialog->fieldIdx();
 
-  const QString fieldName = mLayer->fields().at( mAttributeTypeDialog->fieldIdx() ).name();
+  mLayer->setDefaultValueDefinition( fieldIndex, QgsDefaultValue( mAttributeTypeDialog->defaultValueExpression(), mAttributeTypeDialog->applyDefaultValueOnUpdate() ) );
+
+  const QString fieldName = mLayer->fields().at( fieldIndex ).name();
 
   for ( auto itemIt = QTreeWidgetItemIterator( mAvailableWidgetsTree ); *itemIt; ++itemIt )
   {
@@ -937,8 +944,16 @@ void QgsAttributesFormProperties::pbnSelectEditForm_clicked()
   mEditFormLineEdit->setText( uifilename );
 }
 
+void QgsAttributesFormProperties::store()
+{
+  storeAttributeWidgetEdit();
+  storeAttributeContainerEdit();
+  storeAttributeTypeDialog();
+}
+
 void QgsAttributesFormProperties::apply()
 {
+  mBlockUpdates++;
   storeAttributeWidgetEdit();
   storeAttributeContainerEdit();
   storeAttributeTypeDialog();
@@ -1049,6 +1064,7 @@ void QgsAttributesFormProperties::apply()
   }
 
   mLayer->setEditFormConfig( editFormConfig );
+  mBlockUpdates--;
 }
 
 
@@ -1944,4 +1960,31 @@ QgsAttributesFormProperties::TextElementEditorConfiguration QgsAttributesFormPro
 void QgsAttributesFormProperties::DnDTreeItemData::setTextElementEditorConfiguration( const QgsAttributesFormProperties::TextElementEditorConfiguration &textElementEditorConfiguration )
 {
   mTextElementEditorConfiguration = textElementEditorConfiguration;
+}
+
+void QgsAttributesFormProperties::updatedFields()
+{
+  // Store configuration to insure changes made are kept after refreshing the list
+  QMap<QString, FieldConfig> fieldConfigs;
+  QTreeWidgetItem *fieldContainer = mAvailableWidgetsTree->invisibleRootItem()->child( 0 );
+  for ( int i = 0; i < fieldContainer->childCount(); i++ )
+  {
+    QTreeWidgetItem *fieldItem = fieldContainer->child( i );
+    const QString fieldName = fieldItem->data( 0, FieldNameRole ).toString();
+    const FieldConfig cfg = fieldItem->data( 0, FieldConfigRole ).value<FieldConfig>();
+    fieldConfigs[fieldName] = cfg;
+  }
+
+  initAvailableWidgetsTree();
+
+  fieldContainer = mAvailableWidgetsTree->invisibleRootItem()->child( 0 );
+  for ( int i = 0; i < fieldContainer->childCount(); i++ )
+  {
+    QTreeWidgetItem *fieldItem = fieldContainer->child( i );
+    const QString fieldName = fieldItem->data( 0, FieldNameRole ).toString();
+    if ( fieldConfigs.contains( fieldName ) )
+    {
+      fieldItem->setData( 0, FieldConfigRole, fieldConfigs[fieldName] );
+    }
+  }
 }

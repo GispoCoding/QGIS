@@ -47,8 +47,8 @@ QString QgsExportLayersInformationAlgorithm::groupId() const
 
 void QgsExportLayersInformationAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layer(s)" ), QgsProcessing::TypeMapLayer ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Output" ), QgsProcessing::TypeVectorPolygon, QVariant() ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layer(s)" ), Qgis::ProcessingSourceType::MapLayer ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Output" ), Qgis::ProcessingSourceType::VectorPolygon, QVariant() ) );
 }
 
 QString QgsExportLayersInformationAlgorithm::shortHelpString() const
@@ -141,7 +141,7 @@ QVariantMap QgsExportLayersInformationAlgorithm::processAlgorithm( const QVarian
       attributes << QVariant() << QVariant() << QVariant() << QVariant();
     }
     attributes << layer->metadata().rights().join( ';' )
-               << layer->abstract();
+               << layer->serverProperties()->abstract();
     feature.setAttributes( attributes );
 
     QgsRectangle rect = layer->extent();

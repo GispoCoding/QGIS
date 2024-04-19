@@ -34,6 +34,8 @@ Creates a contour renderer
 %Docstring
 QgsRasterContourRenderer cannot be copied. Use :py:func:`~QgsRasterContourRenderer.clone` instead.
 %End
+    virtual Qgis::RasterRendererFlags flags() const;
+
 
     static QgsRasterRenderer *create( const QDomElement &elem, QgsRasterInterface *input ) /Factory/;
 %Docstring
@@ -50,16 +52,10 @@ Creates an instance of the renderer based on definition from XML (used by render
 
     virtual QList<QgsLayerTreeModelLegendNode *> createLegendNodes( QgsLayerTreeLayer *nodeLayer ) /Factory/;
 
+    virtual int inputBand() const;
 
+    virtual bool setInputBand( int band );
 
-    int inputBand() const;
-%Docstring
-Returns the number of the input raster band
-%End
-    void setInputBand( int band );
-%Docstring
-Sets the number of the input raster band
-%End
 
     double contourInterval() const;
 %Docstring

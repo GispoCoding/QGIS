@@ -61,15 +61,15 @@ void CostCalculator::addObstacleCostPenalty( LabelPosition *lp, FeaturePart *obs
       // behavior depends on obstacle avoid type
       switch ( obstacle->layer()->obstacleType() )
       {
-        case QgsLabelObstacleSettings::PolygonInterior:
+        case QgsLabelObstacleSettings::ObstacleType::PolygonInterior:
           // n ranges from 0 -> 12
           n = lp->polygonIntersectionCost( obstacle );
           break;
-        case QgsLabelObstacleSettings::PolygonBoundary:
+        case QgsLabelObstacleSettings::ObstacleType::PolygonBoundary:
           // penalty may need tweaking, given that interior mode ranges up to 12
           n = ( lp->crossesBoundary( obstacle ) ? 6 : 0 );
           break;
-        case QgsLabelObstacleSettings::PolygonWhole:
+        case QgsLabelObstacleSettings::ObstacleType::PolygonWhole:
           // n is either 0 or 12
           n = ( lp->intersectsWithPolygon( obstacle ) ? 12 : 0 );
           break;
@@ -94,7 +94,7 @@ void CostCalculator::addObstacleCostPenalty( LabelPosition *lp, FeaturePart *obs
       const double priority = 2 * ( 1 - lp->feature->calculatePriority() );
       const double obstaclePriority = obstacle->obstacleSettings().factor();
 
-      // if feature priority is < obstaclePriorty, there's a hard conflict...
+      // if feature priority is < obstaclePriority, there's a hard conflict...
       if ( n > 0 && ( priority < obstaclePriority && !qgsDoubleNear( priority, obstaclePriority, 0.001 ) ) )
       {
         lp->setHasHardObstacleConflict( true );

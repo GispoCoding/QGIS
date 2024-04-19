@@ -20,6 +20,7 @@
 #include "qgsconfig.h"
 #include "qgsmaplayer.h"
 #include "qgsvectorlayerref.h"
+#include "qgslayertreeregistrybridge.h"
 
 #include <QObject>
 
@@ -69,10 +70,13 @@ class APP_EXPORT QgsAppLayerHandling
      *
      * The \a baseName parameter will be used as the layer name (and shown in the map legend).
      *
+     * \returns the list of layers added, which may contain more than one layer if the
+     *          datasource contains multiple sublayers.
+     *
      * \note This may trigger a dialog asking users to select from available sublayers in the datasource,
      * depending on the contents of the datasource and the user's current QGIS settings.
      */
-    static QgsVectorLayer *addVectorLayer( const QString &uri, const QString &baseName, const QString &provider = QLatin1String( "ogr" ), bool addToLegend = true );
+    static QList< QgsVectorLayer * >addVectorLayer( const QString &uri, const QString &baseName, const QString &provider = QLatin1String( "ogr" ), bool addToLegend = true );
 
     /**
      * Adds a list of vector layers from a list of layer \a uris supported by the OGR provider.
@@ -90,10 +94,13 @@ class APP_EXPORT QgsAppLayerHandling
      *
      * The \a baseName parameter will be used as the layer name (and shown in the map legend).
      *
+     * \returns the list of layers added, which may contain more than one layer if the
+     *          datasource contains multiple sublayers.
+     *
      * \note This may trigger a dialog asking users to select from available sublayers in the datasource,
      * depending on the contents of the datasource and the user's current QGIS settings.
      */
-    static QgsRasterLayer *addRasterLayer( QString const &uri, const QString &baseName, const QString &provider = QLatin1String( "gdal" ), bool addToLegend = true );
+    static QList<QgsRasterLayer * >addRasterLayer( QString const &uri, const QString &baseName, const QString &provider = QLatin1String( "gdal" ), bool addToLegend = true );
 
     /**
      * Adds a list of raster layers from a list of layer \a uris supported by the GDAL provider.
@@ -111,10 +118,13 @@ class APP_EXPORT QgsAppLayerHandling
      *
      * The \a baseName parameter will be used as the layer name (and shown in the map legend).
      *
+     * \returns the list of layers added, which may contain more than one layer if the
+     *          datasource contains multiple sublayers.
+     *
      * \note This may trigger a dialog asking users to select from available sublayers in the datasource,
      * depending on the contents of the datasource and the user's current QGIS settings.
      */
-    static QgsMeshLayer *addMeshLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend = true );
+    static QList< QgsMeshLayer *>addMeshLayer( const QString &uri, const QString &baseName, const QString &provider, bool addToLegend = true );
 
     /**
      * Post processes an entire group of added \a layers.
@@ -140,10 +150,18 @@ class APP_EXPORT QgsAppLayerHandling
     //! Add a 'pre-made' map layer to the project
     static void addMapLayer( QgsMapLayer *mapLayer, bool addToLegend = true );
 
-    static void openLayerDefinition( const QString &filename );
+    /**
+     * Opens qlr
+     * \param filename file path to the qlr
+     * \param insertPoint describes where the qlr layers/groups shall be inserted
+     */
+    static void openLayerDefinition( const QString &filename, const QgsLayerTreeRegistryBridge::InsertionPoint *insertPoint = nullptr );
 
-    //! Add a Layer Definition file
-    static void addLayerDefinition();
+    /**
+     * Add a Layer Definition file
+     * \param insertPoint describes where the qlr layers/groups shall be inserted
+     */
+    static void addLayerDefinition( const QgsLayerTreeRegistryBridge::InsertionPoint *insertPoint );
 
     //! Add a list of database layers to the map
     static QList< QgsMapLayer * > addDatabaseLayers( const QStringList &layerPathList, const QString &providerKey, bool &ok );
@@ -204,7 +222,7 @@ class APP_EXPORT QgsAppLayerHandling
 
   private:
 
-    template<typename T> static T *addLayerPrivate( Qgis::LayerType type, const QString &uri, const QString &baseName, const QString &providerKey, bool guiWarnings = true, bool addToLegend = true );
+    template<typename T> static QList<T *>addLayerPrivate( Qgis::LayerType type, const QString &uri, const QString &baseName, const QString &providerKey, bool guiWarnings = true, bool addToLegend = true );
 
     /**
      * Post processes a single added \a layer, applying any default behavior which should

@@ -26,6 +26,7 @@ import pyclbr
 import re
 import sys
 import tempfile
+from typing import Optional
 from functools import partial
 from operator import itemgetter
 from pathlib import Path
@@ -37,6 +38,7 @@ from qgis.PyQt.QtCore import QByteArray, QCoreApplication, QDir, QEvent, QFileIn
 from qgis.PyQt.QtGui import QKeySequence
 from qgis.PyQt.QtNetwork import QNetworkRequest
 from qgis.PyQt.QtWidgets import (
+    QAction,
     QApplication,
     QFileDialog,
     QFrame,
@@ -60,10 +62,9 @@ class Editor(QgsCodeEditorPython):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.path = None
+        self.path: Optional[str] = None
         #  recent modification time
         self.lastModified = 0
-        self.settings = QgsSettings()
 
         self.setMinimumHeight(120)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -104,46 +105,96 @@ class Editor(QgsCodeEditorPython):
         menu.addAction(
             QCoreApplication.translate("PythonConsole", "Hide Editor"),
             self.hideEditor)
-        menu.addSeparator()  # ------------------------------
-        syntaxCheckAction = menu.addAction(QgsApplication.getThemeIcon("console/iconSyntaxErrorConsole.svg"),
-                                           QCoreApplication.translate("PythonConsole", "Check Syntax"),
-                                           self.syntaxCheck, 'Ctrl+4')
-        runSelected = menu.addAction(QgsApplication.getThemeIcon("console/mIconRunConsole.svg"),  # spellok
-                                     QCoreApplication.translate("PythonConsole", "Run Selected"),
-                                     self.runSelectedCode, 'Ctrl+E')  # spellok
-        pyQGISHelpAction = menu.addAction(QgsApplication.getThemeIcon("console/iconHelpConsole.svg"),
-                                          QCoreApplication.translate("PythonConsole", "Search Selection in PyQGIS Documentation"),
-                                          self.searchSelectedTextInPyQGISDocs)
-        menu.addAction(QgsApplication.getThemeIcon("mActionStart.svg"),
-                       QCoreApplication.translate("PythonConsole", "Run Script"),
-                       self.runScriptCode, 'Ctrl+Shift+E')
         menu.addSeparator()
-        undoAction = menu.addAction(QgsApplication.getThemeIcon("mActionUndo.svg"),
-                                    QCoreApplication.translate("PythonConsole", "Undo"),
-                                    self.undo, QKeySequence.StandardKey.Undo)
-        redoAction = menu.addAction(QgsApplication.getThemeIcon("mActionRedo.svg"),
-                                    QCoreApplication.translate("PythonConsole", "Redo"),
-                                    self.redo, 'Ctrl+Shift+Z')
+
+        syntaxCheckAction = QAction(QgsApplication.getThemeIcon("console/iconSyntaxErrorConsole.svg"),
+                                    QCoreApplication.translate("PythonConsole", "Check Syntax"),
+                                    menu)
+        syntaxCheckAction.triggered.connect(self.syntaxCheck)
+        syntaxCheckAction.setShortcut('Ctrl+4')
+        menu.addAction(syntaxCheckAction)
+
+        runSelected = QAction(QgsApplication.getThemeIcon("console/mIconRunConsole.svg"),  # spellok
+                              QCoreApplication.translate("PythonConsole", "Run Selected"),
+                              menu)
+        runSelected.triggered.connect(self.runSelectedCode)  # spellok
+        runSelected.setShortcut('Ctrl+E')  # spellok
+        menu.addAction(runSelected)  # spellok
+
+        pyQGISHelpAction = QAction(QgsApplication.getThemeIcon("console/iconHelpConsole.svg"),
+                                   QCoreApplication.translate("PythonConsole", "Search Selection in PyQGIS Documentation"),
+                                   menu)
+        pyQGISHelpAction.triggered.connect(self.searchSelectedTextInPyQGISDocs)
+        menu.addAction(pyQGISHelpAction)
+
+        start_action = QAction(QgsApplication.getThemeIcon("mActionStart.svg"),
+                               QCoreApplication.translate("PythonConsole", "Run Script"),
+                               menu)
+        start_action.triggered.connect(self.runScriptCode)
+        start_action.setShortcut('Ctrl+Shift+E')
+        menu.addAction(start_action)
+
         menu.addSeparator()
-        menu.addAction(QgsApplication.getThemeIcon("console/iconSearchEditorConsole.svg"),
-                       QCoreApplication.translate("PythonConsole", "Find Text"),
-                       self.openFindWidget)
-        cutAction = menu.addAction(QgsApplication.getThemeIcon("mActionEditCut.svg"),
-                                   QCoreApplication.translate("PythonConsole", "Cut"),
-                                   self.cut, QKeySequence.StandardKey.Cut)
-        copyAction = menu.addAction(QgsApplication.getThemeIcon("mActionEditCopy.svg"),
-                                    QCoreApplication.translate("PythonConsole", "Copy"),
-                                    self.copy, QKeySequence.StandardKey.Copy)
-        pasteAction = menu.addAction(QgsApplication.getThemeIcon("mActionEditPaste.svg"),
-                                     QCoreApplication.translate("PythonConsole", "Paste"),
-                                     self.paste, QKeySequence.StandardKey.Paste)
-        selectAllAction = menu.addAction(
+        undoAction = QAction(QgsApplication.getThemeIcon("mActionUndo.svg"),
+                             QCoreApplication.translate("PythonConsole", "Undo"),
+                             menu)
+        undoAction.triggered.connect(self.undo)
+        undoAction.setShortcut(QKeySequence.StandardKey.Undo)
+        menu.addAction(undoAction)
+
+        redoAction = QAction(QgsApplication.getThemeIcon("mActionRedo.svg"),
+                             QCoreApplication.translate("PythonConsole", "Redo"),
+                             menu)
+        redoAction.triggered.connect(self.redo)
+        redoAction.setShortcut('Ctrl+Shift+Z')
+        menu.addAction(redoAction)
+
+        menu.addSeparator()
+        find_action = QAction(
+            QgsApplication.getThemeIcon("console/iconSearchEditorConsole.svg"),
+            QCoreApplication.translate("PythonConsole", "Find Text"),
+            menu)
+        find_action.triggered.connect(self.openFindWidget)
+        menu.addAction(find_action)
+
+        cutAction = QAction(
+            QgsApplication.getThemeIcon("mActionEditCut.svg"),
+            QCoreApplication.translate("PythonConsole", "Cut"),
+            menu)
+        cutAction.triggered.connect(self.cut)
+        cutAction.setShortcut(QKeySequence.StandardKey.Cut)
+        menu.addAction(cutAction)
+
+        copyAction = QAction(QgsApplication.getThemeIcon("mActionEditCopy.svg"),
+                             QCoreApplication.translate("PythonConsole", "Copy"),
+                             menu)
+        copyAction.triggered.connect(self.copy)
+        copyAction.setShortcut(QKeySequence.StandardKey.Copy)
+        menu.addAction(copyAction)
+
+        pasteAction = QAction(QgsApplication.getThemeIcon("mActionEditPaste.svg"),
+                              QCoreApplication.translate("PythonConsole", "Paste"),
+                              menu)
+        pasteAction.triggered.connect(self.paste)
+        pasteAction.setShortcut(QKeySequence.StandardKey.Paste)
+        menu.addAction(pasteAction)
+
+        selectAllAction = QAction(
             QCoreApplication.translate("PythonConsole", "Select All"),
-            self.selectAll, QKeySequence.StandardKey.SelectAll)
+            menu)
+        selectAllAction.triggered.connect(self.selectAll)
+        selectAllAction.setShortcut(QKeySequence.StandardKey.SelectAll)
+        menu.addAction(selectAllAction)
+
         menu.addSeparator()
-        menu.addAction(QgsApplication.getThemeIcon("console/iconCommentEditorConsole.svg"),
-                       QCoreApplication.translate("PythonConsole", "Toggle Comment"),
-                       self.toggleComment, 'Ctrl+:')
+        toggle_comment_action = QAction(
+            QgsApplication.getThemeIcon("console/iconCommentEditorConsole.svg"),
+            QCoreApplication.translate("PythonConsole", "Toggle Comment"),
+            menu)
+        toggle_comment_action.triggered.connect(self.toggleComment)
+        toggle_comment_action.setShortcut('Ctrl+:')
+        menu.addAction(toggle_comment_action)
+
         menu.addSeparator()
         gist_menu = QMenu(self)
         gist_menu.setTitle(QCoreApplication.translate("PythonConsole", "Share on GitHub"))
@@ -186,10 +237,10 @@ class Editor(QgsCodeEditorPython):
             redoAction.setEnabled(True)
         if QApplication.clipboard().text():
             pasteAction.setEnabled(True)
-        if self.settings.value("pythonConsole/enableObjectInsp",
+        if QgsSettings().value("pythonConsole/enableObjectInsp",
                                False, type=bool):
             showCodeInspection.setEnabled(True)
-        menu.exec_(self.mapToGlobal(e.pos()))
+        menu.exec(self.mapToGlobal(e.pos()))
 
     def findText(self, forward, showMessage=True, findFirst=False):
         lineFrom, indexFrom, lineTo, indexTo = self.getSelection()
@@ -239,7 +290,7 @@ class Editor(QgsCodeEditorPython):
             self.pythonconsole.objectListButton.setChecked(True)
 
     def shareOnGist(self, is_public):
-        ACCESS_TOKEN = self.settings.value("pythonConsole/accessTokenGithub", '', type=QByteArray)
+        ACCESS_TOKEN = QgsSettings().value("pythonConsole/accessTokenGithub", '', type=QByteArray)
         if not ACCESS_TOKEN:
             msg_text = QCoreApplication.translate(
                 'PythonConsole', 'GitHub personal access token must be generated (see Console Options)')
@@ -307,9 +358,10 @@ class Editor(QgsCodeEditorPython):
         return name
 
     def runScriptCode(self):
-        autoSave = self.settings.value("pythonConsole/autoSaveScript", False, type=bool)
+        autoSave = QgsSettings().value("pythonConsole/autoSaveScript", False, type=bool)
         tabWidget = self.tabwidget.currentWidget()
         filename = tabWidget.path
+        filename_override = None
         msgEditorBlank = QCoreApplication.translate('PythonConsole',
                                                     'Hey, type something to run!')
         if filename is None:
@@ -324,9 +376,12 @@ class Editor(QgsCodeEditorPython):
             elif not filename or self.isModified():
                 # Create a new temp file if the file isn't already saved.
                 filename = self.createTempFile()
+                filename_override = self.tabwidget.tabText(self.tabwidget.currentIndex())
+                if filename_override.startswith('*'):
+                    filename_override = filename_override[1:]
                 deleteTempFile = True
 
-            self.pythonconsole.shell.runFile(filename)
+            self.pythonconsole.shell.runFile(filename, filename_override)
 
             if deleteTempFile:
                 Path(filename).unlink()
@@ -404,24 +459,23 @@ class Editor(QgsCodeEditorPython):
         self.setModified(False)
         self.recolor()
 
-    def save(self, filename=None):
+    def save(self, filename: Optional[str] = None):
         if self.isReadOnly():
             return
 
-        if self.pythonconsole.settings.value("pythonConsole/formatOnSave", False, type=bool):
+        if QgsSettings().value("pythonConsole/formatOnSave", False, type=bool):
             self.reformatCode()
 
-        tabwidget = self.tabwidget
-        index = tabwidget.indexOf(self.parent)
+        index = self.tabwidget.indexOf(self.parent)
         if filename:
             self.path = filename
-        if self.path is None:
+        if not self.path:
             saveTr = QCoreApplication.translate('PythonConsole',
                                                 'Python Console: Save file')
-            folder = self.pythonconsole.settings.value("pythonConsole/lastDirPath", QDir.homePath())
+            folder = QgsSettings().value("pythonConsole/lastDirPath", QDir.homePath())
             self.path, filter = QFileDialog().getSaveFileName(self,
                                                               saveTr,
-                                                              os.path.join(folder, tabwidget.tabText(index).replace('*', '') + '.py'),
+                                                              os.path.join(folder, self.tabwidget.tabText(index).replace('*', '') + '.py'),
                                                               "Script file (*.py)")
             # If the user didn't select a file, abort the save operation
             if not self.path:
@@ -436,15 +490,15 @@ class Editor(QgsCodeEditorPython):
         # Need to use newline='' to avoid adding extra \r characters on Windows
         with open(self.path, 'w', encoding='utf-8', newline='') as f:
             f.write(self.text())
-        tabwidget.setTabTitle(index, Path(self.path).name)
-        tabwidget.setTabToolTip(index, self.path)
+        self.tabwidget.setTabTitle(index, Path(self.path).name)
+        self.tabwidget.setTabToolTip(index, self.path)
         self.setModified(False)
         self.pythonconsole.saveFileButton.setEnabled(False)
         self.lastModified = QFileInfo(self.path).lastModified()
         self.pythonconsole.updateTabListScript(self.path, action='append')
-        tabwidget.listObject(self.parent)
-        lastDirPath = str(Path(self.path).parent)
-        self.pythonconsole.settings.setValue("pythonConsole/lastDirPath", lastDirPath)
+        self.tabwidget.listObject(self.parent)
+        QgsSettings().setValue("pythonConsole/lastDirPath",
+                               Path(self.path).parent.as_posix())
 
     def event(self, e):
         """ Used to override the Application shortcuts when the editor has focus """
@@ -553,8 +607,6 @@ class EditorTabWidget(QTabWidget):
         super().__init__(parent=None)
         self.parent = parent
 
-        self.settings = QgsSettings()
-
         self.idx = -1
         # Layout for top frame (restore tabs)
         self.layoutTopFrame = QGridLayout(self)
@@ -641,7 +693,7 @@ class EditorTabWidget(QTabWidget):
         self.newTabButton.clicked.connect(self.newTabEditor)
 
     def _currentWidgetChanged(self, tab):
-        if self.settings.value("pythonConsole/enableObjectInsp",
+        if QgsSettings().value("pythonConsole/enableObjectInsp",
                                False, type=bool):
             self.listObject(tab)
         self.changeLastDirPath(tab)
@@ -684,7 +736,7 @@ class EditorTabWidget(QTabWidget):
                 closeOthersTabAction.setEnabled(True)
             if self.widget(self.idx).isModified():
                 saveAction.setEnabled(True)
-            menu.exec_(self.mapToGlobal(e.pos()))
+            menu.exec(self.mapToGlobal(e.pos()))
 
     def closeOthers(self):
         idx = self.idx
@@ -788,7 +840,7 @@ class EditorTabWidget(QTabWidget):
         Restore tabs if they are found in the settings. If none are found it will add a new empty tab.
         """
         # Restore scripts from the previous session
-        tabScripts = self.settings.value("pythonConsole/tabScripts", [])
+        tabScripts = QgsSettings().value("pythonConsole/tabScripts", [])
         self.restoreTabList = tabScripts
 
         if self.restoreTabList:
@@ -911,7 +963,7 @@ class EditorTabWidget(QTabWidget):
                     self.parent.listClassMethod.addTopLevelItem(msgItem)
 
     def refreshSettingsEditor(self):
-        objInspectorEnabled = self.settings.value("pythonConsole/enableObjectInsp",
+        objInspectorEnabled = QgsSettings().value("pythonConsole/enableObjectInsp",
                                                   False, type=bool)
         listObj = self.parent.objectListButton
         if self.parent.listClassMethod.isVisible():
@@ -926,7 +978,8 @@ class EditorTabWidget(QTabWidget):
     def changeLastDirPath(self, tab):
         tabWidget = self.widget(tab)
         if tabWidget and tabWidget.path:
-            self.settings.setValue("pythonConsole/lastDirPath", tabWidget.path)
+            QgsSettings().setValue("pythonConsole/lastDirPath",
+                                   Path(tabWidget.path).parent.as_posix())
 
     def showMessage(self, text, level=Qgis.MessageLevel.Info, timeout=-1, title=""):
         currWidget = self.currentWidget()

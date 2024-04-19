@@ -475,7 +475,7 @@ namespace QgsWfs
 
       //create Title
       QDomElement titleElem = doc.createElement( QStringLiteral( "Title" ) );
-      QString title = layer->title();
+      QString title = layer->serverProperties()->title();
       if ( title.isEmpty() )
       {
         title = layer->name();
@@ -485,7 +485,7 @@ namespace QgsWfs
       layerElem.appendChild( titleElem );
 
       //create Abstract
-      const QString abstract = layer->abstract();
+      const QString abstract = layer->serverProperties()->abstract();
       if ( !abstract.isEmpty() )
       {
         QDomElement abstractElem = doc.createElement( QStringLiteral( "Abstract" ) );
@@ -495,7 +495,7 @@ namespace QgsWfs
       }
 
       //create keywords
-      const QString keywords = layer->keywordList();
+      const QString keywords = layer->serverProperties()->keywordList();
       if ( !keywords.isEmpty() )
       {
         QDomElement keywordsElem = doc.createElement( QStringLiteral( "ows:Keywords" ) );
@@ -582,7 +582,7 @@ namespace QgsWfs
       //transform the layers native CRS into WGS84
       const QgsCoordinateReferenceSystem wgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() );
       const int wgs84precision = 6;
-      QgsRectangle wgs84BoundingRect;
+      QgsRectangle wgs84BoundingRect( 0, 0, 0, 0 );
       if ( !layerExtent.isNull() )
       {
         const QgsCoordinateTransform exGeoTransform( layer->crs(), wgs84, project );
@@ -592,7 +592,7 @@ namespace QgsWfs
         }
         catch ( const QgsCsException & )
         {
-          wgs84BoundingRect = QgsRectangle();
+          wgs84BoundingRect = QgsRectangle( 0, 0, 0, 0 );
         }
       }
 

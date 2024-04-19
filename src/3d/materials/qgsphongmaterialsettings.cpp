@@ -37,9 +37,6 @@ typedef Qt3DCore::QGeometry Qt3DQGeometry;
 #include <Qt3DRender/QEffect>
 #include <Qt3DRender/QTechnique>
 #include <Qt3DRender/QGraphicsApiFilter>
-#include <Qt3DRender/QNoDepthMask>
-#include <Qt3DRender/QBlendEquation>
-#include <Qt3DRender/QBlendEquationArguments>
 #include <QMap>
 
 
@@ -164,9 +161,9 @@ void QgsPhongMaterialSettings::addParametersToEffect( Qt3DRender::QEffect *effec
 
 QByteArray QgsPhongMaterialSettings::dataDefinedVertexColorsAsByte( const QgsExpressionContext &expressionContext ) const
 {
-  const QColor ambient = dataDefinedProperties().valueAsColor( Ambient, expressionContext, mAmbient );
-  const QColor diffuse = dataDefinedProperties().valueAsColor( Diffuse, expressionContext, mDiffuse );
-  const QColor specular = dataDefinedProperties().valueAsColor( Specular, expressionContext, mSpecular );
+  const QColor ambient = dataDefinedProperties().valueAsColor( QgsAbstractMaterialSettings::Property::Ambient, expressionContext, mAmbient );
+  const QColor diffuse = dataDefinedProperties().valueAsColor( QgsAbstractMaterialSettings::Property::Diffuse, expressionContext, mDiffuse );
+  const QColor specular = dataDefinedProperties().valueAsColor( QgsAbstractMaterialSettings::Property::Specular, expressionContext, mSpecular );
 
   QByteArray array;
   if ( mDiffuseCoefficient < 1 || mAmbientCoefficient < 1 || mSpecularCoefficient < 1 )
@@ -301,22 +298,6 @@ Qt3DRender::QMaterial *QgsPhongMaterialSettings::constantColorMaterial( const Qg
                                        mSpecular.greenF() * mSpecularCoefficient,
                                        mSpecular.blueF() * mSpecularCoefficient ) ) );
 
-  if ( mOpacity < 1.0f )
-  {
-    Qt3DRender::QNoDepthMask *noDepthMask = new Qt3DRender::QNoDepthMask( renderPass );
-
-    Qt3DRender::QBlendEquationArguments *blendState = new Qt3DRender::QBlendEquationArguments( renderPass );
-    blendState->setSourceRgb( Qt3DRender::QBlendEquationArguments::SourceAlpha );
-    blendState->setDestinationRgb( Qt3DRender::QBlendEquationArguments::OneMinusSourceAlpha );
-
-    Qt3DRender::QBlendEquation *blendEquation = new Qt3DRender::QBlendEquation( renderPass );
-    blendEquation->setBlendFunction( Qt3DRender::QBlendEquation::Add );
-
-    renderPass->addRenderState( noDepthMask );
-    renderPass->addRenderState( blendState );
-    renderPass->addRenderState( blendEquation );
-  }
-
   eff->addTechnique( technique );
   material->setEffect( eff );
 
@@ -353,22 +334,6 @@ Qt3DRender::QMaterial *QgsPhongMaterialSettings::dataDefinedMaterial() const
 
   eff->addParameter( new Qt3DRender::QParameter( QStringLiteral( "shininess" ),  static_cast< float >( mShininess ) ) );
   eff->addParameter( new Qt3DRender::QParameter( QStringLiteral( "opacity" ), static_cast< float >( mOpacity ) ) );
-
-  if ( mOpacity < 1.0f )
-  {
-    Qt3DRender::QNoDepthMask *noDepthMask = new Qt3DRender::QNoDepthMask( renderPass );
-
-    Qt3DRender::QBlendEquationArguments *blendState = new Qt3DRender::QBlendEquationArguments( renderPass );
-    blendState->setSourceRgb( Qt3DRender::QBlendEquationArguments::SourceAlpha );
-    blendState->setDestinationRgb( Qt3DRender::QBlendEquationArguments::OneMinusSourceAlpha );
-
-    Qt3DRender::QBlendEquation *blendEquation = new Qt3DRender::QBlendEquation( renderPass );
-    blendEquation->setBlendFunction( Qt3DRender::QBlendEquation::Add );
-
-    renderPass->addRenderState( noDepthMask );
-    renderPass->addRenderState( blendState );
-    renderPass->addRenderState( blendEquation );
-  }
 
   eff->addTechnique( technique );
   material->setEffect( eff );

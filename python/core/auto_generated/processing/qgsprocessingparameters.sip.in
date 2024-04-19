@@ -16,8 +16,6 @@ class QgsProcessingFeatureSourceDefinition
 %Docstring(signature="appended")
 
 Encapsulates settings relating to a feature source input to a processing algorithm.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -25,16 +23,8 @@ Encapsulates settings relating to a feature source input to a processing algorit
 %End
   public:
 
-    enum Flag
-    {
-      FlagOverrideDefaultGeometryCheck,
-      FlagCreateIndividualOutputPerInputFeature,
-    };
-    typedef QFlags<QgsProcessingFeatureSourceDefinition::Flag> Flags;
-
-
     QgsProcessingFeatureSourceDefinition( const QString &source = QString(), bool selectedFeaturesOnly = false, long long featureLimit = -1,
-                                          QgsProcessingFeatureSourceDefinition::Flags flags = QgsProcessingFeatureSourceDefinition::Flags(), QgsFeatureRequest::InvalidGeometryCheck geometryCheck = QgsFeatureRequest::GeometryAbortOnInvalid, const QString &filterExpression = QString() );
+                                          Qgis::ProcessingFeatureSourceDefinitionFlags flags = Qgis::ProcessingFeatureSourceDefinitionFlags(), Qgis::InvalidGeometryCheck geometryCheck = Qgis::InvalidGeometryCheck::AbortOnInvalid, const QString &filterExpression = QString() );
 %Docstring
 Constructor for QgsProcessingFeatureSourceDefinition, accepting a static string ``source``.
 
@@ -48,12 +38,12 @@ to filter the features read from the source.
 
 The ``flags`` argument can be used to specify flags which dictate the source behavior.
 
-If the QgsProcessingFeatureSourceDefinition.Flag.FlagOverrideDefaultGeometryCheck is set in ``flags``, then the value of ``geometryCheck`` will override
+If the :py:class:`Qgis`.ProcessingFeatureSourceDefinitionFlag.OverrideDefaultGeometryCheck is set in ``flags``, then the value of ``geometryCheck`` will override
 the default geometry check method (as dictated by :py:class:`QgsProcessingContext`) for this source.
 %End
 
     QgsProcessingFeatureSourceDefinition( const QgsProperty &source, bool selectedFeaturesOnly = false, long long featureLimit = -1,
-                                          QgsProcessingFeatureSourceDefinition::Flags flags = QgsProcessingFeatureSourceDefinition::Flags(), QgsFeatureRequest::InvalidGeometryCheck geometryCheck = QgsFeatureRequest::GeometryAbortOnInvalid, const QString &filterExpression = QString() );
+                                          Qgis::ProcessingFeatureSourceDefinitionFlags flags = Qgis::ProcessingFeatureSourceDefinitionFlags(), Qgis::InvalidGeometryCheck geometryCheck = Qgis::InvalidGeometryCheck::AbortOnInvalid, const QString &filterExpression = QString() );
 %Docstring
 Constructor for QgsProcessingFeatureSourceDefinition, accepting a QgsProperty source.
 
@@ -67,7 +57,7 @@ to filter the features read from the source.
 
 The ``flags`` argument can be used to specify flags which dictate the source behavior.
 
-If the QgsProcessingFeatureSourceDefinition.Flag.FlagOverrideDefaultGeometryCheck is set in ``flags``, then the value of ``geometryCheck`` will override
+If the :py:class:`Qgis`.ProcessingFeatureSourceDefinitionFlag.OverrideDefaultGeometryCheck is set in ``flags``, then the value of ``geometryCheck`` will override
 the default geometry check method (as dictated by :py:class:`QgsProcessingContext`) for this source.
 %End
 
@@ -79,9 +69,9 @@ the default geometry check method (as dictated by :py:class:`QgsProcessingContex
 
     QString filterExpression;
 
-    Flags flags;
+    Qgis::ProcessingFeatureSourceDefinitionFlags flags;
 
-    QgsFeatureRequest::InvalidGeometryCheck geometryCheck;
+    Qgis::InvalidGeometryCheck geometryCheck;
 
     QVariant toVariant() const;
 %Docstring
@@ -111,8 +101,6 @@ You can use :py:class:`QgsXmlUtils`.readVariant to load it from an XML document.
 
 };
 
-QFlags<QgsProcessingFeatureSourceDefinition::Flag> operator|(QgsProcessingFeatureSourceDefinition::Flag f1, QFlags<QgsProcessingFeatureSourceDefinition::Flag> f2);
-
 
 
 class QgsProcessingOutputLayerDefinition
@@ -120,8 +108,6 @@ class QgsProcessingOutputLayerDefinition
 %Docstring(signature="appended")
 
 Encapsulates settings relating to a feature sink or output raster layer for a processing algorithm.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -225,8 +211,6 @@ Base class for the definition of processing parameters.
 
 Parameter definitions encapsulate properties regarding the behavior of parameters,
 their acceptable ranges, defaults, etc.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -343,16 +327,6 @@ their acceptable ranges, defaults, etc.
       sipType = nullptr;
 %End
   public:
-
-    enum Flag
-    {
-      FlagAdvanced,
-      FlagHidden,
-      FlagOptional,
-      FlagIsModelOutput,
-    };
-    typedef QFlags<QgsProcessingParameterDefinition::Flag> Flags;
-
 
     QgsProcessingParameterDefinition( const QString &name, const QString &description = QString(), const QVariant &defaultValue = QVariant(),
                                       bool optional = false, const QString &help = QString() );
@@ -500,14 +474,14 @@ override that.
 .. versionadded:: 3.18
 %End
 
-    Flags flags() const;
+    Qgis::ProcessingParameterFlags flags() const;
 %Docstring
 Returns any flags associated with the parameter.
 
 .. seealso:: :py:func:`setFlags`
 %End
 
-    void setFlags( Flags flags );
+    void setFlags( Qgis::ProcessingParameterFlags flags );
 %Docstring
 Sets the ``flags`` associated with the parameter.
 
@@ -599,7 +573,7 @@ Returns the parameter definition encoded in a string which can be used within a
 Processing script.
 %End
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 %Docstring
 Returns the parameter definition as a Python command which can be used within a
 Python Processing script.
@@ -813,9 +787,6 @@ Default gui value for an algorithm parameter from settings
 
 };
 
-QFlags<QgsProcessingParameterDefinition::Flag> operator|(QgsProcessingParameterDefinition::Flag f1, QFlags<QgsProcessingParameterDefinition::Flag> f2);
-
-
 
 typedef QList< const QgsProcessingParameterDefinition * > QgsProcessingParameterDefinitions;
 
@@ -834,8 +805,6 @@ directly, and instead the high level API provided through :py:class:`QgsProcessi
 Parameters are evaluated using a provided :py:class:`QgsProcessingContext`, allowing
 the evaluation to understand available map layers and expression contexts
 (for expression based parameters).
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -1708,8 +1677,6 @@ class QgsProcessingParameterBoolean : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A boolean parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -1745,8 +1712,6 @@ class QgsProcessingParameterCrs : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A coordinate reference system parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -1787,8 +1752,6 @@ class QgsProcessingParameterExtent : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A rectangular map extent parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -1830,8 +1793,6 @@ class QgsProcessingParameterPoint : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A point parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -1899,7 +1860,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QVariantMap toVariantMap() const;
 
@@ -1947,8 +1908,6 @@ class QgsProcessingParameterFile : QgsProcessingParameterDefinition, QgsFileFilt
 {
 %Docstring(signature="appended")
 An input file or folder parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -1956,13 +1915,7 @@ An input file or folder parameter for processing algorithms.
 %End
   public:
 
-    enum Behavior
-    {
-      File,
-      Folder,
-    };
-
-    QgsProcessingParameterFile( const QString &name, const QString &description = QString(), Behavior behavior = File, const QString &extension = QString(), const QVariant &defaultValue = QVariant(),
+    QgsProcessingParameterFile( const QString &name, const QString &description = QString(), Qgis::ProcessingFileParameterBehavior behavior = Qgis::ProcessingFileParameterBehavior::File, const QString &extension = QString(), const QVariant &defaultValue = QVariant(),
                                 bool optional = false, const QString &fileFilter = QString() );
 %Docstring
 Constructor for QgsProcessingParameterFile.
@@ -1983,19 +1936,19 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
 
-    Behavior behavior() const;
+    Qgis::ProcessingFileParameterBehavior behavior() const;
 %Docstring
 Returns the parameter behavior (e.g. File or Folder).
 
 .. seealso:: :py:func:`setBehavior`
 %End
 
-    void setBehavior( Behavior behavior );
+    void setBehavior( Qgis::ProcessingFileParameterBehavior behavior );
 %Docstring
 Sets the parameter ``behavior`` (e.g. File or Folder).
 
@@ -2055,7 +2008,7 @@ Calling this method resets any existing :py:func:`~QgsProcessingParameterFile.ex
     virtual bool fromVariantMap( const QVariantMap &map );
 
 
-    static QgsProcessingParameterFile *fromScriptCode( const QString &name, const QString &description, bool isOptional, const QString &definition, Behavior behavior = File ) /Factory/;
+    static QgsProcessingParameterFile *fromScriptCode( const QString &name, const QString &description, bool isOptional, const QString &definition, Qgis::ProcessingFileParameterBehavior behavior = Qgis::ProcessingFileParameterBehavior::File ) /Factory/;
 %Docstring
 Creates a new parameter using the definition from a script code.
 %End
@@ -2066,8 +2019,6 @@ class QgsProcessingParameterMatrix : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A table (matrix) parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2094,7 +2045,7 @@ Returns the type name for the parameter class.
 
     virtual QString valueAsPythonString( const QVariant &value, QgsProcessingContext &context ) const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     QStringList headers() const;
@@ -2165,8 +2116,6 @@ class QgsProcessingParameterMultipleLayers : QgsProcessingParameterDefinition, Q
 {
 %Docstring(signature="appended")
 A parameter for processing algorithms which accepts multiple map layers.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2174,7 +2123,7 @@ A parameter for processing algorithms which accepts multiple map layers.
 %End
   public:
 
-    QgsProcessingParameterMultipleLayers( const QString &name, const QString &description = QString(), QgsProcessing::SourceType layerType = QgsProcessing::TypeVectorAnyGeometry,
+    QgsProcessingParameterMultipleLayers( const QString &name, const QString &description = QString(), Qgis::ProcessingSourceType layerType = Qgis::ProcessingSourceType::VectorAnyGeometry,
                                           const QVariant &defaultValue = QVariant(),
                                           bool optional = false );
 %Docstring
@@ -2198,19 +2147,19 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
 
-    QgsProcessing::SourceType layerType() const;
+    Qgis::ProcessingSourceType layerType() const;
 %Docstring
 Returns the layer type for layers acceptable by the parameter.
 
 .. seealso:: :py:func:`setLayerType`
 %End
 
-    void setLayerType( QgsProcessing::SourceType type );
+    void setLayerType( Qgis::ProcessingSourceType type );
 %Docstring
 Sets the layer ``type`` for layers acceptable by the parameter.
 
@@ -2260,8 +2209,6 @@ shown in the parameter's widget can be specified by setting the parameter's meta
        param.setMetadata( {'widget_wrapper':
          { 'decimals': 2 }
        })
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2269,14 +2216,8 @@ shown in the parameter's widget can be specified by setting the parameter's meta
 %End
   public:
 
-    enum Type
-    {
-      Integer,
-      Double,
-    };
-
     explicit QgsProcessingParameterNumber( const QString &name, const QString &description = QString(),
-                                           Type type = Integer,
+                                           Qgis::ProcessingNumberParameterType type = Qgis::ProcessingNumberParameterType::Integer,
                                            const QVariant &defaultValue = QVariant(),
                                            bool optional = false,
                                            double minValue = -DBL_MAX + 1,
@@ -2299,7 +2240,7 @@ Returns the type name for the parameter class.
 
     virtual QString toolTip() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     double minimum() const;
@@ -2330,14 +2271,14 @@ Sets the ``maximum`` value acceptable by the parameter.
 .. seealso:: :py:func:`maximum`
 %End
 
-    Type dataType() const;
+    Qgis::ProcessingNumberParameterType dataType() const;
 %Docstring
 Returns the acceptable data type for the parameter.
 
 .. seealso:: :py:func:`setDataType`
 %End
 
-    void setDataType( Type type );
+    void setDataType( Qgis::ProcessingNumberParameterType type );
 %Docstring
 Sets the acceptable data ``type`` for the parameter.
 
@@ -2403,7 +2344,7 @@ Returns the type name for the parameter class.
 
     virtual QStringList dependsOnOtherParameters() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     QString parentParameterName() const;
@@ -2478,7 +2419,7 @@ Returns the type name for the parameter class.
 
     virtual QString type() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     Qgis::TemporalUnit defaultUnit() const;
@@ -2535,7 +2476,7 @@ Returns the type name for the parameter class.
 
     virtual QString type() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     static QgsProcessingParameterScale *fromScriptCode( const QString &name, const QString &description, bool isOptional, const QString &definition ) /Factory/;
@@ -2549,8 +2490,6 @@ class QgsProcessingParameterRange : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A numeric range parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2559,7 +2498,7 @@ A numeric range parameter for processing algorithms.
   public:
 
     QgsProcessingParameterRange( const QString &name, const QString &description = QString(),
-                                 QgsProcessingParameterNumber::Type type = QgsProcessingParameterNumber::Integer,
+                                 Qgis::ProcessingNumberParameterType type = Qgis::ProcessingNumberParameterType::Integer,
                                  const QVariant &defaultValue = QVariant(),
                                  bool optional = false );
 %Docstring
@@ -2577,17 +2516,17 @@ Returns the type name for the parameter class.
 
     virtual QString valueAsPythonString( const QVariant &value, QgsProcessingContext &context ) const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
-    QgsProcessingParameterNumber::Type dataType() const;
+    Qgis::ProcessingNumberParameterType dataType() const;
 %Docstring
 Returns the acceptable data type for the range.
 
 .. seealso:: :py:func:`setDataType`
 %End
 
-    void setDataType( QgsProcessingParameterNumber::Type dataType );
+    void setDataType( Qgis::ProcessingNumberParameterType dataType );
 %Docstring
 Sets the acceptable data ``type`` for the range.
 
@@ -2610,8 +2549,6 @@ class QgsProcessingParameterRasterLayer : QgsProcessingParameterDefinition, QgsF
 {
 %Docstring(signature="appended")
 A raster layer parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2665,8 +2602,6 @@ set to a list of QIcon values.
        param.setMetadata( {'widget_wrapper':
          { 'icons': [QIcon('integer.svg'), QIcon('string.svg')] }
        })
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2698,7 +2633,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     QStringList options() const;
@@ -2785,8 +2720,6 @@ means. Algorithms should gracefully handle other values accordingly.)
        param.setMetadata( {'widget_wrapper':
          { 'value_hints': ['Inkjet printer', 'Laser printer'] }
        })
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2812,7 +2745,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     bool multiLine() const;
@@ -2889,8 +2822,6 @@ class QgsProcessingParameterExpression : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 An expression parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -2916,7 +2847,7 @@ Returns the type name for the parameter class.
 
     virtual QStringList dependsOnOtherParameters() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     QString parentLayerParameterName() const;
@@ -2968,8 +2899,6 @@ class QgsProcessingParameterLimitedDataTypes
 {
 %Docstring(signature="appended")
 Can be inherited by parameters which require limits to their acceptable data types.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3005,8 +2934,6 @@ class QgsProcessingParameterVectorLayer : QgsProcessingParameterDefinition, QgsP
 %Docstring(signature="appended")
 A vector layer (with or without geometry) parameter for processing algorithms. Consider using
 the more versatile :py:class:`QgsProcessingParameterFeatureSource` wherever possible.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3038,7 +2965,7 @@ Returns the type name for the parameter class.
 
     virtual QVariant valueAsJsonObject( const QVariant &value, QgsProcessingContext &context ) const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3104,8 +3031,6 @@ class QgsProcessingParameterMapLayer : QgsProcessingParameterDefinition, QgsProc
 {
 %Docstring(signature="appended")
 A map layer parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3137,7 +3062,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3158,8 +3083,6 @@ class QgsProcessingParameterField : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A vector layer or feature source field parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3167,19 +3090,9 @@ A vector layer or feature source field parameter for processing algorithms.
 %End
   public:
 
-    enum DataType
-    {
-      Any,
-      Numeric,
-      String,
-      DateTime,
-      Binary,
-      Boolean,
-    };
-
     QgsProcessingParameterField( const QString &name, const QString &description = QString(), const QVariant &defaultValue = QVariant(),
                                  const QString &parentLayerParameterName = QString(),
-                                 DataType type = Any,
+                                 Qgis::ProcessingFieldParameterDataType type = Qgis::ProcessingFieldParameterDataType::Any,
                                  bool allowMultiple = false,
                                  bool optional = false,
                                  bool defaultToAllFields = false );
@@ -3200,7 +3113,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QStringList dependsOnOtherParameters() const;
 
@@ -3219,14 +3132,14 @@ Sets the name of the parent layer parameter. Use an empty string if this is not 
 .. seealso:: :py:func:`parentLayerParameterName`
 %End
 
-    DataType dataType() const;
+    Qgis::ProcessingFieldParameterDataType dataType() const;
 %Docstring
 Returns the acceptable data type for the field.
 
 .. seealso:: :py:func:`setDataType`
 %End
 
-    void setDataType( DataType type );
+    void setDataType( Qgis::ProcessingFieldParameterDataType type );
 %Docstring
 Sets the acceptable data ``type`` for the field.
 
@@ -3288,8 +3201,6 @@ class QgsProcessingParameterFeatureSource : QgsProcessingParameterDefinition, Qg
 {
 %Docstring(signature="appended")
 An input feature source (such as vector layers) parameter for processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3321,7 +3232,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3343,8 +3254,6 @@ class QgsProcessingDestinationParameter : QgsProcessingParameterDefinition, QgsF
 %Docstring(signature="appended")
 Base class for all parameter definitions which represent file or layer destinations, e.g. parameters
 which are used for the destination for layers output by an algorithm.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3366,7 +3275,7 @@ output will not be created by default.
 
     virtual bool fromVariantMap( const QVariantMap &map );
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3461,8 +3370,6 @@ class QgsProcessingParameterFeatureSink : QgsProcessingDestinationParameter
 A feature sink output for processing algorithms.
 
 A parameter which represents the destination feature sink for features created by an algorithm.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3470,7 +3377,7 @@ A parameter which represents the destination feature sink for features created b
 %End
   public:
 
-    QgsProcessingParameterFeatureSink( const QString &name, const QString &description = QString(), QgsProcessing::SourceType type = QgsProcessing::TypeVectorAnyGeometry, const QVariant &defaultValue = QVariant(),
+    QgsProcessingParameterFeatureSink( const QString &name, const QString &description = QString(), Qgis::ProcessingSourceType type = Qgis::ProcessingSourceType::VectorAnyGeometry, const QVariant &defaultValue = QVariant(),
                                        bool optional = false, bool createByDefault = true, bool supportsAppend = false );
 %Docstring
 Constructor for QgsProcessingParameterFeatureSink.
@@ -3496,7 +3403,7 @@ Returns the type name for the parameter class.
 
     virtual QString defaultFileExtension() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3510,7 +3417,7 @@ Returns a list of the vector format file extensions supported by this parameter.
 .. versionadded:: 3.2
 %End
 
-    QgsProcessing::SourceType dataType() const;
+    Qgis::ProcessingSourceType dataType() const;
 %Docstring
 Returns the layer type for sinks associated with the parameter.
 
@@ -3523,7 +3430,7 @@ Returns ``True`` if sink is likely to include geometries. In cases were presence
 cannot be reliably determined in advance, this method will default to returning ``True``.
 %End
 
-    void setDataType( QgsProcessing::SourceType type );
+    void setDataType( Qgis::ProcessingSourceType type );
 %Docstring
 Sets the layer ``type`` for the sinks associated with the parameter.
 
@@ -3579,8 +3486,6 @@ created by the algorithm.
 
    Consider using the more flexible QgsProcessingParameterFeatureSink wherever
    possible.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3588,7 +3493,7 @@ created by the algorithm.
 %End
   public:
 
-    QgsProcessingParameterVectorDestination( const QString &name, const QString &description = QString(), QgsProcessing::SourceType type = QgsProcessing::TypeVectorAnyGeometry, const QVariant &defaultValue = QVariant(),
+    QgsProcessingParameterVectorDestination( const QString &name, const QString &description = QString(), Qgis::ProcessingSourceType type = Qgis::ProcessingSourceType::VectorAnyGeometry, const QVariant &defaultValue = QVariant(),
         bool optional = false, bool createByDefault = true );
 %Docstring
 Constructor for QgsProcessingParameterVectorDestination.
@@ -3614,7 +3519,7 @@ Returns the type name for the parameter class.
 
     virtual QString defaultFileExtension() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3628,7 +3533,7 @@ Returns a list of the vector format file extensions supported by this parameter.
 .. versionadded:: 3.2
 %End
 
-    QgsProcessing::SourceType dataType() const;
+    Qgis::ProcessingSourceType dataType() const;
 %Docstring
 Returns the layer type for this created vector layer.
 
@@ -3641,7 +3546,7 @@ Returns ``True`` if the created layer is likely to include geometries. In cases 
 cannot be reliably determined in advance, this method will default to returning ``True``.
 %End
 
-    void setDataType( QgsProcessing::SourceType type );
+    void setDataType( Qgis::ProcessingSourceType type );
 %Docstring
 Sets the layer ``type`` for the created vector layer.
 
@@ -3666,8 +3571,6 @@ class QgsProcessingParameterRasterDestination : QgsProcessingDestinationParamete
 %Docstring(signature="appended")
 A raster layer destination parameter, for specifying the destination path for a raster layer
 created by the algorithm.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3737,8 +3640,6 @@ the widget wrapper metadata "dontconfirmoverwrite" option:
        param.setMetadata( {'widget_wrapper':
          { 'dontconfirmoverwrite': True }
        })
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3773,7 +3674,7 @@ Returns the type name for the parameter class.
 
     virtual QString defaultFileExtension() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QString createFileFilter() const;
 
@@ -3810,8 +3711,6 @@ class QgsProcessingParameterFolderDestination : QgsProcessingDestinationParamete
 %Docstring(signature="appended")
 A folder destination parameter, for specifying the destination path for a folder created
 by the algorithm or used for creating new files within the algorithm.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3852,8 +3751,6 @@ class QgsProcessingParameterBand : QgsProcessingParameterDefinition
 {
 %Docstring(signature="appended")
 A raster band parameter for Processing algorithms.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -3884,7 +3781,7 @@ Returns the type name for the parameter class.
 
     virtual QStringList dependsOnOtherParameters() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     QString parentLayerParameterName() const;
@@ -3965,7 +3862,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     static QgsProcessingParameterLayout *fromScriptCode( const QString &name, const QString &description, bool isOptional, const QString &definition ) /Factory/;
@@ -4011,7 +3908,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QVariantMap toVariantMap() const;
 
@@ -4094,7 +3991,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual bool checkValueIsAcceptable( const QVariant &input, QgsProcessingContext *context = 0 ) const;
 
@@ -4164,7 +4061,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QStringList dependsOnOtherParameters() const;
 
@@ -4288,7 +4185,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QVariantMap toVariantMap() const;
 
@@ -4319,15 +4216,8 @@ which will return a date time value.
 %End
   public:
 
-    enum Type
-    {
-      DateTime,
-      Date,
-      Time,
-    };
-
     explicit QgsProcessingParameterDateTime( const QString &name, const QString &description = QString(),
-        Type type = DateTime,
+        Qgis::ProcessingDateTimeParameterDataType type = Qgis::ProcessingDateTimeParameterDataType::DateTime,
         const QVariant &defaultValue = QVariant(),
         bool optional = false,
         const QDateTime &minValue = QDateTime(),
@@ -4350,7 +4240,7 @@ Returns the type name for the parameter class.
 
     virtual QString toolTip() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     QDateTime minimum() const;
@@ -4397,14 +4287,14 @@ values to the specified maximum value, only the time component will be considere
 .. seealso:: :py:func:`maximum`
 %End
 
-    Type dataType() const;
+    Qgis::ProcessingDateTimeParameterDataType dataType() const;
 %Docstring
 Returns the acceptable data type for the parameter.
 
 .. seealso:: :py:func:`setDataType`
 %End
 
-    void setDataType( Type type );
+    void setDataType( Qgis::ProcessingDateTimeParameterDataType type );
 %Docstring
 Sets the acceptable data ``type`` for the parameter.
 
@@ -4464,7 +4354,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QVariantMap toVariantMap() const;
 
@@ -4535,7 +4425,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QVariantMap toVariantMap() const;
 
@@ -4613,7 +4503,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QVariantMap toVariantMap() const;
 
@@ -4850,7 +4740,7 @@ Returns the type name for the parameter class.
 
     virtual QString asScriptCode() const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
 
     virtual QStringList dependsOnOtherParameters() const;
 

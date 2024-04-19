@@ -22,7 +22,6 @@
 #include "qgis.h"
 #include "qgsproject.h"
 #include "qgsexpressioncontext.h"
-#include "qgsfeaturerequest.h"
 #include "qgsprocessingfeedback.h"
 #include "qgsprocessingutils.h"
 
@@ -39,7 +38,6 @@ class QgsProcessingLayerPostProcessorInterface;
  *
  * Contextual information includes settings such as the associated project, and
  * expression context.
- * \since QGIS 3.0
 */
 
 class CORE_EXPORT QgsProcessingContext
@@ -47,24 +45,12 @@ class CORE_EXPORT QgsProcessingContext
   public:
 
     //! Flags that affect how processing algorithms are run
-    enum Flag
+    enum Flag SIP_ENUM_BASETYPE( IntFlag )
     {
       // For future API flexibility only and to avoid sip issues, remove when real entries are added to flags.
       Unused = 1 << 0, //!< Temporary unused entry
     };
     Q_DECLARE_FLAGS( Flags, Flag )
-
-    /**
-     * Logging level for algorithms to use when pushing feedback messages.
-     *
-     * \since QGIS 3.20
-     */
-    enum LogLevel
-    {
-      DefaultLevel = 0, //!< Default logging level
-      Verbose, //!< Verbose logging
-      ModelDebug, //!< Model debug level logging. Includes verbose logging and other outputs useful for debugging models (since QGIS 3.34).
-    };
 
     /**
      * Constructor for QgsProcessingContext.
@@ -260,7 +246,6 @@ class CORE_EXPORT QgsProcessingContext
     /**
      * \brief Details for layers to load into projects.
      * \ingroup core
-     * \since QGIS 3.0
      */
     class CORE_EXPORT LayerDetails
     {
@@ -423,7 +408,7 @@ class CORE_EXPORT QgsProcessingContext
      * Returns the behavior used for checking invalid geometries in input layers.
      * \see setInvalidGeometryCheck()
      */
-    QgsFeatureRequest::InvalidGeometryCheck invalidGeometryCheck() const SIP_HOLDGIL { return mInvalidGeometryCheck; }
+    Qgis::InvalidGeometryCheck invalidGeometryCheck() const SIP_HOLDGIL { return mInvalidGeometryCheck; }
 
     /**
      * Sets the behavior used for checking invalid geometries in input layers.
@@ -431,14 +416,13 @@ class CORE_EXPORT QgsProcessingContext
      * reset the invalidGeometryCallback() to a default implementation.
      * \see invalidGeometryCheck()
      */
-    void setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck check );
+    void setInvalidGeometryCheck( Qgis::InvalidGeometryCheck check );
 
     /**
      * Sets a callback function to use when encountering an invalid geometry and
      * invalidGeometryCheck() is set to GeometryAbortOnInvalid. This function will be
      * called using the feature with invalid geometry as a parameter.
      * \see invalidGeometryCallback()
-     * \since QGIS 3.0
      */
 #ifndef SIP_RUN
     void setInvalidGeometryCallback( const std::function< void( const QgsFeature & ) > &callback ) { mInvalidGeometryCallback = callback; mUseDefaultInvalidGeometryCallback = false; }
@@ -463,7 +447,6 @@ class CORE_EXPORT QgsProcessingContext
      * invalidGeometryCheck() is set to GeometryAbortOnInvalid.
      * \note not available in Python bindings
      * \see setInvalidGeometryCallback()
-     * \since QGIS 3.0
      */
     SIP_SKIP std::function< void( const QgsFeature & ) > invalidGeometryCallback( QgsFeatureSource *source = nullptr ) const;
 
@@ -472,14 +455,13 @@ class CORE_EXPORT QgsProcessingContext
      * \note not available in Python bindings
      * \since QGIS 3.14
      */
-    SIP_SKIP std::function< void( const QgsFeature & ) > defaultInvalidGeometryCallbackForCheck( QgsFeatureRequest::InvalidGeometryCheck check, QgsFeatureSource *source = nullptr ) const;
+    SIP_SKIP std::function< void( const QgsFeature & ) > defaultInvalidGeometryCallbackForCheck( Qgis::InvalidGeometryCheck check, QgsFeatureSource *source = nullptr ) const;
 
     /**
      * Sets a callback function to use when encountering a transform error when iterating
      * features. This function will be
      * called using the feature which encountered the transform error as a parameter.
      * \see transformErrorCallback()
-     * \since QGIS 3.0
      */
 #ifndef SIP_RUN
     void setTransformErrorCallback( const std::function< void( const QgsFeature & ) > &callback ) { mTransformErrorCallback = callback; }
@@ -504,7 +486,6 @@ class CORE_EXPORT QgsProcessingContext
      * features.
      * \note not available in Python bindings
      * \see setTransformErrorCallback()
-     * \since QGIS 3.0
      */
     std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
 
@@ -666,7 +647,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see setLogLevel()
      * \since QGIS 3.20
      */
-    LogLevel logLevel() const SIP_HOLDGIL;
+    Qgis::ProcessingLogLevel logLevel() const SIP_HOLDGIL;
 
     /**
      * Sets the logging \a level for algorithms to use when pushing feedback messages to users.
@@ -674,7 +655,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see logLevel()
      * \since QGIS 3.20
      */
-    void setLogLevel( LogLevel level ) SIP_HOLDGIL;
+    void setLogLevel( Qgis::ProcessingLogLevel level ) SIP_HOLDGIL;
 
     /**
      * Returns the (optional) temporary folder to use when running algorithms.
@@ -740,7 +721,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \since QGIS 3.24
      */
-    enum class ProcessArgumentFlag : int
+    enum class ProcessArgumentFlag : int SIP_ENUM_BASETYPE( IntFlag )
     {
       IncludeProjectPath = 1 << 0, //!< Include the associated project path argument
     };
@@ -769,7 +750,7 @@ class CORE_EXPORT QgsProcessingContext
     QgsMapLayerStore tempLayerStore;
     QgsExpressionContext mExpressionContext;
 
-    QgsFeatureRequest::InvalidGeometryCheck mInvalidGeometryCheck = QgsFeatureRequest::GeometryNoCheck;
+    Qgis::InvalidGeometryCheck mInvalidGeometryCheck = Qgis::InvalidGeometryCheck::NoCheck;
     bool mUseDefaultInvalidGeometryCallback = true;
     std::function< void( const QgsFeature & ) > mInvalidGeometryCallback;
 
@@ -782,7 +763,7 @@ class CORE_EXPORT QgsProcessingContext
     QString mPreferredVectorFormat;
     QString mPreferredRasterFormat;
 
-    LogLevel mLogLevel = DefaultLevel;
+    Qgis::ProcessingLogLevel mLogLevel = Qgis::ProcessingLogLevel::DefaultLevel;
 
     QString mTemporaryFolderOverride;
     int mMaximumThreads = QThread::idealThreadCount();

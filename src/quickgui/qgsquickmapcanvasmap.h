@@ -185,8 +185,15 @@ class QUICK_EXPORT QgsQuickMapCanvasMap : public QQuickItem
     void onExtentChanged();
     void onLayersChanged();
     void onTemporalStateChanged();
+    void onzRangeChanged();
 
   private:
+
+    enum class CacheInvalidationType
+    {
+      Temporal = 1 << 0,
+      Elevation = 1 << 1,
+    };
 
     /**
      * Should only be called by stopRendering()!
@@ -195,7 +202,10 @@ class QUICK_EXPORT QgsQuickMapCanvasMap : public QQuickItem
     QgsMapSettings prepareMapSettings() const;
     void updateTransform();
     void zoomToFullExtent();
+
     void clearTemporalCache();
+    void clearElevationCache();
+    QFlags<CacheInvalidationType> mCacheInvalidations;
 
     std::unique_ptr<QgsQuickMapSettings> mMapSettings;
     bool mPinching = false;

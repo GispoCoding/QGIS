@@ -15,8 +15,6 @@ class QgsGui : QObject
 %Docstring(signature="appended")
 :py:class:`QgsGui` is a singleton class containing various registry and other global members
 related to GUI classes.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -24,7 +22,7 @@ related to GUI classes.
 %End
   public:
 
-    enum ProjectCrsBehavior
+    enum ProjectCrsBehavior /BaseType=IntEnum/
     {
       UseCrsOfFirstLayerAdded,
       UsePresetCrs,
@@ -206,7 +204,7 @@ Returns the global input controller manager.
 .. versionadded:: 3.32
 %End
 
-    enum HigFlag
+    enum HigFlag /BaseType=IntEnum/
     {
       HigMenuTextIsTitleCase,
       HigDialogTitleIsTitleCase

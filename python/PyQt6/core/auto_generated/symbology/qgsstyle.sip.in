@@ -22,7 +22,7 @@ typedef QMap<QString, QgsPalLayerSettings > QgsLabelSettingsMap;
 typedef QMultiMap<QString, QString> QgsSmartConditionMap;
 
 
-enum SymbolTable
+enum SymbolTable /BaseType=IntEnum/
 {
   SymbolId,
   SymbolName,
@@ -30,19 +30,19 @@ enum SymbolTable
   SymbolFavoriteId,
 };
 
-enum TagTable
+enum TagTable /BaseType=IntEnum/
 {
   TagId,
   TagName,
 };
 
-enum TagmapTable
+enum TagmapTable /BaseType=IntEnum/
 {
   TagmapTagId,
   TagmapSymbolId,
 };
 
-enum ColorrampTable
+enum ColorrampTable /BaseType=IntEnum/
 {
   ColorrampId,
   ColorrampName,
@@ -50,7 +50,7 @@ enum ColorrampTable
   ColorrampFavoriteId,
 };
 
-enum TextFormatTable
+enum TextFormatTable /BaseType=IntEnum/
 {
   TextFormatId,
   TextFormatName,
@@ -58,7 +58,7 @@ enum TextFormatTable
   TextFormatFavoriteId,
 };
 
-enum LabelSettingsTable
+enum LabelSettingsTable /BaseType=IntEnum/
 {
   LabelSettingsId,
   LabelSettingsName,
@@ -66,7 +66,7 @@ enum LabelSettingsTable
   LabelSettingsFavoriteId,
 };
 
-enum SmartgroupTable
+enum SmartgroupTable /BaseType=IntEnum/
 {
   SmartgroupId,
   SmartgroupName,
@@ -87,7 +87,7 @@ Constructor for QgsStyle, with the specified ``parent`` object.
 %End
     ~QgsStyle();
 
-    enum StyleEntity
+    enum StyleEntity /BaseType=IntEnum/
     {
       SymbolEntity,
       TagEntity,
@@ -291,8 +291,6 @@ Adds a new smartgroup to the database and returns the id.
 Returns a list of all tags in the style database
 
 .. seealso:: :py:func:`addTag`
-
-.. versionadded:: 2.16
 %End
 
     void clear();
@@ -765,7 +763,7 @@ Returns the default patch geometry for the given symbol ``type`` and ``size`` as
 .. versionadded:: 3.14
 %End
 
-    enum class TextFormatContext /BaseType=IntFlag/
+    enum class TextFormatContext /BaseType=IntEnum/
     {
       Labeling,
     };
@@ -821,8 +819,6 @@ This function creates a new on-disk permanent style database.
 :return: returns the success state of the database creation
 
 .. seealso:: :py:func:`createMemoryDatabase`
-
-.. versionadded:: 3.0
 %End
 
     bool createMemoryDatabase();
@@ -834,8 +830,6 @@ This function is used to create a temporary style database in case a permanent o
 :return: returns the success state of the temporary memory database creation
 
 .. seealso:: :py:func:`createDatabase`
-
-.. versionadded:: 3.0
 %End
 
     void createTables();
@@ -847,8 +841,6 @@ This function is used to create the tables structure in a newly-created database
 .. seealso:: :py:func:`createDatabase`
 
 .. seealso:: :py:func:`createMemoryDatabase`
-
-.. versionadded:: 3.0
 %End
 
     bool load( const QString &filename );

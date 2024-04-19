@@ -19,7 +19,6 @@
 
 #include "qgsvectorlayer.h"
 #include "qgsfeatureiterator.h"
-#include "qgsmaplayer.h"
 #include "qgsmapcanvas.h"
 #include "qgsgeometry.h"
 #include "qgsfeature.h"
@@ -471,7 +470,7 @@ ErrorList topolTest::checkGaps( QgsVectorLayer *layer1, QgsVectorLayer *layer2, 
 
   int i = 0;
   ErrorList errorList;
-  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
+  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
 
   // could be enabled for lines and points too
   // so duplicate rule may be removed?
@@ -1284,7 +1283,7 @@ void topolTest::fillFeatureMap( QgsVectorLayer *layer, const QgsRectangle &exten
   {
     fit = layer->getFeatures( QgsFeatureRequest()
                               .setFilterRect( extent )
-                              .setFlags( QgsFeatureRequest::ExactIntersect )
+                              .setFlags( Qgis::FeatureRequestFlag::ExactIntersect )
                               .setNoAttributes() );
   }
 
@@ -1310,7 +1309,7 @@ void topolTest::fillFeatureList( QgsVectorLayer *layer, const QgsRectangle &exte
   {
     fit = layer->getFeatures( QgsFeatureRequest()
                               .setFilterRect( extent )
-                              .setFlags( QgsFeatureRequest::ExactIntersect )
+                              .setFlags( Qgis::FeatureRequestFlag::ExactIntersect )
                               .setNoAttributes() );
   }
 
@@ -1339,7 +1338,7 @@ QgsSpatialIndex *topolTest::createIndex( QgsVectorLayer *layer, const QgsRectang
   {
     fit = layer->getFeatures( QgsFeatureRequest()
                               .setFilterRect( extent )
-                              .setFlags( QgsFeatureRequest::ExactIntersect )
+                              .setFlags( Qgis::FeatureRequestFlag::ExactIntersect )
                               .setNoAttributes() );
   }
 

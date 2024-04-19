@@ -49,7 +49,6 @@ from qgis.core import (
     QgsPolygon,
     QgsProject,
     QgsRectangle,
-    QgsRenderChecker,
     QgsTriangle,
     QgsVectorLayer,
     QgsVertexId,
@@ -69,7 +68,6 @@ TEST_DATA_DIR = unitTestDataPath()
 class TestQgsGeometry(QgisTestCase):
 
     def setUp(self):
-        self.report = "<h1>Python QgsGeometry Tests</h1>\n"
         self.geos309 = 30900
         self.geos310_4 = 31040
         self.geos311 = 31100
@@ -1115,8 +1113,15 @@ class TestQgsGeometry(QgisTestCase):
               QgsPointXY(2, 2),
               QgsPointXY(0, 2),
               QgsPointXY(0, 0)]])
-        myPoint = QgsGeometry.fromPointXY(QgsPointXY(1, 1))
-        self.assertTrue(QgsGeometry.contains(myPoly, myPoint))
+        pointInside = QgsPointXY(1, 1)
+        self.assertTrue(myPoly.contains(pointInside))
+        self.assertTrue(myPoly.contains(QgsGeometry.fromPointXY(pointInside)))
+        self.assertTrue(myPoly.contains(pointInside.x(), pointInside.y()))
+
+        pointOutside = QgsPointXY(3, 3)
+        self.assertFalse(myPoly.contains(pointOutside))
+        self.assertFalse(myPoly.contains(QgsGeometry.fromPointXY(pointOutside)))
+        self.assertFalse(myPoly.contains(pointOutside.x(), pointOutside.y()))
 
     def testTouches(self):
         myLine = QgsGeometry.fromPolylineXY([
@@ -5439,88 +5444,93 @@ class TestQgsGeometry(QgisTestCase):
 
         input = QgsGeometry.fromWkt("MULTIPOINT ((10 10), (10 20), (20 20))")
         o = input.delaunayTriangulation()
-        exp = "GEOMETRYCOLLECTION (POLYGON ((10 20, 10 10, 20 20, 10 20)))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "GeometryCollection (Polygon ((10 10, 10 20, 20 20, 10 10)))")
+
         o = input.delaunayTriangulation(0, True)
-        exp = "MultiLineString ((10 20, 20 20),(10 10, 10 20),(10 10, 20 20))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "MultiLineString ((10 20, 20 20),(10 10, 20 20),(10 10, 10 20))"
+        )
         input = QgsGeometry.fromWkt(
             "MULTIPOINT ((50 40), (140 70), (80 100), (130 140), (30 150), (70 180), (190 110), (120 20))")
         o = input.delaunayTriangulation()
-        exp = "GEOMETRYCOLLECTION (POLYGON ((30 150, 50 40, 80 100, 30 150)), POLYGON ((30 150, 80 100, 70 180, 30 150)), POLYGON ((70 180, 80 100, 130 140, 70 180)), POLYGON ((70 180, 130 140, 190 110, 70 180)), POLYGON ((190 110, 130 140, 140 70, 190 110)), POLYGON ((190 110, 140 70, 120 20, 190 110)), POLYGON ((120 20, 140 70, 80 100, 120 20)), POLYGON ((120 20, 80 100, 50 40, 120 20)), POLYGON ((80 100, 140 70, 130 140, 80 100)))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "GeometryCollection (Polygon ((130 140, 190 110, 140 70, 130 140)),Polygon ((120 20, 140 70, 190 110, 120 20)),Polygon ((80 100, 140 70, 120 20, 80 100)),Polygon ((80 100, 130 140, 140 70, 80 100)),Polygon ((70 180, 190 110, 130 140, 70 180)),Polygon ((70 180, 130 140, 80 100, 70 180)),Polygon ((50 40, 80 100, 120 20, 50 40)),Polygon ((30 150, 80 100, 50 40, 30 150)),Polygon ((30 150, 70 180, 80 100, 30 150)))"
+        )
+
         o = input.delaunayTriangulation(0, True)
-        exp = "MultiLineString ((70 180, 190 110),(30 150, 70 180),(30 150, 50 40),(50 40, 120 20),(120 20, 190 110),(120 20, 140 70),(140 70, 190 110),(130 140, 140 70),(130 140, 190 110),(70 180, 130 140),(80 100, 130 140),(70 180, 80 100),(30 150, 80 100),(50 40, 80 100),(80 100, 120 20),(80 100, 140 70))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "MultiLineString ((140 70, 190 110),(130 140, 190 110),(130 140, 140 70),(120 20, 190 110),(120 20, 140 70),(80 100, 140 70),(80 100, 130 140),(80 100, 120 20),(70 180, 190 110),(70 180, 130 140),(70 180, 80 100),(50 40, 120 20),(50 40, 80 100),(30 150, 80 100),(30 150, 70 180),(30 150, 50 40))"
+        )
         input = QgsGeometry.fromWkt(
             "MULTIPOINT ((10 10), (10 20), (20 20), (20 10), (20 0), (10 0), (0 0), (0 10), (0 20))")
         o = input.delaunayTriangulation()
-        exp = "GEOMETRYCOLLECTION (POLYGON ((0 20, 0 10, 10 10, 0 20)), POLYGON ((0 20, 10 10, 10 20, 0 20)), POLYGON ((10 20, 10 10, 20 10, 10 20)), POLYGON ((10 20, 20 10, 20 20, 10 20)), POLYGON ((10 0, 20 0, 10 10, 10 0)), POLYGON ((10 0, 10 10, 0 10, 10 0)), POLYGON ((10 0, 0 10, 0 0, 10 0)), POLYGON ((10 10, 20 0, 20 10, 10 10)))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "GeometryCollection (Polygon ((10 20, 20 20, 20 10, 10 20)),Polygon ((10 10, 20 10, 20 0, 10 10)),Polygon ((10 10, 10 20, 20 10, 10 10)),Polygon ((10 0, 10 10, 20 0, 10 0)),Polygon ((0 20, 10 20, 10 10, 0 20)),Polygon ((0 10, 10 10, 10 0, 0 10)),Polygon ((0 10, 0 20, 10 10, 0 10)),Polygon ((0 0, 0 10, 10 0, 0 0)))"
+        )
         o = input.delaunayTriangulation(0, True)
-        exp = "MultiLineString ((10 20, 20 20),(0 20, 10 20),(0 10, 0 20),(0 0, 0 10),(0 0, 10 0),(10 0, 20 0),(20 0, 20 10),(20 10, 20 20),(10 20, 20 10),(10 10, 20 10),(10 10, 10 20),(0 20, 10 10),(0 10, 10 10),(10 0, 10 10),(0 10, 10 0),(10 10, 20 0))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "MultiLineString ((20 10, 20 20),(20 0, 20 10),(10 20, 20 20),(10 20, 20 10),(10 10, 20 10),(10 10, 20 0),(10 10, 10 20),(10 0, 20 0),(10 0, 10 10),(0 20, 10 20),(0 20, 10 10),(0 10, 10 10),(0 10, 10 0),(0 10, 0 20),(0 0, 10 0),(0 0, 0 10))"
+        )
 
         input = QgsGeometry.fromWkt(
             "POLYGON ((42 30, 41.96 29.61, 41.85 29.23, 41.66 28.89, 41.41 28.59, 41.11 28.34, 40.77 28.15, 40.39 28.04, 40 28, 39.61 28.04, 39.23 28.15, 38.89 28.34, 38.59 28.59, 38.34 28.89, 38.15 29.23, 38.04 29.61, 38 30, 38.04 30.39, 38.15 30.77, 38.34 31.11, 38.59 31.41, 38.89 31.66, 39.23 31.85, 39.61 31.96, 40 32, 40.39 31.96, 40.77 31.85, 41.11 31.66, 41.41 31.41, 41.66 31.11, 41.85 30.77, 41.96 30.39, 42 30))")
         o = input.delaunayTriangulation(0, True)
-        # depending on GEOS version, the result will be one of these two. Either is correct.
-        # older GEOS
-        exp = "MULTILINESTRING ((41.66 31.11, 41.85 30.77), (41.41 31.41, 41.66 31.11), (41.11 31.66, 41.41 31.41), (40.77 31.85, 41.11 31.66), (40.39 31.96, 40.77 31.85), (40 32, 40.39 31.96), (39.61 31.96, 40 32), (39.23 31.85, 39.61 31.96), (38.89 31.66, 39.23 31.85), (38.59 31.41, 38.89 31.66), (38.34 31.11, 38.59 31.41), (38.15 30.77, 38.34 31.11), (38.04 30.39, 38.15 30.77), (38 30, 38.04 30.39), (38 30, 38.04 29.61), (38.04 29.61, 38.15 29.23), (38.15 29.23, 38.34 28.89), (38.34 28.89, 38.59 28.59), (38.59 28.59, 38.89 28.34), (38.89 28.34, 39.23 28.15), (39.23 28.15, 39.61 28.04), (39.61 28.04, 40 28), (40 28, 40.39 28.04), (40.39 28.04, 40.77 28.15), (40.77 28.15, 41.11 28.34), (41.11 28.34, 41.41 28.59), (41.41 28.59, 41.66 28.89), (41.66 28.89, 41.85 29.23), (41.85 29.23, 41.96 29.61), (41.96 29.61, 42 30), (41.96 30.39, 42 30), (41.85 30.77, 41.96 30.39), (41.66 31.11, 41.96 30.39), (41.41 31.41, 41.96 30.39), (41.41 28.59, 41.96 30.39), (41.41 28.59, 41.41 31.41), (38.59 28.59, 41.41 28.59), (38.59 28.59, 41.41 31.41), (38.59 28.59, 38.59 31.41), (38.59 31.41, 41.41 31.41), (38.59 31.41, 39.61 31.96), (39.61 31.96, 41.41 31.41), (39.61 31.96, 40.39 31.96), (40.39 31.96, 41.41 31.41), (40.39 31.96, 41.11 31.66), (38.04 30.39, 38.59 28.59), (38.04 30.39, 38.59 31.41), (38.04 30.39, 38.34 31.11), (38.04 29.61, 38.59 28.59), (38.04 29.61, 38.04 30.39), (39.61 28.04, 41.41 28.59), (38.59 28.59, 39.61 28.04), (38.89 28.34, 39.61 28.04), (40.39 28.04, 41.41 28.59), (39.61 28.04, 40.39 28.04), (41.96 29.61, 41.96 30.39), (41.41 28.59, 41.96 29.61), (41.66 28.89, 41.96 29.61), (40.39 28.04, 41.11 28.34), (38.04 29.61, 38.34 28.89), (38.89 31.66, 39.61 31.96))"
-        # newer GEOS
-        exp2 = "MultiLineString ((41.66 31.11, 41.85 30.77),(41.41 31.41, 41.66 31.11),(41.11 31.66, 41.41 31.41),(40.77 31.85, 41.11 31.66),(40.39 31.96, 40.77 31.85),(40 32, 40.39 31.96),(39.61 31.96, 40 32),(39.23 31.85, 39.61 31.96),(38.89 31.66, 39.23 31.85),(38.59 31.41, 38.89 31.66),(38.34 31.11, 38.59 31.41),(38.15 30.77, 38.34 31.11),(38.04 30.39, 38.15 30.77),(38 30, 38.04 30.39),(38 30, 38.04 29.61),(38.04 29.61, 38.15 29.23),(38.15 29.23, 38.34 28.89),(38.34 28.89, 38.59 28.59),(38.59 28.59, 38.89 28.34),(38.89 28.34, 39.23 28.15),(39.23 28.15, 39.61 28.04),(39.61 28.04, 40 28),(40 28, 40.39 28.04),(40.39 28.04, 40.77 28.15),(40.77 28.15, 41.11 28.34),(41.11 28.34, 41.41 28.59),(41.41 28.59, 41.66 28.89),(41.66 28.89, 41.85 29.23),(41.85 29.23, 41.96 29.61),(41.96 29.61, 42 30),(41.96 30.39, 42 30),(41.85 30.77, 41.96 30.39),(41.66 31.11, 41.96 30.39),(41.41 31.41, 41.96 30.39),(41.96 29.61, 41.96 30.39),(41.41 31.41, 41.96 29.61),(41.41 28.59, 41.96 29.61),(41.41 28.59, 41.41 31.41),(38.59 31.41, 41.41 28.59),(38.59 31.41, 41.41 31.41),(38.59 31.41, 40.39 31.96),(40.39 31.96, 41.41 31.41),(40.39 31.96, 41.11 31.66),(38.59 31.41, 39.61 31.96),(39.61 31.96, 40.39 31.96),(38.59 28.59, 41.41 28.59),(38.59 28.59, 38.59 31.41),(38.04 29.61, 38.59 28.59),(38.04 29.61, 38.59 31.41),(38.04 29.61, 38.04 30.39),(38.04 30.39, 38.59 31.41),(38.04 30.39, 38.34 31.11),(40.39 28.04, 41.41 28.59),(38.59 28.59, 40.39 28.04),(39.61 28.04, 40.39 28.04),(38.59 28.59, 39.61 28.04),(38.89 28.34, 39.61 28.04),(41.66 28.89, 41.96 29.61),(40.39 28.04, 41.11 28.34),(38.04 29.61, 38.34 28.89),(38.89 31.66, 39.61 31.96))"
-        result = o.asWkt(2)
-        if compareWkt(result, exp, 0.00001):
-            self.assertTrue(compareWkt(result, exp, 0.00001),
-                            f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
-        else:
-            self.assertTrue(compareWkt(result, exp2, 0.00001),
-                            f"delaunay: mismatch Expected:\n{exp2}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(2),
+            "MultiLineString ((41.96 30.39, 42 30),(41.96 29.61, 42 30),(41.96 29.61, 41.96 30.39),(41.85 30.77, 41.96 30.39),(41.85 29.23, 41.96 29.61),(41.66 31.11, 41.96 30.39),(41.66 31.11, 41.85 30.77),(41.66 28.89, 41.96 29.61),(41.66 28.89, 41.85 29.23),(41.41 31.41, 41.96 30.39),(41.41 31.41, 41.96 29.61),(41.41 31.41, 41.66 31.11),(41.41 28.59, 41.96 29.61),(41.41 28.59, 41.66 28.89),(41.41 28.59, 41.41 31.41),(41.11 31.66, 41.41 31.41),(41.11 28.34, 41.41 28.59),(40.77 31.85, 41.11 31.66),(40.77 28.15, 41.11 28.34),(40.39 31.96, 41.41 31.41),(40.39 31.96, 41.11 31.66),(40.39 31.96, 40.77 31.85),(40.39 28.04, 41.41 28.59),(40.39 28.04, 41.11 28.34),(40.39 28.04, 40.77 28.15),(40 32, 40.39 31.96),(40 28, 40.39 28.04),(39.61 31.96, 40.39 31.96),(39.61 31.96, 40 32),(39.61 28.04, 40.39 28.04),(39.61 28.04, 40 28),(39.23 31.85, 39.61 31.96),(39.23 28.15, 39.61 28.04),(38.89 31.66, 39.61 31.96),(38.89 31.66, 39.23 31.85),(38.89 28.34, 39.61 28.04),(38.89 28.34, 39.23 28.15),(38.59 31.41, 41.41 31.41),(38.59 31.41, 41.41 28.59),(38.59 31.41, 40.39 31.96),(38.59 31.41, 39.61 31.96),(38.59 31.41, 38.89 31.66),(38.59 28.59, 41.41 28.59),(38.59 28.59, 40.39 28.04),(38.59 28.59, 39.61 28.04),(38.59 28.59, 38.89 28.34),(38.59 28.59, 38.59 31.41),(38.34 31.11, 38.59 31.41),(38.34 28.89, 38.59 28.59),(38.15 30.77, 38.34 31.11),(38.15 29.23, 38.34 28.89),(38.04 30.39, 38.59 31.41),(38.04 30.39, 38.34 31.11),(38.04 30.39, 38.15 30.77),(38.04 29.61, 38.59 31.41),(38.04 29.61, 38.59 28.59),(38.04 29.61, 38.34 28.89),(38.04 29.61, 38.15 29.23),(38.04 29.61, 38.04 30.39),(38 30, 38.04 30.39),(38 30, 38.04 29.61))"
+        )
 
         input = QgsGeometry.fromWkt(
             "POLYGON ((0 0, 0 200, 180 200, 180 0, 0 0), (20 180, 160 180, 160 20, 152.625 146.75, 20 180), (30 160, 150 30, 70 90, 30 160))")
         o = input.delaunayTriangulation(0, True)
-        exp = "MultiLineString ((0 200, 180 200),(0 0, 0 200),(0 0, 180 0),(180 0, 180 200),(152.625 146.75, 180 0),(152.625 146.75, 180 200),(152.625 146.75, 160 180),(160 180, 180 200),(0 200, 160 180),(20 180, 160 180),(0 200, 20 180),(20 180, 30 160),(0 200, 30 160),(0 0, 30 160),(30 160, 70 90),(0 0, 70 90),(70 90, 150 30),(0 0, 150 30),(150 30, 160 20),(0 0, 160 20),(160 20, 180 0),(152.625 146.75, 160 20),(150 30, 152.625 146.75),(70 90, 152.625 146.75),(30 160, 152.625 146.75),(30 160, 160 180))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "MultiLineString ((180 0, 180 200),(160 180, 180 200),(160 20, 180 0),(152.625 146.75, 180 200),(152.625 146.75, 180 0),(152.625 146.75, 160 180),(152.625 146.75, 160 20),(150 30, 160 20),(150 30, 152.625 146.75),(70 90, 152.625 146.75),(70 90, 150 30),(30 160, 160 180),(30 160, 152.625 146.75),(30 160, 70 90),(20 180, 160 180),(20 180, 30 160),(0 200, 180 200),(0 200, 160 180),(0 200, 30 160),(0 200, 20 180),(0 0, 180 0),(0 0, 160 20),(0 0, 150 30),(0 0, 70 90),(0 0, 30 160),(0 0, 0 200))"
+        )
 
         input = QgsGeometry.fromWkt(
             "MULTIPOINT ((10 10 1), (10 20 2), (20 20 3), (20 10 1.5), (20 0 2.5), (10 0 3.5), (0 0 0), (0 10 .5), (0 20 .25))")
         o = input.delaunayTriangulation()
-        exp = "GeometryCollection (PolygonZ ((0 20 0.25, 0 10 0.5, 10 10 1, 0 20 0.25)),PolygonZ ((0 20 0.25, 10 10 1, 10 20 2, 0 20 0.25)),PolygonZ ((10 20 2, 10 10 1, 20 10 1.5, 10 20 2)),PolygonZ ((10 20 2, 20 10 1.5, 20 20 3, 10 20 2)),PolygonZ ((10 0 3.5, 20 0 2.5, 10 10 1, 10 0 3.5)),PolygonZ ((10 0 3.5, 10 10 1, 0 10 0.5, 10 0 3.5)),PolygonZ ((10 0 3.5, 0 10 0.5, 0 0 0, 10 0 3.5)),PolygonZ ((10 10 1, 20 0 2.5, 20 10 1.5, 10 10 1)))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "GeometryCollection (PolygonZ ((10 20 2, 20 20 3, 20 10 1.5, 10 20 2)),PolygonZ ((10 10 1, 20 10 1.5, 20 0 2.5, 10 10 1)),PolygonZ ((10 10 1, 10 20 2, 20 10 1.5, 10 10 1)),PolygonZ ((10 0 3.5, 10 10 1, 20 0 2.5, 10 0 3.5)),PolygonZ ((0 20 0.25, 10 20 2, 10 10 1, 0 20 0.25)),PolygonZ ((0 10 0.5, 10 10 1, 10 0 3.5, 0 10 0.5)),PolygonZ ((0 10 0.5, 0 20 0.25, 10 10 1, 0 10 0.5)),PolygonZ ((0 0 0, 0 10 0.5, 10 0 3.5, 0 0 0)))"
+        )
+
         o = input.delaunayTriangulation(0, True)
-        exp = "MultiLineStringZ ((10 20 2, 20 20 3),(0 20 0.25, 10 20 2),(0 10 0.5, 0 20 0.25),(0 0 0, 0 10 0.5),(0 0 0, 10 0 3.5),(10 0 3.5, 20 0 2.5),(20 0 2.5, 20 10 1.5),(20 10 1.5, 20 20 3),(10 20 2, 20 10 1.5),(10 10 1, 20 10 1.5),(10 10 1, 10 20 2),(0 20 0.25, 10 10 1),(0 10 0.5, 10 10 1),(10 0 3.5, 10 10 1),(0 10 0.5, 10 0 3.5),(10 10 1, 20 0 2.5))"
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(5),
+            "MultiLineStringZ ((20 10 1.5, 20 20 3),(20 0 2.5, 20 10 1.5),(10 20 2, 20 20 3),(10 20 2, 20 10 1.5),(10 10 1, 20 10 1.5),(10 10 1, 20 0 2.5),(10 10 1, 10 20 2),(10 0 3.5, 20 0 2.5),(10 0 3.5, 10 10 1),(0 20 0.25, 10 20 2),(0 20 0.25, 10 10 1),(0 10 0.5, 10 10 1),(0 10 0.5, 10 0 3.5),(0 10 0.5, 0 20 0.25),(0 0 0, 10 0 3.5),(0 0 0, 0 10 0.5))"
+        )
+
         input = QgsGeometry.fromWkt(
             "MULTIPOINT((-118.3964065 56.0557),(-118.396406 56.0475),(-118.396407 56.04),(-118.3968 56))")
         o = input.delaunayTriangulation(0.001, True)
+        o.normalize()
         # Delaunay Triangulation computation change. See: https://github.com/libgeos/geos/pull/728
-        if Qgis.geosVersionInt() >= self.geos310_4:
-            exp = "MultiLineString ((-118.39679999999999893 56, -118.39640649999999766 56.05570000000000164),(-118.39679999999999893 56, -118.3964069999999964 56.03999999999999915),(-118.3964069999999964 56.03999999999999915, -118.39640599999999893 56.04749999999999943),(-118.39640649999999766 56.05570000000000164, -118.39640599999999893 56.04749999999999943),(-118.39679999999999893 56, -118.39640599999999893 56.04749999999999943))"
-        else:
-            exp = "MULTILINESTRING ((-118.3964065 56.0557, -118.396406 56.0475), (-118.396407 56.04, -118.396406 56.0475), (-118.3968 56, -118.396407 56.04))"
-
-        result = o.asWkt()
-        self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"delaunay: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        self.assertIn(
+            o.asWkt(5),
+            (
+                "MultiLineString ((-118.39641 56.0557, -118.39641 56.0475),(-118.39641 56.04, -118.39641 56.0475),(-118.3968 56, -118.39641 56.0475),(-118.3968 56, -118.39641 56.0557),(-118.3968 56, -118.39641 56.04))",
+                "MultiLineString ((-118.39641 56.0557, -118.39641 56.0475),(-118.39641 56.04, -118.39641 56.0475),(-118.3968 56, -118.39641 56.04))"
+            )
+        )
 
     def testVoronoi(self):
         empty = QgsGeometry()
@@ -6047,6 +6057,21 @@ class TestQgsGeometry(QgisTestCase):
             self.assertTrue(compareWkt(result, exp.asWkt(), 0.02),
                             f"tapered buffer: mismatch Expected:\n{exp.asWkt()}\nGot:\n{result}\n")
 
+        curved_tests = [['CompoundCurve (CircularString (6 2, 9 2, 9 3))', 2, 7, 3,
+                         'MultiPolygon (((4.97 1.7, 4.97 1.72, 4.97 1.74, 4.'],
+                        ['MultiCurve (CompoundCurve (CircularString (6 2, 9 2, 9 3)))', 2, 7, 3,
+                         'MultiPolygon (((4.97 1.7, 4.97 1.72, 4.97 1.74, 4.']]
+
+        for t in curved_tests:
+            input = QgsGeometry.fromWkt(t[0])
+            start = t[1]
+            end = t[2]
+            segments = t[3]
+            o = QgsGeometry.taperedBuffer(input, start, end, segments)
+            o.normalize()
+            result = o.asWkt(2)
+            self.assertEqual(result[:50], t[4])
+
     def testVariableWidthBufferByM(self):
         tests = [['LineString (6 2, 9 2, 9 3, 11 5)', 3, 'GeometryCollection EMPTY'],
                  ['LineStringM (6 2 1, 9 2 1.5, 9 3 0.5, 11 5 2)', 3,
@@ -6172,18 +6197,14 @@ class TestQgsGeometry(QgisTestCase):
                                                                                        t[2], res))
 
     def testOffsetCurve(self):
-        # linestring which becomes multilinestring -- the actual offset curve calculated by GEOS is false.
-        # This is fixed in GEOS 3.11. See: https://github.com/libgeos/geos/issues/477
-        if Qgis.geosVersionInt() >= self.geos311:
-            exp5 = "LineString (259312.4 5928272.3, 259309.5 5928272.8, 259307.5 5928273.1, 259307.5 5928273.2)"
-        else:
-            exp5 = "MultiLineString ((259313.3 5928272.5, 259312.5 5928272.6),(259312.4 5928272.3, 259309.5 5928272.8, 259307.5 5928273.1))"
         tests = [
-            ["LINESTRING (0 0, 0 100, 100 100)", 1, "LineString (-1 0, -1 101, 100 101)"],
-            ["LINESTRING (0 0, 0 100, 100 100)", -1, "LineString (1 0, 1 99, 100 99)"],
-            ["LINESTRING (100 100, 0 100, 0 0)", 1, "LineString (100 99, 1 99, 1 0)"],
-            ["LINESTRING (100 100, 0 100, 0 0)", -1, "LineString (100 101, -1 101, -1 0)"],
-            ["LINESTRING (259329.820 5928370.79, 259324.337 5928371.758, 259319.678 5928372.33, 259317.064 5928372.498 )", 100, exp5],
+            ["LINESTRING (0 0, 0 100, 100 100)", 1, ["LineString (-1 0, -1 101, 100 101)"]],
+            ["LINESTRING (0 0, 0 100, 100 100)", -1, ["LineString (1 0, 1 99, 100 99)"]],
+            ["LINESTRING (100 100, 0 100, 0 0)", 1, ["LineString (100 99, 1 99, 1 0)"]],
+            ["LINESTRING (100 100, 0 100, 0 0)", -1, ["LineString (100 101, -1 101, -1 0)"]],
+            ["LINESTRING (259329.820 5928370.79, 259324.337 5928371.758, 259319.678 5928372.33, 259317.064 5928372.498 )", 100, ["LineString (259312.4 5928272.3, 259309.5 5928272.8, 259307.5 5928273.1, 259307.5 5928273.2)",
+                                                                                                                                 "LineString (259312.5 5928272.6, 259312.4 5928272.3, 259309.5 5928272.8, 259307.5 5928273.1, 259313.6 5928322.7, 259313.9 5928322.7)",
+                                                                                                                                 "MultiLineString ((259313.3 5928272.5, 259312.5 5928272.6),(259312.4 5928272.3, 259309.5 5928272.8, 259307.5 5928273.1))"]],
             ["MULTILINESTRING ((0 0, 0 100, 100 100),(100 100, 0 100, 0 0))", 1,
              "MultiLineString ((-1 0, -1 101, 100 101),(100 99, 1 99, 1 0))"]
         ]
@@ -6191,9 +6212,9 @@ class TestQgsGeometry(QgisTestCase):
             g1 = QgsGeometry.fromWkt(t[0])
             res = g1.offsetCurve(t[1], 2, QgsGeometry.JoinStyle.JoinStyleMiter, 5)
 
-            self.assertEqual(res.asWkt(1), t[2],
-                             "mismatch for {} to {}, expected:\n{}\nGot:\n{}\n".format(t[0], t[1],
-                                                                                       t[2], res.asWkt(1)))
+            self.assertIn(res.asWkt(1), t[2],
+                          "mismatch for {} to {}, expected:\n{}\nGot:\n{}\n".format(t[0], t[1],
+                                                                                    t[2], res.asWkt(1)))
 
     def testForceRHR(self):
         tests = [
@@ -6299,6 +6320,10 @@ class TestQgsGeometry(QgisTestCase):
                 'MultiPolygon (((159865.14786298031685874 6768656.31838363595306873, 159858.97975336571107619 6769211.44824895076453686, 160486.07089751763851382 6769211.44824895076453686, 160481.95882444124436006 6768658.37442017439752817, 160163.27316101978067309 6768658.37442017439752817, 160222.89822062765597366 6769116.87056819349527359, 160132.43261294672265649 6769120.98264127038419247, 160163.27316101978067309 6768658.37442017439752817, 159865.14786298031685874 6768656.31838363595306873)))',
                 False, True, 'Ring self-intersection'],
             ['Polygon((0 3, 3 0, 3 3, 0 0, 0 3))', False, False, 'Self-intersection'],
+            ['LineString(0 0)', False, False, 'LineString has less than 2 points and is not empty.'],
+            ['LineString Empty', True, True, ''],
+            ['MultiLineString((0 0))', False, False, 'QGIS geometry cannot be converted to a GEOS geometry'],
+            ['MultiLineString Empty', True, True, ''],
         ]
         for t in tests:
             # run each check 2 times to allow for testing of cached value
@@ -6306,7 +6331,7 @@ class TestQgsGeometry(QgisTestCase):
             for i in range(2):
                 res = g1.isGeosValid()
                 self.assertEqual(res, t[1],
-                                 f"mismatch for {t[0]}, expected:\n{t[1]}\nGot:\n{res}\n")
+                                 f"mismatch for {t[0]}, iter {i}, expected:\n{t[1]}\nGot:\n{res}\n")
                 if not res:
                     self.assertEqual(g1.lastError(), t[3], t[0])
             for i in range(2):
@@ -7104,16 +7129,24 @@ class TestQgsGeometry(QgisTestCase):
             geom = QgsGeometry.fromWkt(test['wkt'])
             self.assertTrue(geom and not geom.isNull(), f"Could not create geometry {test['wkt']}")
             rendered_image = self.renderGeometry(geom, test['use_pen'])
-            self.assertTrue(self.imageCheck(test['name'], test['reference_image'], rendered_image), test['name'])
+            self.assertTrue(
+                self.image_check(test['name'], test['reference_image'], rendered_image,
+                                 control_path_prefix="geometry"), test['name'])
 
             if hasattr(geom.constGet(), 'addToPainterPath'):
                 # also check using painter path
                 rendered_image = self.renderGeometry(geom, test['use_pen'], as_painter_path=True)
-                assert self.imageCheck(test['name'], test['reference_image'], rendered_image)
+                self.assertTrue(
+                    self.image_check(test['name'], test['reference_image'], rendered_image,
+                                     control_path_prefix="geometry")
+                )
 
             if 'as_polygon_reference_image' in test:
                 rendered_image = self.renderGeometry(geom, False, True)
-                self.assertTrue(self.imageCheck(test['name'] + '_aspolygon', test['as_polygon_reference_image'], rendered_image), test['name'] + '_aspolygon')
+                self.assertTrue(
+                    self.image_check(test['name'] + '_aspolygon', test['as_polygon_reference_image'], rendered_image,
+                                     control_path_prefix="geometry")
+                )
 
     def testGeometryAsQPainterPath(self):
         '''Tests conversion of different geometries to QPainterPath, including bad/odd geometries.'''
@@ -7209,7 +7242,7 @@ class TestQgsGeometry(QgisTestCase):
             geom = get_geom()
             rendered_image = self.renderGeometryUsingPath(geom)
             self.assertTrue(
-                self.imageCheck(test['name'], test['reference_image'], rendered_image, control_path="geometry_path"),
+                self.image_check(test['name'], test['reference_image'], rendered_image, control_path_prefix="geometry_path"),
                 test['name'])
 
             # Note - each test is repeated with the same geometry and reference image, but with added
@@ -7219,21 +7252,21 @@ class TestQgsGeometry(QgisTestCase):
             geom_z = get_geom()
             geom_z.get().addZValue(5)
             rendered_image = self.renderGeometryUsingPath(geom_z)
-            assert self.imageCheck(test['name'] + 'Z', test['reference_image'], rendered_image,
-                                   control_path="geometry_path")
+            self.assertTrue(self.image_check(test['name'] + 'Z', test['reference_image'], rendered_image,
+                                             control_path_prefix="geometry_path"))
 
             # test with ZM
             geom_z.get().addMValue(15)
             rendered_image = self.renderGeometryUsingPath(geom_z)
-            assert self.imageCheck(test['name'] + 'ZM', test['reference_image'], rendered_image,
-                                   control_path="geometry_path")
+            self.assertTrue(self.image_check(test['name'] + 'ZM', test['reference_image'], rendered_image,
+                                             control_path_prefix="geometry_path"))
 
             # test with M
             geom_m = get_geom()
             geom_m.get().addMValue(15)
             rendered_image = self.renderGeometryUsingPath(geom_m)
-            assert self.imageCheck(test['name'] + 'M', test['reference_image'], rendered_image,
-                                   control_path="geometry_path")
+            self.assertTrue(self.image_check(test['name'] + 'M', test['reference_image'], rendered_image,
+                                             control_path_prefix="geometry_path"))
 
     def renderGeometryUsingPath(self, geom):
         image = QImage(200, 200, QImage.Format.Format_RGB32)
@@ -7268,21 +7301,6 @@ class TestQgsGeometry(QgisTestCase):
             painter.end()
 
         return image
-
-    def imageCheck(self, name, reference_image, image, control_path="geometry"):
-        self.report += f"<h2>Render {name}</h2>\n"
-        temp_dir = QDir.tempPath() + '/'
-        file_name = temp_dir + 'geometry_' + name + ".png"
-        image.save(file_name, "PNG")
-        checker = QgsRenderChecker()
-        checker.setControlPathPrefix(control_path)
-        checker.setControlName("expected_" + reference_image)
-        checker.setRenderedImage(file_name)
-        checker.setColorTolerance(2)
-        result = checker.compareImages(name, 20)
-        self.report += checker.report()
-        print(self.report)
-        return result
 
     def testFixedPrecision(self):
         a = QgsGeometry.fromWkt('LINESTRING(0 0, 9 0)')
@@ -7552,6 +7570,31 @@ class TestQgsGeometry(QgisTestCase):
         self.assertEqual(res_orientation, Qgis.AngularDirection.CounterClockwise)
         self.assertEqual(res_isClockwise, False)
         self.assertEqual(res_isCounterClockwise, True)
+
+    @unittest.skipIf(Qgis.geosVersionInt() < 31100, "GEOS 3.11 required")
+    def testConstrainedDelaunayTriangulation(self):
+        """
+        Test QgsGeometry.constrainedDelaunayTriangulation
+        """
+        empty = QgsGeometry()
+        o = empty.constrainedDelaunayTriangulation()
+        self.assertFalse(o)
+        line = QgsGeometry.fromWkt('LineString EMPTY')
+        o = line.constrainedDelaunayTriangulation()
+        self.assertFalse(o)
+
+        input = QgsGeometry.fromWkt("MULTIPOINT ((10 10), (10 20), (20 20))")
+        o = input.constrainedDelaunayTriangulation()
+        self.assertTrue(o.isNull())
+
+        input = QgsGeometry.fromWkt(
+            "POLYGON ((42 30, 41.96 29.61, 41.85 29.23, 41.66 28.89, 41.41 28.59, 41.11 28.34, 40.77 28.15, 40.39 28.04, 40 28, 39.61 28.04, 39.23 28.15, 38.89 28.34, 38.59 28.59, 38.34 28.89, 38.15 29.23, 38.04 29.61, 38 30, 38.04 30.39, 38.15 30.77, 38.34 31.11, 38.59 31.41, 38.89 31.66, 39.23 31.85, 39.61 31.96, 40 32, 40.39 31.96, 40.77 31.85, 41.11 31.66, 41.41 31.41, 41.66 31.11, 41.85 30.77, 41.96 30.39, 42 30))")
+        o = input.constrainedDelaunayTriangulation()
+        o.normalize()
+        self.assertEqual(
+            o.asWkt(2),
+            "MultiPolygon (((41.96 29.61, 41.96 30.39, 42 30, 41.96 29.61)),((41.66 31.11, 41.85 30.77, 41.96 30.39, 41.66 31.11)),((41.66 28.89, 41.96 29.61, 41.85 29.23, 41.66 28.89)),((41.41 31.41, 41.96 30.39, 41.96 29.61, 41.41 31.41)),((41.41 31.41, 41.66 31.11, 41.96 30.39, 41.41 31.41)),((41.41 28.59, 41.96 29.61, 41.66 28.89, 41.41 28.59)),((41.41 28.59, 41.41 31.41, 41.96 29.61, 41.41 28.59)),((40.39 31.96, 41.11 31.66, 41.41 31.41, 40.39 31.96)),((40.39 31.96, 40.77 31.85, 41.11 31.66, 40.39 31.96)),((40.39 28.04, 41.41 28.59, 41.11 28.34, 40.39 28.04)),((40.39 28.04, 41.11 28.34, 40.77 28.15, 40.39 28.04)),((39.61 31.96, 40.39 31.96, 41.41 31.41, 39.61 31.96)),((39.61 31.96, 40 32, 40.39 31.96, 39.61 31.96)),((39.61 28.04, 40.39 28.04, 40 28, 39.61 28.04)),((38.89 31.66, 39.23 31.85, 39.61 31.96, 38.89 31.66)),((38.89 28.34, 39.61 28.04, 39.23 28.15, 38.89 28.34)),((38.59 31.41, 41.41 31.41, 41.41 28.59, 38.59 31.41)),((38.59 31.41, 39.61 31.96, 41.41 31.41, 38.59 31.41)),((38.59 31.41, 38.89 31.66, 39.61 31.96, 38.59 31.41)),((38.59 28.59, 41.41 28.59, 40.39 28.04, 38.59 28.59)),((38.59 28.59, 40.39 28.04, 39.61 28.04, 38.59 28.59)),((38.59 28.59, 39.61 28.04, 38.89 28.34, 38.59 28.59)),((38.59 28.59, 38.59 31.41, 41.41 28.59, 38.59 28.59)),((38.04 30.39, 38.59 31.41, 38.59 28.59, 38.04 30.39)),((38.04 30.39, 38.34 31.11, 38.59 31.41, 38.04 30.39)),((38.04 30.39, 38.15 30.77, 38.34 31.11, 38.04 30.39)),((38.04 29.61, 38.59 28.59, 38.34 28.89, 38.04 29.61)),((38.04 29.61, 38.34 28.89, 38.15 29.23, 38.04 29.61)),((38.04 29.61, 38.04 30.39, 38.59 28.59, 38.04 29.61)),((38 30, 38.04 30.39, 38.04 29.61, 38 30)))"
+        )
 
 
 if __name__ == '__main__':

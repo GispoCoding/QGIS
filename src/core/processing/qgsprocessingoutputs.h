@@ -20,7 +20,6 @@
 
 #include "qgis_core.h"
 #include "qgis.h"
-#include "qgsprocessing.h"
 
 class QgsProcessingContext;
 
@@ -37,7 +36,6 @@ class QgsProcessingContext;
  * Output definitions encapsulate the properties regarding the outputs from algorithms, such
  * as generated layers or calculated values.
  *
- * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsProcessingOutputDefinition
@@ -187,7 +185,6 @@ typedef QList< const QgsProcessingOutputDefinition * > QgsProcessingOutputDefini
  * If the actual layer output type is known (e.g. always vector or always raster), use
  * QgsProcessingOutputVectorLayer or QgsProcessingOutputRasterLayer instead.
  *
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputMapLayer : public QgsProcessingOutputDefinition
 {
@@ -211,7 +208,6 @@ class CORE_EXPORT QgsProcessingOutputMapLayer : public QgsProcessingOutputDefini
  * \class QgsProcessingOutputVectorLayer
  * \ingroup core
  * \brief A vector layer output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputVectorLayer : public QgsProcessingOutputDefinition
 {
@@ -220,7 +216,7 @@ class CORE_EXPORT QgsProcessingOutputVectorLayer : public QgsProcessingOutputDef
     /**
      * Constructor for QgsProcessingOutputVectorLayer.
      */
-    QgsProcessingOutputVectorLayer( const QString &name, const QString &description = QString(), QgsProcessing::SourceType type = QgsProcessing::TypeVectorAnyGeometry );
+    QgsProcessingOutputVectorLayer( const QString &name, const QString &description = QString(), Qgis::ProcessingSourceType type = Qgis::ProcessingSourceType::VectorAnyGeometry );
 
     /**
      * Returns the type name for the output class.
@@ -232,24 +228,23 @@ class CORE_EXPORT QgsProcessingOutputVectorLayer : public QgsProcessingOutputDef
      * Returns the layer type for the output layer.
      * \see setDataType()
      */
-    QgsProcessing::SourceType dataType() const;
+    Qgis::ProcessingSourceType dataType() const;
 
     /**
      * Sets the layer \a type for the output layer.
      * \see dataType()
      */
-    void setDataType( QgsProcessing::SourceType type );
+    void setDataType( Qgis::ProcessingSourceType type );
 
   private:
 
-    QgsProcessing::SourceType mDataType = QgsProcessing::TypeVectorAnyGeometry;
+    Qgis::ProcessingSourceType mDataType = Qgis::ProcessingSourceType::VectorAnyGeometry;
 };
 
 /**
  * \class QgsProcessingOutputRasterLayer
  * \ingroup core
  * \brief A raster layer output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputRasterLayer : public QgsProcessingOutputDefinition
 {
@@ -300,7 +295,6 @@ class CORE_EXPORT QgsProcessingOutputPointCloudLayer : public QgsProcessingOutpu
  * should only ever be used when the number of output layers is not
  * fixed - e.g. as a result of processing all layers in a specified
  * folder.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputMultipleLayers : public QgsProcessingOutputDefinition
 {
@@ -324,7 +318,6 @@ class CORE_EXPORT QgsProcessingOutputMultipleLayers : public QgsProcessingOutput
  * \class QgsProcessingOutputHtml
  * \ingroup core
  * \brief A HTML file output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputHtml : public QgsProcessingOutputDefinition
 {
@@ -372,7 +365,6 @@ class CORE_EXPORT QgsProcessingOutputVariant : public QgsProcessingOutputDefinit
  * \class QgsProcessingOutputNumber
  * \ingroup core
  * \brief A numeric output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputNumber : public QgsProcessingOutputDefinition
 {
@@ -396,7 +388,6 @@ class CORE_EXPORT QgsProcessingOutputNumber : public QgsProcessingOutputDefiniti
  * \class QgsProcessingOutputString
  * \ingroup core
  * \brief A string output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputString : public QgsProcessingOutputDefinition
 {
@@ -441,7 +432,6 @@ class CORE_EXPORT QgsProcessingOutputBoolean : public QgsProcessingOutputDefinit
  * \class QgsProcessingOutputFolder
  * \ingroup core
  * \brief A folder output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputFolder : public QgsProcessingOutputDefinition
 {
@@ -466,7 +456,6 @@ class CORE_EXPORT QgsProcessingOutputFolder : public QgsProcessingOutputDefiniti
  * \class QgsProcessingOutputFile
  * \ingroup core
  * \brief A file output for processing algorithms.
-  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingOutputFile : public QgsProcessingOutputDefinition
 {

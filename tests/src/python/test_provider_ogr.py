@@ -14,6 +14,7 @@ import os
 import shutil
 import sys
 import tempfile
+import math
 from datetime import datetime
 
 from osgeo import gdal, ogr  # NOQA
@@ -25,6 +26,7 @@ from qgis.core import (
     QgsAbstractDatabaseProviderConnection,
     QgsApplication,
     QgsAuthMethodConfig,
+    QgsBox3D,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
     QgsDataProvider,
@@ -1090,7 +1092,6 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(vl.fields().at(0).name(), 'bool')
         self.assertEqual(vl.fields().at(0).type(), QVariant.Bool)
         self.assertEqual([f[0] for f in vl.getFeatures()], [True, False, NULL])
-        self.assertEqual([f[0].__class__.__name__ for f in vl.getFeatures()], ['bool', 'bool', 'QVariant'])
 
     def testReloadDataAndFeatureCount(self):
 
@@ -1153,8 +1154,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         # Test default values
         dp = vl.dataProvider()
-        # FIXME: should it be None?
-        self.assertTrue(dp.defaultValue(0).isNull())
+        self.assertEqual(dp.defaultValue(0), NULL)
         self.assertIsNone(dp.defaultValue(1))
         # FIXME: This fails because there is no backend-side evaluation in this provider
         # self.assertTrue(dp.defaultValue(2).startswith(now.strftime('%Y-%m-%d')))
@@ -1399,14 +1399,31 @@ class PyQgsOGRProvider(QgisTestCase):
 
             # Test a nominal case
             handler = mockedwebserver.SequentialHandler()
+            # Asked when ogr provider try to open. See QgsOgrProvider::QgsOgrProvider#453 open( OpenModeForceReadOnly );
             handler.add('GET', '/collections/foo', 200, {'Content-Type': 'application/json'}, '{ "id": "foo" }')
-            handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
-                        '{ "type": "FeatureCollection", "features": [] }')
-            handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
-                        '{ "type": "FeatureCollection", "features": [] }')
-            if int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 3, 0):
+
+            # 3.8.3 not necessarily the minimum version
+            if int(gdal.VersionInfo('VERSION_NUM')) >= GDAL_COMPUTE_VERSION(3, 8, 3):
+                handler.add('GET', '/', 200, {'Content-Type': 'application/json'}, '{ "id": "foo" }')
+                handler.add('GET', '/api', 200, {'Content-Type': 'application/json'}, '{ "id": "foo" }')
+
+                handler.add('GET', '/collections/foo/items?limit=20', 200, {'Content-Type': 'application/geo+json'},
+                            '{ "type": "FeatureCollection", "features": [] }')
+                handler.add('GET', '/collections/foo/items?limit=1000', 200, {'Content-Type': 'application/geo+json'},
+                            '{ "type": "FeatureCollection", "features": [] }')
+            else:
+                # See QgsOgrProvider::open#4012 mOgrOrigLayer = QgsOgrProviderUtils::getLayer( mFilePath, false, options, mLayerName, errCause, true );
                 handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
                             '{ "type": "FeatureCollection", "features": [] }')
+
+                # See QgsOgrProvider::open#4066 computeCapabilities();
+                handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
+                            '{ "type": "FeatureCollection", "features": [] }')
+
+                if int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 3, 0):
+                    handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
+                                '{ "type": "FeatureCollection", "features": [] }')
+
             with mockedwebserver.install_http_handler(handler):
                 vl = QgsVectorLayer("OAPIF:http://127.0.0.1:%d/collections/foo" % port, 'test', 'ogr')
                 self.assertTrue(vl.isValid())
@@ -3496,6 +3513,88 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(vl.fields()[0].type(), QVariant.Map)
         f = vl.getFeature(1)
         self.assertEqual(f.attributes()[0], {'style': {'color': 'yellow'}})
+
+    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 8, 0), "GDAL 3.8 required")
+    def testDataCommentFileGeodatabase(self):
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_file_name = os.path.join(temp_dir, 'testDataCommentFileGeodatabase.gdb')
+            ds = ogr.GetDriverByName("OpenFileGDB").CreateDataSource(dest_file_name)
+            ds.CreateLayer("test", geom_type=ogr.wkbPoint, options=["LAYER_ALIAS=my_alias"])
+            ds = None
+
+            vl = QgsVectorLayer(dest_file_name, 'vl')
+            self.assertEqual(vl.dataComment(), "my_alias")
+
+    def testExtentCsv(self):
+        # 2D points
+        datasource_2d = os.path.join(self.basetestpath, 'testExtent2D.csv')
+        with open(datasource_2d, 'w') as f:
+            f.write('id,WKT\n')
+            for i in range(9):
+                f.write(f'{i},POINT ({2*i} {i-3})\n')
+
+        vl = QgsVectorLayer(f'{datasource_2d}|layerid=0', 'test', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertTrue(vl.featureCount(), 9)
+        self.assertEqual(vl.extent(), QgsRectangle(0, -3, 16, 5))
+        self.assertEqual(vl.extent3D(), QgsBox3D(0, -3, float('nan'), 16, 5, float('nan')))
+        del vl
+
+        os.unlink(datasource_2d)
+        self.assertFalse(os.path.exists(datasource_2d))
+
+        # 3D points
+        datasource_3d = os.path.join(self.basetestpath, 'testExtent3D.csv')
+        with open(datasource_3d, 'w') as f:
+            f.write('id,WKT\n')
+            for i in range(13):
+                f.write(f'{i},POINT Z({2*i} {i-3} {i-5})\n')
+
+        vl = QgsVectorLayer(f'{datasource_3d}|layerid=0', 'test', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertTrue(vl.featureCount(), 12)
+        self.assertEqual(vl.extent(), QgsRectangle(0, -3, 24, 9))
+        self.assertEqual(vl.extent3D(), QgsBox3D(0, -3, -5, 24, 9, 7))
+        del vl
+
+        os.unlink(datasource_3d)
+        self.assertFalse(os.path.exists(datasource_3d))
+
+    def testExtentShp(self):
+        # 2D points
+        vl = QgsVectorLayer(os.path.join(unitTestDataPath(), 'points.shp'), 'points', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertTrue(vl.featureCount(), 9)
+        self.assertAlmostEqual(vl.extent().xMinimum(), -118.8888, places=3)
+        self.assertAlmostEqual(vl.extent().yMinimum(), 22.8002, places=3)
+        self.assertAlmostEqual(vl.extent().xMaximum(), -83.3333, places=3)
+        self.assertAlmostEqual(vl.extent().yMaximum(), 46.872, places=3)
+
+        self.assertAlmostEqual(vl.extent3D().xMinimum(), -118.8888, places=3)
+        self.assertAlmostEqual(vl.extent3D().yMinimum(), 22.8002, places=3)
+        self.assertTrue(math.isnan(vl.extent3D().zMinimum()))
+        self.assertAlmostEqual(vl.extent3D().xMaximum(), -83.3333, places=3)
+        self.assertAlmostEqual(vl.extent3D().yMaximum(), 46.872, places=3)
+        self.assertTrue(math.isnan(vl.extent3D().zMaximum()))
+        del vl
+
+        # 3D points
+        vl = QgsVectorLayer(os.path.join(unitTestDataPath(), '3d', 'points_with_z.shp'), 'points', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertTrue(vl.featureCount(), 9)
+        self.assertAlmostEqual(vl.extent().xMinimum(), 321384.94, places=3)
+        self.assertAlmostEqual(vl.extent().yMinimum(), 129147.09, places=3)
+        self.assertAlmostEqual(vl.extent().xMaximum(), 322342.3, places=3)
+        self.assertAlmostEqual(vl.extent().yMaximum(), 130554.6, places=3)
+
+        self.assertAlmostEqual(vl.extent3D().xMinimum(), 321384.94, places=3)
+        self.assertAlmostEqual(vl.extent3D().yMinimum(), 129147.09, places=3)
+        self.assertAlmostEqual(vl.extent3D().zMinimum(), 64.9, places=3)
+        self.assertAlmostEqual(vl.extent3D().xMaximum(), 322342.3, places=3)
+        self.assertAlmostEqual(vl.extent3D().yMaximum(), 130554.6, places=3)
+        self.assertAlmostEqual(vl.extent3D().zMaximum(), 105.6, places=3)
+        del vl
 
 
 if __name__ == '__main__':

@@ -30,23 +30,12 @@
  *
  * An algorithm provider is a set of related algorithms, typically from the same external application or related
  * to a common area of analysis.
- * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingProvider : public QObject
 {
     Q_OBJECT
 
   public:
-
-    /**
-     * Flags indicating how and when an provider operates and should be exposed to users
-     * \since QGIS 3.14
-     */
-    enum Flag
-    {
-      FlagDeemphasiseSearchResults = 1 << 1, //!< Algorithms should be de-emphasised in the search results when searching for algorithms. Use for low-priority providers or those with substantial known issues.
-    };
-    Q_DECLARE_FLAGS( Flags, Flag )
 
     /**
      * Constructor for QgsProcessingProvider.
@@ -77,7 +66,7 @@ class CORE_EXPORT QgsProcessingProvider : public QObject
      * Default is no flags.
      * \since QGIS 3.14
      */
-    virtual Flags flags() const SIP_HOLDGIL;
+    virtual Qgis::ProcessingProviderFlags flags() const SIP_HOLDGIL;
 
     /**
      * Returns the unique provider id, used for identifying the provider. This string
@@ -368,8 +357,6 @@ class CORE_EXPORT QgsProcessingProvider : public QObject
     QgsProcessingProvider( const QgsProcessingProvider &other );
 #endif
 };
-
-Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProcessingProvider::Flags )
 
 #endif // QGSPROCESSINGPROVIDER_H
 

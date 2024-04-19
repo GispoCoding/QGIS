@@ -12,8 +12,6 @@ class QgsLayoutGridSettings : QgsLayoutSerializableObject
 {
 %Docstring(signature="appended")
 Contains settings relating to the appearance, spacing and offset for layout grids.
-
-.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -21,7 +19,7 @@ Contains settings relating to the appearance, spacing and offset for layout grid
 %End
   public:
 
-    enum Style
+    enum Style /BaseType=IntEnum/
     {
       StyleLines,
       StyleDots,
