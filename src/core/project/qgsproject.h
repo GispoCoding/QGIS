@@ -124,6 +124,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     Q_PROPERTY( Qgis::DistanceUnit distanceUnits READ distanceUnits WRITE setDistanceUnits NOTIFY distanceUnitsChanged )
     Q_PROPERTY( Qgis::AreaUnit areaUnits READ areaUnits WRITE setAreaUnits NOTIFY areaUnitsChanged )
     Q_PROPERTY( QgsProjectDisplaySettings *displaySettings READ displaySettings CONSTANT )
+    Q_PROPERTY( Qgis::TransactionMode transactionMode READ transactionMode WRITE setTransactionMode NOTIFY transactionModeChanged )
 
   public:
 
@@ -370,12 +371,36 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     /**
      * Returns the project's native coordinate reference system.
      *
+     * \warning Since QGIS 3.38, consider using crs3D() whenever transforming 3D data or whenever
+     * z/elevation value handling is important.
+     *
      * \see setCrs()
+     * \see crs3D()
      * \see verticalCrs()
      * \see ellipsoid()
      * \see crsChanged()
      */
     QgsCoordinateReferenceSystem crs() const;
+
+    /**
+     * Returns the CRS to use for the project when transforming 3D data, or when z/elevation
+     * value handling is important.
+     *
+     * The returned CRS will take into account verticalCrs() when appropriate, e.g. it may return a compound
+     * CRS consisting of crs() + verticalCrs(). This method may still return a 2D CRS, e.g in the
+     * case that crs() is a 2D CRS and no verticalCrs() has been set for the project. Check QgsCoordinateReferenceSystem::type()
+     * on the returned value to determine the type of CRS returned by this method.
+     *
+     * \warning It is NOT guaranteed that the returned CRS will actually be a 3D CRS, but rather
+     * it is guaranteed that the returned CRS is ALWAYS the most appropriate CRS to use when handling 3D data.
+     *
+     * \see crs()
+     * \see verticalCrs()
+     * \see crs3DChanged()
+     *
+     * \since QGIS 3.38
+     */
+    QgsCoordinateReferenceSystem crs3D() const;
 
     /**
      * Sets the project's native coordinate reference system.
@@ -420,7 +445,11 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      *
      * The returned CRS will be invalid if the project has no vertical CRS.
      *
+     * \note Consider also using crs3D(), which will return a CRS which takes into account
+     * both crs() and verticalCrs().
+     *
      * \see crs()
+     * \see crs3D()
      * \see setVerticalCrs()
      *
      * \since QGIS 3.38
@@ -1819,7 +1848,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     void customVariablesChanged();
 
     /**
-     * Emitted when the CRS of the project has changed.
+     * Emitted when the crs() of the project has changed.
      *
      * \see crs()
      * \see setCrs()
@@ -1829,13 +1858,26 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     void crsChanged();
 
     /**
-     * Emitted when the vertical CRS of the project has changed.
+     * Emitted when the crs3D() of the project has changed.
+     *
+     * \see crs3D()
+     * \see crsChanged()
+     * \see verticalCrsChanged()
+     * \see ellipsoidChanged()
+     *
+     * \since QGIS 3.38
+     */
+    void crs3DChanged();
+
+    /**
+     * Emitted when the verticalCrs() of the project has changed.
      *
      * This signal will be emitted whenever the vertical CRS of the project is changed, either
      * as a direct result of a call to setVerticalCrs() or when setCrs() is called with a compound
      * CRS.
      *
      * \see crsChanged()
+     * \see crs3DChanged()
      * \see setCrs()
      * \see setVerticalCrs()
      * \see verticalCrs()
@@ -1879,6 +1921,12 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * Emitted when datum transforms stored in the project are not available locally.
      */
     void missingDatumTransforms( const QStringList &missingTransforms );
+
+    /**
+     * Emitted when the transaction mode has changed.
+     * \since QGIS 3.38
+     */
+    void transactionModeChanged();
 
     /**
      * Emitted whenever a new transaction group has been created or a
@@ -2315,6 +2363,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      */
     void releaseHandlesToProjectArchive();
 
+    bool rebuildCrs3D( QString *error = nullptr );
+
     Qgis::ProjectCapabilities mCapabilities;
 
     std::unique_ptr< QgsMapLayerStore > mLayerStore;
@@ -2404,6 +2454,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     Qgis::ProjectFlags mFlags;
     QgsCoordinateReferenceSystem mCrs;
     QgsCoordinateReferenceSystem mVerticalCrs;
+    QgsCoordinateReferenceSystem mCrs3D;
+
     bool mDirty = false;                 // project has been modified since it has been read or saved
     int mDirtyBlockCount = 0;
 

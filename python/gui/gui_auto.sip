@@ -46,6 +46,7 @@
 %Include auto_generated/qgsdataitemguiproviderregistry.sip
 %Include auto_generated/qgsdatasourceselectdialog.sip
 %Include auto_generated/qgsdbrelationshipwidget.sip
+%Include auto_generated/qgsdecoratedscrollbar.sip
 %Include auto_generated/qgsnewdatabasetablenamewidget.sip
 %Include auto_generated/qgsdetaileditemdata.sip
 %Include auto_generated/qgsdetaileditemdelegate.sip
@@ -308,6 +309,9 @@
 %End
 %If ( HAVE_QSCI_SIP )
 %Include auto_generated/codeeditors/qgscodeeditorsql.sip
+%End
+%If ( HAVE_QSCI_SIP )
+%Include auto_generated/codeeditors/qgscodeeditorwidget.sip
 %End
 %Include auto_generated/devtools/qgsdevtoolwidget.sip
 %Include auto_generated/devtools/qgsdevtoolwidgetfactory.sip

@@ -173,12 +173,16 @@ void QgsTextFormatWidget::initWidget()
                                     << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mLineDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
                                      << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
+  mMaximumDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
+                                        << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mRepeatDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
                                        << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mOverrunDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels
                                         << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mLineHeightUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Percentage << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::Pixels
                                    << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
+  mTabDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Percentage << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::Pixels
+                                    << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mFontLineHeightSpinBox->setClearValue( 100.0 );
   mShapeRotationDblSpnBx->setClearValue( 0.0 );
   mShapeOffsetXSpnBx->setClearValue( 0.0 );
@@ -190,7 +194,10 @@ void QgsTextFormatWidget::initWidget()
   mFontWordSpacingSpinBox->setClearValue( 0.0 );
   mZIndexSpinBox->setClearValue( 0.0 );
   mLineDistanceSpnBx->setClearValue( 0.0 );
+  mMaximumDistanceSpnBx->setMinimum( 0 );
+  mMaximumDistanceSpnBx->setClearValue( 0.0, tr( "Not set" ) );
   mSpinStretch->setClearValue( 100 );
+  mTabStopDistanceSpin->setMinimum( 0 );
 
   connect( mLineHeightUnitWidget, &QgsUnitSelectionWidget::changed, this, [ = ]
   {
@@ -213,6 +220,9 @@ void QgsTextFormatWidget::initWidget()
   mComboOverlapHandling->addItem( tr( "Never Overlap" ), static_cast< int >( Qgis::LabelOverlapHandling::PreventOverlap ) );
   mComboOverlapHandling->addItem( tr( "Allow Overlaps if Required" ), static_cast< int >( Qgis::LabelOverlapHandling::AllowOverlapIfRequired ) );
   mComboOverlapHandling->addItem( tr( "Allow Overlaps without Penalty" ), static_cast< int >( Qgis::LabelOverlapHandling::AllowOverlapAtNoCost ) );
+
+  mPrioritizationComboBox->addItem( tr( "Prefer Closer Labels" ), QVariant::fromValue( Qgis::LabelPrioritization::PreferCloser ) );
+  mPrioritizationComboBox->addItem( tr( "Prefer Position Ordering" ), QVariant::fromValue( Qgis::LabelPrioritization::PreferPositionOrdering ) );
 
   updateAvailableShadowPositions();
 
@@ -409,6 +419,8 @@ void QgsTextFormatWidget::initWidget()
           << mLimitLabelSpinBox
           << mLineDistanceSpnBx
           << mLineDistanceUnitWidget
+          << mMaximumDistanceSpnBx
+          << mMaximumDistanceUnitWidget
           << mMaxCharAngleInDSpinBox
           << mMaxCharAngleOutDSpinBox
           << mMinSizeSpinBox
@@ -492,7 +504,10 @@ void QgsTextFormatWidget::initWidget()
           << mMaskBufferSizeSpinBox
           << mMaskOpacityWidget
           << mCheckAllowLabelsOutsidePolygons
-          << mHtmlFormattingCheckBox;
+          << mHtmlFormattingCheckBox
+          << mPrioritizationComboBox
+          << mTabDistanceUnitWidget
+          << mTabStopDistanceSpin;
 
   connectValueChanged( widgets, SLOT( updatePreview() ) );
 
@@ -734,6 +749,7 @@ void QgsTextFormatWidget::populateDataDefinedButtons()
   registerDataDefinedButton( mFontWordSpacingDDBtn, QgsPalLayerSettings::Property::FontWordSpacing );
   registerDataDefinedButton( mFontBlendModeDDBtn, QgsPalLayerSettings::Property::FontBlendMode );
   registerDataDefinedButton( mFontStretchDDBtn, QgsPalLayerSettings::Property::FontStretchFactor );
+  registerDataDefinedButton( mTabDistanceDDBtn, QgsPalLayerSettings::Property::TabStopDistance );
 
   // text formatting
   registerDataDefinedButton( mWrapCharDDBtn, QgsPalLayerSettings::Property::MultiLineWrapChar );
@@ -817,6 +833,7 @@ void QgsTextFormatWidget::populateDataDefinedButtons()
   registerDataDefinedButton( mPointOffsetUnitsDDBtn, QgsPalLayerSettings::Property::OffsetUnits );
   registerDataDefinedButton( mLineDistanceDDBtn, QgsPalLayerSettings::Property::LabelDistance );
   registerDataDefinedButton( mLineDistanceUnitDDBtn, QgsPalLayerSettings::Property::DistanceUnits );
+  registerDataDefinedButton( mMaximumDistanceDDBtn, QgsPalLayerSettings::Property::MaximumDistance );
   registerDataDefinedButton( mPriorityDDBtn, QgsPalLayerSettings::Property::Priority );
   registerDataDefinedButton( mAllowOutsidePolygonsDDBtn, QgsPalLayerSettings::Property::PolygonLabelOutside );
   registerDataDefinedButton( mAllowInferiorPlacementDBtn, QgsPalLayerSettings::Property::AllowDegradedPlacement );
@@ -959,6 +976,10 @@ void QgsTextFormatWidget::updateWidgetForFormat( const QgsTextFormat &format )
   mFontLetterSpacingSpinBox->setValue( format.font().letterSpacing() );
   whileBlocking( mKerningCheckBox )->setChecked( format.font().kerning() );
 
+  mTabDistanceUnitWidget->setUnit( format.tabStopDistanceUnit() );
+  mTabDistanceUnitWidget->setMapUnitScale( format.tabStopDistanceMapUnitScale() );
+  whileBlocking( mTabStopDistanceSpin )->setValue( format.tabStopDistanceUnit() == Qgis::RenderUnit::Percentage ? ( format.tabStopDistance() * 100 ) : format.tabStopDistance() );
+
   whileBlocking( mFontCapitalsComboBox )->setCurrentIndex( mFontCapitalsComboBox->findData( static_cast< int >( format.capitalization() ) ) );
   QgsFontUtils::updateFontViaStyle( mRefFont, format.namedStyle() );
   updateFont( mRefFont );
@@ -1099,6 +1120,9 @@ QgsTextFormat QgsTextFormatWidget::format( bool includeDataDefinedProperties ) c
   format.setOrientation( static_cast< Qgis::TextOrientation >( mTextOrientationComboBox->currentData().toInt() ) );
   format.setAllowHtmlFormatting( mHtmlFormattingCheckBox->isChecked( ) );
   format.setCapitalization( static_cast< Qgis::Capitalization >( mFontCapitalsComboBox->currentData().toInt() ) );
+  format.setTabStopDistance( mTabDistanceUnitWidget->unit() == Qgis::RenderUnit::Percentage ? ( mTabStopDistanceSpin->value() / 100 ) : mTabStopDistanceSpin->value() );
+  format.setTabStopDistanceUnit( mTabDistanceUnitWidget->unit() );
+  format.setTabStopDistanceMapUnitScale( mTabDistanceUnitWidget->getMapUnitScale() );
 
   // buffer
   QgsTextBufferSettings buffer;
@@ -1271,23 +1295,25 @@ void QgsTextFormatWidget::changeTextColor( const QColor &color )
   updatePreview();
 }
 
-void QgsTextFormatWidget::updateFont( const QFont &font )
+void QgsTextFormatWidget::updateFont( const QFont &newFont )
 {
   // update background reference font
-  if ( font != mRefFont )
+  if ( newFont != mRefFont )
   {
-    mRefFont = font;
+    mRefFont = newFont;
   }
 
   // test if font is actually available
   // NOTE: QgsFontUtils::fontMatchOnSystem may fail here, just crosscheck family
   mFontMissingLabel->setVisible( !QgsFontUtils::fontFamilyMatchOnSystem( mRefFont.family() ) );
 
-  mDirectSymbLeftLineEdit->setFont( mRefFont );
-  mDirectSymbRightLineEdit->setFont( mRefFont );
+  QFont symbolFont = mRefFont;
+  symbolFont.setPointSize( font().pointSize() );
+  mDirectSymbLeftLineEdit->setFont( symbolFont );
+  mDirectSymbRightLineEdit->setFont( symbolFont );
 
   blockFontChangeSignals( true );
-  mFontFamilyCmbBx->setCurrentFont( mRefFont );
+  mFontFamilyCmbBx->setCurrentFont( symbolFont );
   populateFontStyleComboBox();
   mFontUnderlineBtn->setChecked( mRefFont.underline() );
   mFontStrikethroughBtn->setChecked( mRefFont.strikeOut() );
@@ -1358,6 +1384,8 @@ void QgsTextFormatWidget::updatePlacementWidgets()
   bool showOffsetTypeFrame = false;
   bool showOffsetFrame = false;
   bool showDistanceFrame = false;
+  bool showMaximumDistanceFrame = false;
+  bool showPrioritizationFrame = false;
   bool showRotationFrame = false;
   bool showMaxCharAngleFrame = false;
 
@@ -1371,6 +1399,7 @@ void QgsTextFormatWidget::updatePlacementWidgets()
   {
     showCentroidFrame = currentGeometryType == Qgis::GeometryType::Polygon;
     showDistanceFrame = true;
+    showMaximumDistanceFrame = true;
     //showRotationFrame = true; // TODO: uncomment when supported
     showQuadrantFrame = currentGeometryType == Qgis::GeometryType::Point;
   }
@@ -1386,7 +1415,9 @@ void QgsTextFormatWidget::updatePlacementWidgets()
   else if ( currentGeometryType == Qgis::GeometryType::Point && currentPlacement == Qgis::LabelPlacement::OrderedPositionsAroundPoint )
   {
     showDistanceFrame = true;
+    showMaximumDistanceFrame = true;
     showPlacementPriorityFrame = true;
+    showPrioritizationFrame = true;
     showOffsetTypeFrame  = true;
   }
   else if ( ( currentGeometryType == Qgis::GeometryType::Line && currentPlacement == Qgis::LabelPlacement::Line )
@@ -1422,6 +1453,8 @@ void QgsTextFormatWidget::updatePlacementWidgets()
   mPlacementCartographicFrame->setVisible( showPlacementPriorityFrame );
   mPlacementOffsetFrame->setVisible( showOffsetFrame );
   mPlacementDistanceFrame->setVisible( showDistanceFrame );
+  mPlacementMaximumDistanceFrame->setVisible( showMaximumDistanceFrame );
+  mPlacementPrioritizationFrame->setVisible( showPrioritizationFrame );
   mPlacementOffsetTypeFrame->setVisible( showOffsetTypeFrame );
   mPlacementRotationFrame->setVisible( showRotationFrame );
   mPlacementRepeatGroupBox->setVisible( currentGeometryType == Qgis::GeometryType::Line || ( currentGeometryType == Qgis::GeometryType::Polygon &&

@@ -1261,7 +1261,7 @@ void QgsProcessingDistanceWidgetWrapper::setUnits( Qgis::DistanceUnit units )
 QVariant QgsProcessingDistanceWidgetWrapper::widgetValue() const
 {
   const QVariant val = QgsProcessingNumericWidgetWrapper::widgetValue();
-  if ( val.type() == QVariant::Double && mUnitsCombo && mUnitsCombo->isVisible() )
+  if ( val.userType() == QMetaType::Type::Double && mUnitsCombo && mUnitsCombo->isVisible() )
   {
     Qgis::DistanceUnit displayUnit = static_cast<Qgis::DistanceUnit >( mUnitsCombo->currentData().toInt() );
     return val.toDouble() * QgsUnitTypes::fromUnitToUnitFactor( displayUnit, mBaseUnit );
@@ -1424,7 +1424,7 @@ QLabel *QgsProcessingDurationWidgetWrapper::createLabel()
 QVariant QgsProcessingDurationWidgetWrapper::widgetValue() const
 {
   const QVariant val = QgsProcessingNumericWidgetWrapper::widgetValue();
-  if ( val.type() == QVariant::Double && mUnitsCombo )
+  if ( val.userType() == QMetaType::Type::Double && mUnitsCombo )
   {
     Qgis::TemporalUnit displayUnit = static_cast<Qgis::TemporalUnit >( mUnitsCombo->currentData().toInt() );
     return val.toDouble() * QgsUnitTypes::fromUnitToUnitFactor( displayUnit, mBaseUnit );
@@ -2485,7 +2485,7 @@ void QgsProcessingExpressionWidgetWrapper::setParentLayerWrapperValue( const Qgs
       {
         if ( mRasterCalculatorExpLineEdit )
         {
-          mRasterCalculatorExpLineEdit->setLayers( val.type() == QVariant::List ? val.toList() : QVariantList() << val );
+          mRasterCalculatorExpLineEdit->setLayers( val.userType() == QMetaType::Type::QVariantList ? val.toList() : QVariantList() << val );
         }
         return;
       }
@@ -2621,7 +2621,7 @@ void QgsProcessingEnumPanelWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
   {
-    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
 
     if ( mParam->usesStaticStrings() && mValue.count() == 1 && mValue.at( 0 ).toString().isEmpty() )
       mValue.clear();
@@ -2812,7 +2812,7 @@ void QgsProcessingEnumCheckboxPanelWidget::setValue( const QVariant &value )
   {
     QVariantList selected;
     if ( value.isValid() )
-      selected = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+      selected = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
     for ( auto it = mButtons.constBegin(); it != mButtons.constEnd(); ++it )
     {
       QVariant v = mParam->usesStaticStrings() ? mParam->options().at( it.key().toInt() ) : it.key();
@@ -2822,7 +2822,7 @@ void QgsProcessingEnumCheckboxPanelWidget::setValue( const QVariant &value )
   else
   {
     QVariant v = value;
-    if ( v.type() == QVariant::List )
+    if ( v.userType() == QMetaType::Type::QVariantList )
       v = v.toList().value( 0 );
 
     v = mParam->usesStaticStrings() ? mParam->options().indexOf( v.toString() ) : v;
@@ -3474,6 +3474,7 @@ QgsProcessingPointPanel::QgsProcessingPointPanel( QWidget *parent )
   setLayout( l );
 
   connect( mLineEdit, &QLineEdit::textChanged, this, &QgsProcessingPointPanel::changed );
+  connect( mLineEdit, &QLineEdit::textChanged, this, &QgsProcessingPointPanel::textChanged );
   connect( mButton, &QToolButton::clicked, this, &QgsProcessingPointPanel::selectOnCanvas );
   mButton->setVisible( false );
 }
@@ -3494,6 +3495,22 @@ void QgsProcessingPointPanel::setAllowNull( bool allowNull )
   mLineEdit->setShowClearButton( allowNull );
 }
 
+void QgsProcessingPointPanel::setShowPointOnCanvas( bool show )
+{
+  if ( mShowPointOnCanvas == show )
+    return;
+
+  mShowPointOnCanvas = show;
+  if ( mShowPointOnCanvas )
+  {
+    updateRubberBand();
+  }
+  else
+  {
+    mMapPointRubberBand.reset();
+  }
+}
+
 QVariant QgsProcessingPointPanel::value() const
 {
   return mLineEdit->showClearButton() && mLineEdit->text().trimmed().isEmpty() ? QVariant() : QVariant( mLineEdit->text() );
@@ -3506,6 +3523,7 @@ void QgsProcessingPointPanel::clear()
 
 void QgsProcessingPointPanel::setValue( const QgsPointXY &point, const QgsCoordinateReferenceSystem &crs )
 {
+  mPoint = point;
   QString newText = QStringLiteral( "%1,%2" )
                     .arg( QString::number( point.x(), 'f' ),
                           QString::number( point.y(), 'f' ) );
@@ -3516,6 +3534,7 @@ void QgsProcessingPointPanel::setValue( const QgsPointXY &point, const QgsCoordi
     newText += QStringLiteral( " [%1]" ).arg( mCrs.authid() );
   }
   mLineEdit->setText( newText );
+  updateRubberBand();
 }
 
 void QgsProcessingPointPanel::selectOnCanvas()
@@ -3544,6 +3563,68 @@ void QgsProcessingPointPanel::pointPicked()
   emit toggleDialogVisibility( true );
 }
 
+void QgsProcessingPointPanel::textChanged( const QString &text )
+{
+  const thread_local QRegularExpression rx( QStringLiteral( "^\\s*\\(?\\s*(.*?)\\s*,\\s*(.*?)\\s*(?:\\[(.*)\\])?\\s*\\)?\\s*$" ) );
+
+  const QRegularExpressionMatch match = rx.match( text );
+  if ( match.hasMatch() )
+  {
+    bool xOk = false;
+    const double x = match.captured( 1 ).toDouble( &xOk );
+    bool yOk = false;
+    const double y = match.captured( 2 ).toDouble( &yOk );
+
+    if ( xOk && yOk )
+    {
+      mPoint = QgsPointXY( x, y );
+
+      const QgsCoordinateReferenceSystem pointCrs( match.captured( 3 ) );
+      if ( pointCrs.isValid() )
+      {
+        mCrs = pointCrs;
+      }
+    }
+    else
+    {
+      mPoint = QgsPointXY();
+    }
+  }
+  else
+  {
+    mPoint = QgsPointXY();
+  }
+
+  updateRubberBand();
+}
+
+void QgsProcessingPointPanel::updateRubberBand()
+{
+  if ( !mShowPointOnCanvas || !mCanvas )
+    return;
+
+  if ( mPoint.isEmpty() )
+  {
+    mMapPointRubberBand.reset();
+    return;
+  }
+
+  if ( !mMapPointRubberBand )
+  {
+    mMapPointRubberBand.reset( new QgsRubberBand( mCanvas, Qgis::GeometryType::Point ) );
+    mMapPointRubberBand->setZValue( 1000 );
+    mMapPointRubberBand->setIcon( QgsRubberBand::ICON_X );
+
+    const double scaleFactor = mCanvas->fontMetrics().xHeight() * .4;
+    mMapPointRubberBand->setWidth( scaleFactor );
+    mMapPointRubberBand->setIconSize( scaleFactor * 5 );
+
+    mMapPointRubberBand->setSecondaryStrokeColor( QColor( 255, 255, 255, 100 ) );
+    mMapPointRubberBand->setColor( QColor( 200, 0, 200 ) );
+  }
+
+  mMapPointRubberBand->setToGeometry( QgsGeometry::fromPointXY( mPoint ), mCrs );
+}
 
 
 //
@@ -3598,6 +3679,9 @@ QWidget *QgsProcessingPointWidgetWrapper::createWidget()
 
       if ( pointParam->flags() & Qgis::ProcessingParameterFlag::Optional )
         mPanel->setAllowNull( true );
+
+      if ( type() == QgsProcessingGui::Standard )
+        mPanel->setShowPointOnCanvas( true );
 
       mPanel->setToolTip( parameterDefinition()->toolTip() );
 
@@ -3656,7 +3740,7 @@ void QgsProcessingPointWidgetWrapper::setWidgetValue( const QVariant &value, Qgs
 {
   if ( mPanel )
   {
-    if ( !value.isValid() || ( value.type() == QVariant::String && value.toString().isEmpty() ) )
+    if ( !value.isValid() || ( value.userType() == QMetaType::Type::QString && value.toString().isEmpty() ) )
       mPanel->clear();
     else
     {
@@ -3925,8 +4009,8 @@ void QgsProcessingColorWidgetWrapper::setWidgetValue( const QVariant &value, Qgs
   if ( mColorButton )
   {
     if ( !value.isValid() ||
-         ( value.type() == QVariant::String && value.toString().isEmpty() )
-         || ( value.type() == QVariant::Color && !value.value< QColor >().isValid() ) )
+         ( value.userType() == QMetaType::Type::QString && value.toString().isEmpty() )
+         || ( value.userType() == QMetaType::Type::QColor && !value.value< QColor >().isValid() ) )
       mColorButton->setToNull();
     else
     {
@@ -4201,7 +4285,7 @@ void QgsProcessingCoordinateOperationWidgetWrapper::setWidgetValue( const QVaria
   if ( mOperationWidget )
   {
     if ( !value.isValid() ||
-         ( value.type() == QVariant::String ) )
+         ( value.userType() == QMetaType::Type::QString ) )
     {
       QgsCoordinateOperationWidget::OperationDetails deets;
       deets.proj = value.toString();
@@ -4211,7 +4295,7 @@ void QgsProcessingCoordinateOperationWidgetWrapper::setWidgetValue( const QVaria
   if ( mLineEdit )
   {
     if ( !value.isValid() ||
-         ( value.type() == QVariant::String ) )
+         ( value.userType() == QMetaType::Type::QString ) )
     {
       mLineEdit->setText( value.toString() );
     }
@@ -4343,7 +4427,7 @@ void QgsProcessingFieldPanelWidget::setFields( const QgsFields &fields )
 void QgsProcessingFieldPanelWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 
@@ -4870,22 +4954,22 @@ QgsFields QgsProcessingFieldWidgetWrapper::filterFields( const QgsFields &fields
         break;
 
       case Qgis::ProcessingFieldParameterDataType::String:
-        if ( f.type() == QVariant::String )
+        if ( f.type() == QMetaType::Type::QString )
           res.append( f );
         break;
 
       case Qgis::ProcessingFieldParameterDataType::DateTime:
-        if ( f.type() == QVariant::Date || f.type() == QVariant::Time || f.type() == QVariant::DateTime )
+        if ( f.type() == QMetaType::Type::QDate || f.type() == QMetaType::Type::QTime || f.type() == QMetaType::Type::QDateTime )
           res.append( f );
         break;
 
       case Qgis::ProcessingFieldParameterDataType::Binary:
-        if ( f.type() == QVariant::ByteArray )
+        if ( f.type() == QMetaType::Type::QByteArray )
           res.append( f );
         break;
 
       case Qgis::ProcessingFieldParameterDataType::Boolean:
-        if ( f.type() == QVariant::Bool )
+        if ( f.type() == QMetaType::Type::Bool )
           res.append( f );
         break;
     }
@@ -6044,7 +6128,7 @@ void QgsProcessingExtentWidgetWrapper::setWidgetValue( const QVariant &value, Qg
 {
   if ( mExtentWidget )
   {
-    if ( !value.isValid() || ( value.type() == QVariant::String && value.toString().isEmpty() ) )
+    if ( !value.isValid() || ( value.userType() == QMetaType::Type::QString && value.toString().isEmpty() ) )
       mExtentWidget->clear();
     else
     {
@@ -6639,7 +6723,7 @@ void QgsProcessingRasterBandPanelWidget::setBandNames( const QHash<int, QString>
 void QgsProcessingRasterBandPanelWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 
@@ -7074,7 +7158,7 @@ QgsProcessingMultipleLayerPanelWidget::QgsProcessingMultipleLayerPanelWidget( QW
 void QgsProcessingMultipleLayerPanelWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 
@@ -7622,7 +7706,7 @@ void QgsProcessingAnnotationLayerWidgetWrapper::setWidgetValue( const QVariant &
     }
 
     QgsMapLayer *layer = qobject_cast< QgsMapLayer * >( val.value< QObject * >() );
-    if ( !layer && val.type() == QVariant::String )
+    if ( !layer && val.userType() == QMetaType::Type::QString )
     {
       layer = QgsProcessingUtils::mapLayerFromString( val.toString(), context, false, QgsProcessingUtils::LayerHint::Annotation );
     }
@@ -7679,7 +7763,7 @@ void QgsProcessingPointCloudAttributePanelWidget::setAttributes( const QgsPointC
 void QgsProcessingPointCloudAttributePanelWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 

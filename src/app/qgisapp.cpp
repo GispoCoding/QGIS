@@ -2091,6 +2091,7 @@ QgisApp::QgisApp()
   mMapTools = std::make_unique< QgsAppMapTools >( mMapCanvas, mAdvancedDigitizingDockWidget );
   mDigitizingTechniqueManager = new QgsMapToolsDigitizingTechniqueManager( this );
 
+  mVectorLayerTools = new QgsGuiVectorLayerTools();
   mBearingNumericFormat.reset( QgsLocalDefaultSettings::bearingFormat() );
 
   connect( mLayerTreeView, &QgsLayerTreeView::currentLayerChanged, this, &QgisApp::onActiveLayerChanged );
@@ -2216,6 +2217,8 @@ QgisApp::~QgisApp()
   mCoordsEdit = nullptr;
   delete mLayerTreeView;
   mLayerTreeView = nullptr;
+  delete mMessageButton;
+  mMessageButton = nullptr;
 
   QgsGui::nativePlatformInterface()->cleanup();
 
@@ -6871,6 +6874,8 @@ void QgisApp::dxfExport()
       flags = flags | QgsDxfExport::FlagNoMText;
     if ( d.selectedFeaturesOnly() )
       flags = flags | QgsDxfExport::FlagOnlySelectedFeatures;
+    if ( d.hairlineWidthExport() )
+      flags = flags | QgsDxfExport::FlagHairlineWidthExport;
     dxfExport.setFlags( flags );
 
     if ( auto *lMapCanvas = mapCanvas() )
@@ -7749,7 +7754,9 @@ void QgisApp::changeDataSource( QgsMapLayer *layer )
   {
     const QString path = sourceParts.value( QStringLiteral( "path" ) ).toString();
     const QString closestPath = QFile::exists( path ) ? path : QgsFileUtils::findClosestExistingPath( path );
-    dlg.expandPath( closestPath );
+
+    const QFileInfo pathInfo( closestPath );
+    dlg.expandPath( pathInfo.isDir() ? closestPath : pathInfo.dir().path(), true );
     if ( source.contains( path ) )
     {
       source.replace( path, QStringLiteral( "<a href=\"%1\">%2</a>" ).arg( QUrl::fromLocalFile( closestPath ).toString(),
@@ -8511,7 +8518,7 @@ QgsField QgisAppFieldValueConverter::fieldDefinition( const QgsField &field )
 
   if ( mAttributesAsDisplayedValues.contains( idx ) )
   {
-    return QgsField( field.name(), QVariant::String );
+    return QgsField( field.name(), QMetaType::Type::QString );
   }
   return field;
 }
@@ -9749,7 +9756,7 @@ void QgisApp::mergeAttributesOfSelectedFeatures()
 
       QVariant val = merged.at( i );
       QgsField fld( vl->fields().at( i ) );
-      bool isDefaultValue = vl->fields().fieldOrigin( i ) == QgsFields::OriginProvider &&
+      bool isDefaultValue = vl->fields().fieldOrigin( i ) == Qgis::FieldOrigin::Provider &&
                             vl->dataProvider() &&
                             vl->dataProvider()->defaultValueClause( vl->fields().fieldOriginIndex( i ) ) == val;
 
@@ -10649,7 +10656,7 @@ std::unique_ptr<QgsVectorLayer> QgisApp::pasteToNewMemoryVector()
 
       // Fallback to string
       QgsField strField { f };
-      strField.setType( QVariant::String );
+      strField.setType( QMetaType::Type::QString );
       if ( !layer->addAttribute( strField ) )
       {
         visibleMessageBar()->pushMessage( tr( "Paste features" ),
@@ -12517,6 +12524,7 @@ void QgisApp::loadPythonSupport()
     // init python runner
     QgsPythonRunner::setInstance( new QgsPythonRunnerImpl( mPythonUtils ) );
 
+    mPythonUtils->initGDAL();
     // QgsMessageLog::logMessage( tr( "Python support ENABLED :-) " ), QString(), Qgis::MessageLevel::Info );
   }
 #endif

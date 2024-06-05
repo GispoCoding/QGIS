@@ -27,7 +27,7 @@ class QgsHeatmapRenderer;
  * \ingroup gui
  * \class QgsHeatmapRendererWidget
  */
-class GUI_EXPORT QgsHeatmapRendererWidget : public QgsRendererWidget, private Ui::QgsHeatmapRendererWidgetBase, private QgsExpressionContextGenerator
+class GUI_EXPORT QgsHeatmapRendererWidget : public QgsRendererWidget, private Ui::QgsHeatmapRendererWidgetBase
 {
     Q_OBJECT
 
@@ -52,15 +52,15 @@ class GUI_EXPORT QgsHeatmapRendererWidget : public QgsRendererWidget, private Ui
 
     QgsFeatureRenderer *renderer() override;
     void setContext( const QgsSymbolWidgetContext &context ) override;
+    QgsExpressionContext createExpressionContext() const override;
 
   private:
     std::unique_ptr< QgsHeatmapRenderer > mRenderer;
 
-    QgsExpressionContext createExpressionContext() const override;
-
   private slots:
 
     void applyColorRamp();
+    void showLegendSettings();
     void mRadiusUnitWidget_changed();
     void mRadiusSpinBox_valueChanged( double d );
     void mMaxSpinBox_valueChanged( double d );

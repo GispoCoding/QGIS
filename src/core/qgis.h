@@ -904,6 +904,18 @@ class CORE_EXPORT Qgis
     Q_ENUM( LabelOverlapHandling )
 
     /**
+     * Label prioritization.
+     *
+     * \since QGIS 3.38
+     */
+    enum class LabelPrioritization : int
+    {
+      PreferCloser, //!< Prefer closer labels, falling back to alternate positions before larger distances
+      PreferPositionOrdering, //!< Prefer labels follow position ordering, falling back to more distance labels before alternate positions
+    };
+    Q_ENUM( LabelPrioritization )
+
+    /**
      * Placement modes which determine how label candidates are generated for a feature.
      *
      * \note Prior to QGIS 3.26 this was available as QgsPalLayerSettings::Placement
@@ -945,6 +957,7 @@ class CORE_EXPORT Qgis
       BottomMiddle, //!< Label directly below point
       BottomSlightlyRight, //!< Label below point, slightly right of center
       BottomRight, //!< Label on bottom right of point
+      OverPoint, //!< Label directly centered over point (since QGIS 3.38)
     };
     Q_ENUM( LabelPredefinedPointPosition )
 
@@ -1111,6 +1124,36 @@ class CORE_EXPORT Qgis
     Q_DECLARE_FLAGS( SublayerFlags, SublayerFlag )
     Q_ENUM( SublayerFlag )
     Q_FLAG( SublayerFlags )
+
+    /**
+     * Color ramp shader interpolation methods.
+     *
+     * \note Prior to QGIS 3.38 this was available as QgsColorRampShader::Type
+     *
+     * \since QGIS 3.38
+     */
+    enum class ShaderInterpolationMethod SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsColorRampShader, Type ) : int
+      {
+      Linear SIP_MONKEYPATCH_COMPAT_NAME( Interpolated ) = 0, //!< Interpolates the color between two class breaks linearly
+      Discrete = 1, //!< Assigns the color of the higher class for every pixel between two class breaks
+      Exact = 2, //!< Assigns the color of the exact matching value in the color ramp item list
+    };
+    Q_ENUM( ShaderInterpolationMethod )
+
+    /**
+     * Color ramp shader classification methods.
+     *
+     * \note Prior to QGIS 3.38 this was available as QgsColorRampShader::ClassificationMode
+     *
+     * \since QGIS 3.38
+     */
+    enum class ShaderClassificationMethod SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsColorRampShader, ClassificationMode ) : int
+      {
+      Continuous = 1, //!< Uses breaks from color palette
+      EqualInterval = 2, //!< Uses equal interval
+      Quantile = 3, //!< Uses quantile (i.e. equal pixel) count
+    };
+    Q_ENUM( ShaderClassificationMethod )
 
     /**
      * Raster pipe interface roles.
@@ -1297,6 +1340,23 @@ class CORE_EXPORT Qgis
       NeverAskLoadAll, //!< Never ask users to select sublayers, instead automatically load all available sublayers
     };
     Q_ENUM( SublayerPromptMode )
+
+    /**
+     * Field origin.
+     *
+     * \note Prior to QGIS 3.38 this was available as QgsFields::FieldOrigin
+     *
+     * \since QGIS 3.38
+    */
+    enum class FieldOrigin SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsFields, FieldOrigin ) : int
+      {
+      Unknown SIP_MONKEYPATCH_COMPAT_NAME( OriginUnknown ), //!< The field origin has not been specified
+      Provider SIP_MONKEYPATCH_COMPAT_NAME( OriginProvider ), //!< Field originates from the underlying data provider of the vector layer
+      Join SIP_MONKEYPATCH_COMPAT_NAME( OriginJoin ), //!< Field originates from a joined layer
+      Edit SIP_MONKEYPATCH_COMPAT_NAME( OriginEdit ), //!< Field has been temporarily added in editing mode
+      Expression SIP_MONKEYPATCH_COMPAT_NAME( OriginExpression ) //!< Field is calculated from an expression
+    };
+    Q_ENUM( FieldOrigin )
 
     /**
      * Configuration flags for fields
@@ -1520,6 +1580,20 @@ class CORE_EXPORT Qgis
       Simulation, //!< Simulation mode
     };
     Q_ENUM( GpsQualityIndicator )
+
+    /**
+     * GPS navigation status.
+     *
+     * \since QGIS 3.38
+     */
+    enum class GpsNavigationStatus : int
+    {
+      NotValid, //!< Navigation status not valid
+      Safe, //!< Safe
+      Caution, //!< Caution
+      Unsafe, //!< Unsafe
+    };
+    Q_ENUM( GpsNavigationStatus );
 
     /**
      * GPS information component.
@@ -3146,6 +3220,19 @@ class CORE_EXPORT Qgis
     Q_ENUM( ProcessingModelChildParameterSource )
 
     /**
+     * Reflects the status of a child algorithm in a Processing model.
+     *
+     * \since QGIS 3.38
+     */
+    enum class ProcessingModelChildAlgorithmExecutionStatus : int
+    {
+      NotExecuted, //!< Child has not been executed
+      Success, //!< Child was successfully executed
+      Failed, //!< Child encountered an error while executing
+    };
+    Q_ENUM( ProcessingModelChildAlgorithmExecutionStatus )
+
+    /**
      * Defines the type of input layer for a Processing TIN input.
      *
      * \note Prior to QGIS 3.36 this was available as QgsProcessingParameterTinInputLayers::Type
@@ -3204,6 +3291,21 @@ class CORE_EXPORT Qgis
       GeometryWeighted, //!< New values are computed as the weighted average of the source values
     };
     Q_ENUM( FieldDomainMergePolicy )
+
+    /**
+     * Duplicate policy for fields.
+     *
+     * When a feature is duplicated, defines how the value of attributes are computed.
+     *
+     * \since QGIS 3.38
+     */
+    enum class FieldDuplicatePolicy : int
+    {
+      DefaultValue, //!< Use default field value
+      Duplicate, //!< Duplicate original value
+      UnsetField, //!< Clears the field value so that the data provider backend will populate using any backend triggers or similar logic (since QGIS 3.30)
+    };
+    Q_ENUM( FieldDuplicatePolicy )
 
     /**
      * Types of field domain
@@ -3292,7 +3394,8 @@ class CORE_EXPORT Qgis
     enum class MeshElevationMode : int
     {
       FixedElevationRange = 0, //!< Layer has a fixed elevation range
-      FromVertices = 1 //!< Elevation should be taken from mesh vertices
+      FromVertices = 1, //!< Elevation should be taken from mesh vertices
+      FixedRangePerGroup = 2, //!< Layer has a fixed (manually specified) elevation range per group
     };
     Q_ENUM( MeshElevationMode )
 
@@ -5480,6 +5583,14 @@ template<class T> QString qgsFlagValueToKeys( const T &value, bool *returnOk = n
  */
 template<class T> T qgsFlagKeysToValue( const QString &keys, const T &defaultValue, bool tryValueAsKey = true,  bool *returnOk = nullptr ) SIP_SKIP
 {
+  if ( keys.isEmpty() )
+  {
+    if ( returnOk )
+    {
+      *returnOk = false;
+    }
+    return defaultValue;
+  }
   const QMetaEnum metaEnum = QMetaEnum::fromType<T>();
   Q_ASSERT( metaEnum.isValid() );
   bool ok = false;

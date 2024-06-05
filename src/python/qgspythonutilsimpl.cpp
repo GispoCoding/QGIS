@@ -60,8 +60,10 @@ bool QgsPythonUtilsImpl::checkSystemImports()
   // it is very useful for cleaning sys.path, which may have undesirable paths, or for
   // isolating/loading the initial environ without requiring a virt env, e.g. homebrew or MacPorts installs on Mac
   runString( QStringLiteral( "pyqgstart = os.getenv('PYQGIS_STARTUP')" ) );
-  runString( QStringLiteral(
-               R""""(
+  runString( QStringLiteral( R""""(
+exec(
+    compile(
+        """
 def run_startup_script(script_path):
     script_executed = False
     if not script_path:
@@ -91,8 +93,14 @@ def run_startup_script(script_path):
         )
 
     return script_executed
-)"""" ).arg( pythonPath() ) );
-  runString( QStringLiteral( "run_startup_script(pyqgstart)" ) );
+        """,
+        'QgsPythonUtilsImpl::checkSystemImports [run_startup_script]',
+        'exec',
+    ),
+    globals(),
+)
+)"""" ).arg( pythonPath() ), QObject::tr( "Couldn't create run_startup_script." ), true );
+  runString( QStringLiteral( "is_startup_script_executed = run_startup_script(pyqgstart)" ) );
 
 #ifdef Q_OS_WIN
   runString( "oldhome=None" );
@@ -746,4 +754,13 @@ QStringList QgsPythonUtilsImpl::listActivePlugins()
   QString output;
   evalString( QStringLiteral( "'\\n'.join(qgis.utils.active_plugins)" ), output );
   return output.split( QChar( '\n' ), Qt::SkipEmptyParts );
+}
+
+void QgsPythonUtilsImpl::initGDAL()
+{
+  runString("from osgeo import gdal, ogr, osr");
+  // To avoid FutureWarning with GDAL >= 3.7.0
+  runString("gdal.UseExceptions()");
+  runString("ogr.UseExceptions()");
+  runString("osr.UseExceptions()");
 }

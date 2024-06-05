@@ -3285,7 +3285,7 @@ geometricians:geometers
 geomtry:geometry
 gerat:great
 get's:gets
-geting:getting
+geting:getting:*
 Ghandi:Gandhi
 gived:given
 glight:flight
@@ -7491,7 +7491,7 @@ unrepetant:unrepentant
 unrepetent:unrepentant
 unresonable:unreasonable
 unsed:unused
-unselect:deselect
+unselect:deselect:*
 unsinged:unsigned
 unspported:unsupported
 unsual:unusual

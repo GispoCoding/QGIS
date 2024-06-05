@@ -31,6 +31,7 @@
 #include <QFileInfo>
 #include <QUrl>
 #include <QActionGroup>
+#include <QDir>
 
 QgsDataSourceSelectWidget::QgsDataSourceSelectWidget(
   QgsBrowserGuiModel *browserModel,
@@ -116,6 +117,8 @@ QgsDataSourceSelectWidget::QgsDataSourceSelectWidget(
   {
     mActionShowFilter->trigger();
   }
+
+  setAcceptDrops( true );
 }
 
 QgsDataSourceSelectWidget::~QgsDataSourceSelectWidget() = default;
@@ -141,6 +144,58 @@ void QgsDataSourceSelectWidget::showEvent( QShowEvent *e )
         mBrowserTreeView->scrollTo( expandIndex, QgsBrowserTreeView::ScrollHint::PositionAtTop );
         mBrowserTreeView->expand( expandIndex );
       }
+    }
+  }
+}
+
+QString QgsDataSourceSelectWidget::acceptableFilePath( QDropEvent *event ) const
+{
+  if ( event->mimeData()->hasUrls() )
+  {
+    const QList< QUrl > urls = event->mimeData()->urls();
+    for ( const QUrl &url : urls )
+    {
+      const QString local = url.toLocalFile();
+      if ( local.isEmpty() )
+        continue;
+
+      if ( QFile::exists( local ) )
+      {
+        return local;
+      }
+    }
+  }
+  return QString();
+}
+
+void QgsDataSourceSelectWidget::dragEnterEvent( QDragEnterEvent *event )
+{
+  const QString filePath = acceptableFilePath( event );
+  if ( !filePath.isEmpty() )
+  {
+    event->acceptProposedAction();
+  }
+  else
+  {
+    event->ignore();
+  }
+}
+
+void QgsDataSourceSelectWidget::dropEvent( QDropEvent *event )
+{
+  const QString filePath = acceptableFilePath( event );
+  if ( !filePath.isEmpty() )
+  {
+    event->acceptProposedAction();
+
+    const QFileInfo fi( filePath );
+    if ( fi.isDir() )
+    {
+      expandPath( filePath, true );
+    }
+    else
+    {
+      expandPath( fi.dir().path(), true );
     }
   }
 }
@@ -194,9 +249,9 @@ void QgsDataSourceSelectWidget::setDescription( const QString &description )
   }
 }
 
-void QgsDataSourceSelectWidget::expandPath( const QString &path )
+void QgsDataSourceSelectWidget::expandPath( const QString &path, bool selectPath )
 {
-  mBrowserTreeView->expandPath( path );
+  mBrowserTreeView->expandPath( path, selectPath );
 }
 
 void QgsDataSourceSelectWidget::setFilter()
@@ -204,7 +259,6 @@ void QgsDataSourceSelectWidget::setFilter()
   const QString filter = mLeFilter->text();
   mBrowserProxyModel.setFilterString( filter );
 }
-
 
 void QgsDataSourceSelectWidget::refreshModel( const QModelIndex &index )
 {
@@ -254,7 +308,6 @@ void QgsDataSourceSelectWidget::setValid( bool valid )
     emit validationChanged( mIsValid );
 
 }
-
 
 void QgsDataSourceSelectWidget::setFilterSyntax( QAction *action )
 {
@@ -354,9 +407,9 @@ void QgsDataSourceSelectDialog::setDescription( const QString &description )
   mWidget->setDescription( description );
 }
 
-void QgsDataSourceSelectDialog::expandPath( const QString &path )
+void QgsDataSourceSelectDialog::expandPath( const QString &path, bool selectPath )
 {
-  mWidget->expandPath( path );
+  mWidget->expandPath( path, selectPath );
 }
 
 QgsMimeDataUtils::Uri QgsDataSourceSelectDialog::uri() const

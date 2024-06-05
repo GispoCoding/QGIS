@@ -62,7 +62,6 @@ whenever the public :py:func:`~QgsCodeInterpreter.exec` method is called.
 
 
 
-
 class QgsCodeEditor : QsciScintilla
 {
 %Docstring(signature="appended")
@@ -102,6 +101,8 @@ A text editor based on QScintilla2.
 
     typedef QFlags<QgsCodeEditor::Flag> Flags;
 
+
+    static const int SEARCH_RESULT_INDICATOR;
 
     QgsCodeEditor( QWidget *parent /TransferThis/ = 0, const QString &title = QString(), bool folding = false, bool margin = false, QgsCodeEditor::Flags flags = QgsCodeEditor::Flags(), QgsCodeEditor::Mode mode = QgsCodeEditor::Mode::ScriptEditor );
 %Docstring

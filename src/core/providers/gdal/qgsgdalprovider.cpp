@@ -37,7 +37,6 @@
 #include "qgsrasterpyramid.h"
 #include "qgspointxy.h"
 #include "qgssettings.h"
-#include "qgsogrutils.h"
 #include "qgsruntimeprofiler.h"
 #include "qgsprovidersublayerdetails.h"
 #include "qgsproviderutils.h"
@@ -167,6 +166,8 @@ QgsGdalProvider::QgsGdalProvider( const QString &uri, const ProviderOptions &opt
   {
     return;
   }
+
+  invalidateNetworkCache();
 
   mGdalDataset = nullptr;
   if ( dataset )
@@ -480,6 +481,7 @@ void QgsGdalProvider::closeDataset()
 void QgsGdalProvider::reloadProviderData()
 {
   QMutexLocker locker( mpMutex );
+  invalidateNetworkCache();
   closeDataset();
 
   mHasInit = false;
@@ -1835,12 +1837,35 @@ QList<QgsProviderSublayerDetails> QgsGdalProvider::sublayerDetails( GDALDatasetH
         }
         else
         {
+
+          // Check if the layer has TIFFTAG_DOCUMENTNAME associated with it. If so, use that name.
+          GDALDatasetH datasetHandle = GDALOpen( name, GA_ReadOnly );
+
+          if ( datasetHandle )
+          {
+
+            QString tagTIFFDocumentName = GDALGetMetadataItem( datasetHandle, "TIFFTAG_DOCUMENTNAME", nullptr );
+            if ( ! tagTIFFDocumentName.isEmpty() )
+            {
+              layerName = tagTIFFDocumentName;
+            }
+
+            QString tagTIFFImageDescription = GDALGetMetadataItem( datasetHandle, "TIFFTAG_IMAGEDESCRIPTION", nullptr );
+            if ( ! tagTIFFImageDescription.isEmpty() )
+            {
+              layerDesc = tagTIFFImageDescription;
+            }
+
+            GDALClose( datasetHandle );
+          }
+
           // try to extract layer name from a path like 'NETCDF:"/baseUri":cell_node'
           sepIdx = layerName.indexOf( datasetPath + "\":" );
           if ( sepIdx >= 0 )
           {
             layerName = layerName.mid( layerName.indexOf( datasetPath + "\":" ) + datasetPath.length() + 2 );
           }
+
         }
 
         QgsProviderSublayerDetails details;
@@ -3343,22 +3368,22 @@ bool QgsGdalProvider::readNativeAttributeTable( QString *errorMessage )
         for ( int columnNumber = 0; columnNumber < GDALRATGetColumnCount( hRat ); ++columnNumber )
         {
           const Qgis::RasterAttributeTableFieldUsage usage { static_cast<Qgis::RasterAttributeTableFieldUsage>( GDALRATGetUsageOfCol( hRat, columnNumber ) ) };
-          QVariant::Type type = QVariant::Int;
+          QMetaType::Type type = QMetaType::Type::Int;
           switch ( GDALRATGetTypeOfCol( hRat, columnNumber ) )
           {
             case GFT_Integer:
             {
-              type = QVariant::Int;
+              type = QMetaType::Type::Int;
               break;
             }
             case GFT_Real:
             {
-              type = QVariant::Double;
+              type = QMetaType::Type::Double;
               break;
             }
             case GFT_String:
             {
-              type = QVariant::String;
+              type = QMetaType::Type::QString;
               break;
             }
 
@@ -3390,15 +3415,15 @@ bool QgsGdalProvider::readNativeAttributeTable( QString *errorMessage )
           {
             switch ( field.type )
             {
-              case QVariant::Int:
-              case QVariant::UInt:
-              case QVariant::LongLong:
-              case QVariant::ULongLong:
+              case QMetaType::Type::Int:
+              case QMetaType::Type::UInt:
+              case QMetaType::Type::LongLong:
+              case QMetaType::Type::ULongLong:
               {
                 rowData.push_back( GDALRATGetValueAsInt( hRat, rowIdx, colIdx ) );
                 break;
               }
-              case QVariant::Double:
+              case QMetaType::Type::Double:
               {
                 rowData.push_back( GDALRATGetValueAsDouble( hRat, rowIdx, colIdx ) );
                 break;
@@ -3499,15 +3524,15 @@ bool QgsGdalProvider::writeNativeAttributeTable( QString *errorMessage ) //#spel
       GDALRATFieldType fType { GFT_String };
       switch ( field.type )
       {
-        case QVariant::Int:
-        case QVariant::UInt:
-        case QVariant::LongLong:
-        case QVariant::ULongLong:
+        case QMetaType::Type::Int:
+        case QMetaType::Type::UInt:
+        case QMetaType::Type::LongLong:
+        case QMetaType::Type::ULongLong:
         {
           fType = GFT_Integer;
           break;
         }
-        case QVariant::Double:
+        case QMetaType::Type::Double:
         {
           fType = GFT_Real;
           break;
@@ -3948,7 +3973,7 @@ QgsGdalProvider *QgsGdalProviderMetadata::createRasterDataProvider(
   return new QgsGdalProvider( uri, providerOptions, true, dataset.release() );
 }
 
-bool QgsGdalProvider::write( void *data, int band, int width, int height, int xOffset, int yOffset )
+bool QgsGdalProvider::write( const void *data, int band, int width, int height, int xOffset, int yOffset )
 {
   QMutexLocker locker( mpMutex );
   if ( !initIfNeeded() )
@@ -3969,7 +3994,7 @@ bool QgsGdalProvider::write( void *data, int band, int width, int height, int xO
     gdalDataType = GDT_Float64;
 #endif
 
-  return gdalRasterIO( rasterBand, GF_Write, xOffset, yOffset, width, height, data, width, height, gdalDataType, 0, 0 ) == CE_None;
+  return gdalRasterIO( rasterBand, GF_Write, xOffset, yOffset, width, height, const_cast< void * >( data ), width, height, gdalDataType, 0, 0 ) == CE_None;
 }
 
 bool QgsGdalProvider::setNoDataValue( int bandNo, double noDataValue )
@@ -4247,6 +4272,21 @@ Qgis::ProviderStyleStorageCapabilities QgsGdalProvider::styleStorageCapabilities
     storageCapabilities |= Qgis::ProviderStyleStorageCapability::DeleteFromDatabase;
   }
   return storageCapabilities;
+}
+
+void QgsGdalProvider::invalidateNetworkCache()
+{
+  const QString uri( dataSourceUri() );
+
+  if ( uri.startsWith( QLatin1String( "/vsicurl/" ) )  ||
+       uri.startsWith( QLatin1String( "/vsis3/" ) ) ||
+       uri.startsWith( QLatin1String( "/vsigs/" ) ) ||
+       uri.startsWith( QLatin1String( "/vsiaz/" ) ) ||
+       uri.startsWith( QLatin1String( "/vsiadls/" ) ) )
+  {
+    QgsDebugMsgLevel( QString( "Invalidating cache for %1" ).arg( uri ), 3 );
+    VSICurlPartialClearCache( uri.toUtf8().constData() );
+  }
 }
 
 // pyramids resampling
@@ -4597,8 +4637,8 @@ int QgsGdalProviderMetadata::listStyles( const QString &uri, QStringList &ids, Q
     errCause = QObject::tr( "Cannot open %1." ).arg( uri );
     return -1;
   }
-  QVariantMap uriParts = QgsGdalProviderBase::decodeGdalUri( uri );
-  QString layerName = uriParts["layerName"].toString();
+
+  QString layerName = getLayerNameForStyle( uri, ds );
   return QgsOgrUtils::listStyles( ds.get(), layerName, "", ids, names, descriptions, errCause );
 }
 
@@ -4611,8 +4651,8 @@ bool QgsGdalProviderMetadata::styleExists( const QString &uri, const QString &st
     errCause = QObject::tr( "Cannot open %1." ).arg( uri );
     return false;
   }
-  QVariantMap uriParts = QgsGdalProviderBase::decodeGdalUri( uri );
-  QString layerName = uriParts["layerName"] .toString();
+
+  QString layerName = getLayerNameForStyle( uri, ds );
   return QgsOgrUtils::styleExists( ds.get(), layerName, "", styleId, errCause );
 }
 
@@ -4651,8 +4691,8 @@ bool QgsGdalProviderMetadata::saveStyle( const QString &uri, const QString &qmlS
     errCause = QObject::tr( "Cannot open %1." ).arg( uri );
     return false;
   }
-  QVariantMap uriParts = QgsGdalProviderBase::decodeGdalUri( uri );
-  QString layerName = uriParts["layerName"].toString();
+
+  QString layerName = getLayerNameForStyle( uri, ds );
   return QgsOgrUtils::saveStyle( ds.get(), layerName, "", qmlStyle, sldStyle, styleName, styleDescription, uiFileContent, useAsDefault, errCause );
 }
 
@@ -4671,9 +4711,27 @@ QString QgsGdalProviderMetadata::loadStoredStyle( const QString &uri, QString &s
     errCause = QObject::tr( "Cannot open %1." ).arg( uri );
     return QString();
   }
+
+  QString layerName = getLayerNameForStyle( uri, ds );
+  return QgsOgrUtils::loadStoredStyle( ds.get(), layerName, "", styleName, errCause );
+}
+
+QString QgsGdalProviderMetadata::getLayerNameForStyle( const QString &uri, gdal::dataset_unique_ptr &ds )
+{
   QVariantMap uriParts = QgsGdalProviderBase::decodeGdalUri( uri );
   QString layerName = uriParts["layerName"].toString();
-  return QgsOgrUtils::loadStoredStyle( ds.get(), layerName, "", styleName, errCause );
+  if ( layerName.isEmpty() )
+  {
+    GDALDriverH driver = GDALGetDatasetDriver( ds.get() );
+    if ( driver )
+    {
+      if ( GDALGetDriverShortName( driver ) == QLatin1String( "GPKG" ) )
+      {
+        layerName = GDALGetMetadataItem( ds.get(), "IDENTIFIER", "" );
+      }
+    }
+  }
+  return layerName;
 }
 
 QgsGdalProviderMetadata::QgsGdalProviderMetadata():

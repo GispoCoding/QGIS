@@ -675,14 +675,17 @@ QgsCoordinateReferenceSystem QgsProcessingUtils::variantToCrs( const QVariant &v
   if ( context.project() && crsText.compare( QLatin1String( "ProjectCrs" ), Qt::CaseInsensitive ) == 0 )
     return context.project()->crs();
 
+  // else CRS from string
+  const QgsCoordinateReferenceSystem crs( crsText );
+  if ( crs.isValid() )
+    return crs;
+
   // maybe a map layer reference
   if ( QgsMapLayer *layer = QgsProcessingUtils::mapLayerFromString( crsText, context ) )
     return layer->crs();
 
-  // else CRS from string
-  QgsCoordinateReferenceSystem crs;
-  crs.createFromString( crsText );
-  return crs;
+  // no luck!
+  return QgsCoordinateReferenceSystem();
 }
 
 bool QgsProcessingUtils::canUseLayer( const QgsMeshLayer *layer )
@@ -804,23 +807,23 @@ QString QgsProcessingUtils::variantToPythonLiteral( const QVariant &value )
            r.crs().authid() );
   }
 
-  switch ( value.type() )
+  switch ( value.userType() )
   {
-    case QVariant::Bool:
+    case QMetaType::Type::Bool:
       return value.toBool() ? QStringLiteral( "True" ) : QStringLiteral( "False" );
 
-    case QVariant::Double:
+    case QMetaType::Type::Double:
       return QString::number( value.toDouble() );
 
-    case QVariant::Int:
-    case QVariant::UInt:
+    case QMetaType::Type::Int:
+    case QMetaType::Type::UInt:
       return QString::number( value.toInt() );
 
-    case QVariant::LongLong:
-    case QVariant::ULongLong:
+    case QMetaType::Type::LongLong:
+    case QMetaType::Type::ULongLong:
       return QString::number( value.toLongLong() );
 
-    case QVariant::List:
+    case QMetaType::Type::QVariantList:
     {
       QStringList parts;
       const QVariantList vl = value.toList();
@@ -831,7 +834,7 @@ QString QgsProcessingUtils::variantToPythonLiteral( const QVariant &value )
       return parts.join( ',' ).prepend( '[' ).append( ']' );
     }
 
-    case QVariant::Map:
+    case QMetaType::Type::QVariantMap:
     {
       const QVariantMap map = value.toMap();
       QStringList parts;
@@ -843,7 +846,7 @@ QString QgsProcessingUtils::variantToPythonLiteral( const QVariant &value )
       return parts.join( ',' ).prepend( '{' ).append( '}' );
     }
 
-    case QVariant::DateTime:
+    case QMetaType::Type::QDateTime:
     {
       const QDateTime dateTime = value.toDateTime();
       return QStringLiteral( "QDateTime(QDate(%1, %2, %3), QTime(%4, %5, %6))" )
@@ -1427,11 +1430,27 @@ QString convertToCompatibleFormatInternal( const QgsVectorLayer *vl, bool select
     else
       it = vl->getFeatures( request );
 
+    constexpr int maxErrors { 10 };
+    unsigned long errorCounter { 0 };
     while ( it.nextFeature( f ) )
     {
       if ( feedback && feedback->isCanceled() )
         return QString();
-      writer->addFeature( f, QgsFeatureSink::FastInsert );
+
+      if ( !writer->addFeature( f, QgsFeatureSink::FastInsert ) && feedback )
+      {
+        QString errorText;
+        if ( errorCounter++ < maxErrors )
+        {
+          errorText = QObject::tr( "Error writing feature # %1 to output layer: %2" ).arg( QString::number( f.id() ), writer->errorMessage() );
+
+          feedback->reportError( errorText );
+        }
+      }
+    }
+    if ( errorCounter >= maxErrors )
+    {
+      feedback->reportError( QObject::tr( "There were %1 errors writing features, only the first %2 have beeen reported." ).arg( QString::number( errorCounter ), QString::number( maxErrors ) ) );
     }
     return temp;
   }
@@ -1578,11 +1597,11 @@ QVariantMap QgsProcessingUtils::removePointerValuesFromMap( const QVariantMap &m
   QVariantMap res;
   for ( auto it = map.constBegin(); it != map.constEnd(); ++it )
   {
-    if ( it->type() == QVariant::Map )
+    if ( it->userType() == QMetaType::Type::QVariantMap )
     {
       res.insert( it.key(), removePointerValuesFromMap( it.value().toMap() ) );
     }
-    else if ( it->type() == QVariant::List )
+    else if ( it->userType() == QMetaType::Type::QVariantList )
     {
       QVariantList dest;
       const QVariantList source = it.value().toList();
@@ -1607,7 +1626,7 @@ QVariantMap QgsProcessingUtils::preprocessQgisProcessParameters( const QVariantM
   ok = true;
   for ( auto it = parameters.constBegin(); it != parameters.constEnd(); ++it )
   {
-    if ( it.value().type() == QVariant::Map )
+    if ( it.value().userType() == QMetaType::Type::QVariantMap )
     {
       const QVariantMap value = it.value().toMap();
       if ( value.value( QStringLiteral( "type" ) ).toString() == QLatin1String( "data_defined" ) )
@@ -1633,7 +1652,7 @@ QVariantMap QgsProcessingUtils::preprocessQgisProcessParameters( const QVariantM
         output.insert( it.key(), it.value() );
       }
     }
-    else if ( it.value().type() == QVariant::String )
+    else if ( it.value().userType() == QMetaType::Type::QString )
     {
       const QString stringValue = it.value().toString();
 

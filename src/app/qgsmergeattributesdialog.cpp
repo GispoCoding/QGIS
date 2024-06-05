@@ -171,6 +171,9 @@ void QgsMergeAttributesDialog::createTableWidgetContents()
     if ( setup.type() == QLatin1String( "Hidden" ) || setup.type() == QLatin1String( "Immutable" ) )
     {
       mHiddenAttributes.insert( idx );
+    }
+    if ( setup.type() == QLatin1String( "Immutable" ) )
+    {
       continue;
     }
 
@@ -182,12 +185,17 @@ void QgsMergeAttributesDialog::createTableWidgetContents()
     mTableWidget->setHorizontalHeaderItem( col, item );
 
     QComboBox *cb = createMergeComboBox( mFields.at( idx ).type(), col );
-    if ( ! mVectorLayer->dataProvider()->pkAttributeIndexes().contains( mFields.fieldOriginIndex( idx ) ) &&
-         mFields.at( idx ).constraints().constraints() & QgsFieldConstraints::ConstraintUnique )
+    if ( ( ! mVectorLayer->dataProvider()->pkAttributeIndexes().contains( mFields.fieldOriginIndex( idx ) ) &&
+           mFields.at( idx ).constraints().constraints() & QgsFieldConstraints::ConstraintUnique ) || mHiddenAttributes.contains( idx ) )
     {
       cb->setCurrentIndex( cb->findData( "skip" ) );
     }
     mTableWidget->setCellWidget( 0, col, cb );
+
+    if ( mHiddenAttributes.contains( idx ) )
+    {
+      mTableWidget->setColumnHidden( idx, col );
+    }
 
     col++;
   }
@@ -270,7 +278,7 @@ void QgsMergeAttributesDialog::createTableWidgetContents()
   }
 }
 
-QComboBox *QgsMergeAttributesDialog::createMergeComboBox( QVariant::Type columnType, int column )
+QComboBox *QgsMergeAttributesDialog::createMergeComboBox( QMetaType::Type columnType, int column )
 {
   QComboBox *newComboBox = new QComboBox();
   //add items for feature
@@ -282,9 +290,9 @@ QComboBox *QgsMergeAttributesDialog::createMergeComboBox( QVariant::Type columnT
 
   switch ( columnType )
   {
-    case QVariant::Double:
-    case QVariant::Int:
-    case QVariant::LongLong:
+    case QMetaType::Type::Double:
+    case QMetaType::Type::Int:
+    case QMetaType::Type::LongLong:
     {
       for ( Qgis::Statistic stat : std::as_const( DISPLAY_STATS ) )
       {
@@ -292,7 +300,7 @@ QComboBox *QgsMergeAttributesDialog::createMergeComboBox( QVariant::Type columnT
       }
       break;
     }
-    case QVariant::String:
+    case QMetaType::Type::QString:
       newComboBox->addItem( tr( "Concatenation" ), QStringLiteral( "concat" ) );
       break;
 
@@ -441,7 +449,7 @@ QVariant QgsMergeAttributesDialog::featureAttribute( QgsFeatureId featureId, int
     return f.attributes().at( fieldIdx );
   }
 
-  return QVariant( mVectorLayer->fields().at( fieldIdx ).type() );
+  return QgsVariantUtils::createNullVariant( mVectorLayer->fields().at( fieldIdx ).type() );
 }
 
 void QgsMergeAttributesDialog::setAllAttributesFromFeature( QgsFeatureId featureId )
@@ -485,13 +493,13 @@ QVariant QgsMergeAttributesDialog::calcStatistic( int col, Qgis::Statistic stat 
 
   if ( values.isEmpty() )
   {
-    return QVariant( mVectorLayer->fields().at( col ).type() );
+    return QgsVariantUtils::createNullVariant( mVectorLayer->fields().at( col ).type() );
   }
 
   summary.calculate( values );
 
   double val = summary.statistic( stat );
-  return std::isnan( val ) ? QVariant( QVariant::Double ) : val;
+  return std::isnan( val ) ? QgsVariantUtils::createNullVariant( QMetaType::Type::Double ) : val;
 }
 
 QVariant QgsMergeAttributesDialog::concatenationAttribute( int col )
@@ -768,13 +776,6 @@ QgsAttributes QgsMergeAttributesDialog::mergedAttributes() const
   QgsAttributes results( mFields.count() );
   for ( int fieldIdx = 0; fieldIdx < mFields.count(); ++fieldIdx )
   {
-    if ( mHiddenAttributes.contains( fieldIdx ) )
-    {
-      //hidden attribute, set to default value
-      results[fieldIdx] = QVariant();
-      continue;
-    }
-
     QComboBox *comboBox = qobject_cast<QComboBox *>( mTableWidget->cellWidget( 0, widgetIndex ) );
     if ( !comboBox )
       continue;

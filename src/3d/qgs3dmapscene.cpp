@@ -332,39 +332,6 @@ void Qgs3DMapScene::onCameraChanged()
   emit viewed2DExtentFrom3DChanged( extent2D );
 }
 
-void removeQLayerComponentsFromHierarchy( Qt3DCore::QEntity *entity )
-{
-  QVector<Qt3DCore::QComponent *> toBeRemovedComponents;
-  const Qt3DCore::QComponentVector entityComponents = entity->components();
-  for ( Qt3DCore::QComponent *component : entityComponents )
-  {
-    Qt3DRender::QLayer *layer = qobject_cast<Qt3DRender::QLayer *>( component );
-    if ( layer != nullptr )
-      toBeRemovedComponents.push_back( layer );
-  }
-  for ( Qt3DCore::QComponent *component : toBeRemovedComponents )
-    entity->removeComponent( component );
-  const QList< Qt3DCore::QEntity *> childEntities = entity->findChildren<Qt3DCore::QEntity *>();
-  for ( Qt3DCore::QEntity *obj : childEntities )
-  {
-    if ( obj != nullptr )
-      removeQLayerComponentsFromHierarchy( obj );
-  }
-}
-
-void addQLayerComponentsToHierarchy( Qt3DCore::QEntity *entity, const QVector<Qt3DRender::QLayer *> &layers )
-{
-  for ( Qt3DRender::QLayer *layer : layers )
-    entity->addComponent( layer );
-
-  const QList< Qt3DCore::QEntity *> childEntities = entity->findChildren<Qt3DCore::QEntity *>();
-  for ( Qt3DCore::QEntity *child : childEntities )
-  {
-    if ( child != nullptr )
-      addQLayerComponentsToHierarchy( child, layers );
-  }
-}
-
 void Qgs3DMapScene::updateScene( bool forceUpdate )
 {
   if ( forceUpdate )
@@ -996,6 +963,7 @@ void Qgs3DMapScene::onDebugDepthMapSettingsChanged()
 void Qgs3DMapScene::onDebugOverlayEnabledChanged()
 {
   mEngine->frameGraph()->setDebugOverlayEnabled( mMap.isDebugOverlayEnabled() );
+  mEngine->renderSettings()->setRenderPolicy( mMap.isDebugOverlayEnabled() ? Qt3DRender::QRenderSettings::Always : Qt3DRender::QRenderSettings::OnDemand );
 }
 
 void Qgs3DMapScene::onEyeDomeShadingSettingsChanged()

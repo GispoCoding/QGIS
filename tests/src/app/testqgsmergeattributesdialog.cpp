@@ -102,7 +102,7 @@ class TestQgsMergeattributesDialog : public QgsTest
       QgsVectorLayer ml( "Polygon", "test", "memory" );
       QVERIFY( ml.isValid() );
 
-      QgsField uniqueField( QStringLiteral( "unique" ), QVariant::Int );
+      QgsField uniqueField( QStringLiteral( "unique" ), QMetaType::Type::Int );
       QgsFieldConstraints constraints;
       constraints.setConstraint(
         QgsFieldConstraints::ConstraintUnique
@@ -111,7 +111,7 @@ class TestQgsMergeattributesDialog : public QgsTest
         constraints
       );
 
-      QgsField notUniqueField( QStringLiteral( "not_unique" ), QVariant::Int );
+      QgsField notUniqueField( QStringLiteral( "not_unique" ), QMetaType::Type::Int );
       QVERIFY( ml.dataProvider()->addAttributes(
       { uniqueField, notUniqueField }
                ) );
@@ -149,6 +149,74 @@ class TestQgsMergeattributesDialog : public QgsTest
       // the first field has a unique constraint, so it should not have any value copied from the source feature
       QVERIFY( !dialog.mergedAttributes().at( 0 ).isValid() );
       QCOMPARE( dialog.mergedAttributes().at( 1 ), 22 );
+    }
+
+    void testWithHiddenField()
+    {
+      // Create test layer
+      QgsVectorFileWriter::SaveVectorOptions options;
+      QgsVectorLayer ml( "LineString", "test", "memory" );
+      QVERIFY( ml.isValid() );
+
+      QgsField notHiddenField( QStringLiteral( "not_hidden" ), QMetaType::Type::Int );
+      QgsField hiddenField( QStringLiteral( "hidden" ), QMetaType::Type::Int );
+      // hide the field
+      ml.setEditorWidgetSetup( 1, QgsEditorWidgetSetup( QStringLiteral( "Hidden" ), QVariantMap() ) );
+      QVERIFY( ml.dataProvider()->addAttributes( { notHiddenField, hiddenField } ) );
+      ml.updateFields();
+
+      // Create features
+      QgsFeature f1( ml.fields(), 1 );
+      f1.setAttributes( QVector<QVariant>() << 1 << 2 );
+      f1.setGeometry( QgsGeometry::fromWkt( "LINESTRING(0 0, 10 0)" ) );
+      QVERIFY( ml.dataProvider()->addFeature( f1 ) );
+      QCOMPARE( ml.featureCount(), 1 );
+
+      QgsFeature f2( ml.fields(), 2 );
+      f2.setAttributes( QVector<QVariant>() << 3 << 4 );
+      f2.setGeometry( QgsGeometry::fromWkt( "LINESTRING(10 0, 15 0)" ) );
+      QVERIFY( ml.dataProvider()->addFeature( f2 ) );
+      QCOMPARE( ml.featureCount(), 2 );
+
+      // Merge the attributes together
+      QgsMergeAttributesDialog dialog( QgsFeatureList() << f1 << f2, &ml, mQgisApp->mapCanvas() );
+      QVERIFY( QMetaObject::invokeMethod( &dialog, "mFromLargestPushButton_clicked" ) );
+      QCOMPARE( dialog.mergedAttributes(), QgsAttributes() << 1 << 2 );
+    }
+
+    void testWithHiddenFieldDefaultsToEmpty()
+    {
+      // Create test layer
+      QgsVectorFileWriter::SaveVectorOptions options;
+      QgsVectorLayer ml( "LineString", "test", "memory" );
+      QVERIFY( ml.isValid() );
+
+      QgsField notHiddenField( QStringLiteral( "not_hidden" ), QMetaType::Type::Int );
+      QgsField hiddenField( QStringLiteral( "hidden" ), QMetaType::Type::Int );
+      QVERIFY( ml.dataProvider()->addAttributes( { notHiddenField, hiddenField } ) );
+      ml.updateFields();
+
+      // hide the field
+      ml.setEditorWidgetSetup( 1, QgsEditorWidgetSetup( QStringLiteral( "Hidden" ), QVariantMap() ) );
+
+
+      // Create features
+      QgsFeature f1( ml.fields(), 1 );
+      f1.setAttributes( QVector<QVariant>() << 1 << 2 );
+      f1.setGeometry( QgsGeometry::fromWkt( "LINESTRING(0 0, 10 0)" ) );
+      QVERIFY( ml.dataProvider()->addFeature( f1 ) );
+      QCOMPARE( ml.featureCount(), 1 );
+
+      QgsFeature f2( ml.fields(), 2 );
+      f2.setAttributes( QVector<QVariant>() << 3 << 4 );
+      f2.setGeometry( QgsGeometry::fromWkt( "LINESTRING(10 0, 15 0)" ) );
+      QVERIFY( ml.dataProvider()->addFeature( f2 ) );
+      QCOMPARE( ml.featureCount(), 2 );
+
+      // Merge the attributes together
+      QgsMergeAttributesDialog dialog( QgsFeatureList() << f1 << f2, &ml, mQgisApp->mapCanvas() );
+      // QVariant gets turned into default value while saving the layer
+      QCOMPARE( dialog.mergedAttributes(), QgsAttributes() << 1 << QVariant() );
     }
 };
 

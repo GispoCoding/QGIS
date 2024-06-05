@@ -23,6 +23,7 @@
 #include "qgsfields.h"
 #include "qgsfeaturerequest.h"
 #include "qgsconfig.h"
+#include "qgspropertycollection.h"
 
 #include <QList>
 #include <QString>
@@ -38,6 +39,8 @@ class QgsPaintEffect;
 class QgsReadWriteContext;
 class QgsStyleEntityVisitorInterface;
 class QgsRenderContext;
+class QgsLayerTreeModelLegendNode;
+class QgsLayerTreeLayer;
 
 typedef QMap<QString, QString> QgsStringMap SIP_SKIP;
 
@@ -134,6 +137,24 @@ class CORE_EXPORT QgsFeatureRenderer
 #endif
 
   public:
+
+    /**
+     * Data definable properties for renderers.
+     *
+     * \since QGIS 3.38
+     */
+    enum class Property : int
+    {
+      HeatmapRadius, //!< Heatmap renderer radius
+      HeatmapMaximum, //!< Heatmap maximum value
+    };
+
+    /**
+    * Returns the symbol property definitions.
+    * \since QGIS 3.18
+    */
+    static const QgsPropertiesDefinition &propertyDefinitions();
+
     // renderer takes ownership of its symbols!
 
     //! Returns a new renderer - used by default in vector layers
@@ -396,10 +417,23 @@ class CORE_EXPORT QgsFeatureRenderer
     /**
      * Returns a list of symbology items for the legend
      *
+     * \see createLegendNodes()
      * \see legendKeys()
-     *
      */
     virtual QgsLegendSymbolList legendSymbolItems() const;
+
+    /**
+     * Returns a list of legend nodes to be used for the legend for the renderer.
+     *
+     * Ownership is transferred to the caller.
+     *
+     * The default implementation creates a legend node for each symbol item returned by legendSymbolItems()
+     *
+     * \see legendSymbolItems()
+     *
+     * \since QGIS 3.38
+     */
+    virtual QList<QgsLayerTreeModelLegendNode *> createLegendNodes( QgsLayerTreeLayer *nodeLayer ) const SIP_FACTORY;
 
     /**
      * If supported by the renderer, return classification attribute for the use in legend
@@ -465,6 +499,47 @@ class CORE_EXPORT QgsFeatureRenderer
      * \see forceRasterRender
      */
     void setForceRasterRender( bool forceRaster ) { mForceRaster = forceRaster; }
+
+    /**
+     * Sets a data defined property for the renderer. Any existing property with the same key
+     * will be overwritten.
+     *
+     * \see dataDefinedProperties()
+     * \see Property
+     *
+     * \since QGIS 3.38
+     */
+    void setDataDefinedProperty( Property key, const QgsProperty &property );
+
+    /**
+     * Returns a reference to the renderer's property collection, used for data defined overrides.
+     *
+     * \see setDataDefinedProperties()
+     * \see Property
+     *
+     * \since QGIS 3.38
+     */
+    QgsPropertyCollection &dataDefinedProperties() { return mDataDefinedProperties; }
+
+    /**
+     * Returns a reference to the renderer's property collection, used for data defined overrides.
+     *
+     * \see setDataDefinedProperties()
+     *
+     * \since QGIS 3.38
+     */
+    const QgsPropertyCollection &dataDefinedProperties() const { return mDataDefinedProperties; } SIP_SKIP
+
+    /**
+    * Sets the renderer's property collection, used for data defined overrides.
+    *
+    * \param collection property collection. Existing properties will be replaced.
+    *
+    * \see dataDefinedProperties()
+    *
+    * \since QGIS 3.38
+    */
+    void setDataDefinedProperties( const QgsPropertyCollection &collection ) { mDataDefinedProperties = collection; }
 
     /**
      * Returns the symbology reference scale.
@@ -563,6 +638,7 @@ class CORE_EXPORT QgsFeatureRenderer
      * - Reference scale
      * - Symbol levels enabled/disabled
      * - Force raster render enabled/disabled
+     * - Data defined properties
      *
      * \param destRenderer destination renderer for copied effect
      * \since QGIS 3.22
@@ -641,10 +717,16 @@ class CORE_EXPORT QgsFeatureRenderer
     QgsFeatureRenderer &operator=( const QgsFeatureRenderer & );
 #endif
 
+    static void initPropertyDefinitions();
+    //! Property definitions
+    static QgsPropertiesDefinition sPropertyDefinitions;
+
 #ifdef QGISDEBUG
     //! Pointer to thread in which startRender was first called
     QThread *mThread = nullptr;
 #endif
+
+    QgsPropertyCollection mDataDefinedProperties;
 
     Q_DISABLE_COPY( QgsFeatureRenderer )
 };

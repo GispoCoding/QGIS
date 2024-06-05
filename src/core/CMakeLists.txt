@@ -65,6 +65,7 @@ set(QGIS_CORE_SRCS
   elevation/qgsprofilerenderer.cpp
   elevation/qgsprofilerequest.cpp
   elevation/qgsprofilesnapping.cpp
+  elevation/qgsprofilesourceregistry.cpp
   elevation/qgsterrainprovider.cpp
 
   geocoding/qgsabstractgeocoderlocatorfilter.cpp
@@ -252,6 +253,12 @@ set(QGIS_CORE_SRCS
   network/qgshttpheaders.cpp
   network/qgsrangerequestcache.cpp
 
+  painting/qgsgeometrypaintdevice.cpp
+  painting/qgsmaskpaintdevice.cpp
+  painting/qgsnullpainterdevice.cpp
+  painting/qgspaintenginehack.cpp
+  painting/qgspainting.cpp
+
   pdf/qgspdfrenderer.cpp
 
   processing/qgsprocessing.cpp
@@ -279,8 +286,10 @@ set(QGIS_CORE_SRCS
   processing/models/qgsprocessingmodelcomment.cpp
   processing/models/qgsprocessingmodelcomponent.cpp
   processing/models/qgsprocessingmodelgroupbox.cpp
+  processing/models/qgsprocessingmodelconfig.cpp
   processing/models/qgsprocessingmodelparameter.cpp
   processing/models/qgsprocessingmodeloutput.cpp
+  processing/models/qgsprocessingmodelresult.cpp
 
   providers/qgsabstractproviderconnection.cpp
   providers/qgsabstractdatabaseproviderconnection.cpp
@@ -502,12 +511,10 @@ set(QGIS_CORE_SRCS
   qgsmaskidprovider.cpp
   qgsmatrix4x4.cpp
   qgsmbtiles.cpp
-  qgsmaskpaintdevice.cpp
   qgsmessagelog.cpp
   qgsmessageoutput.cpp
   qgsmimedatautils.cpp
   qgsmultirenderchecker.cpp
-  qgsnullpainterdevice.cpp
   qgsobjectcustomproperties.cpp
   qgsofflineediting.cpp
   qgsogcutils.cpp
@@ -515,8 +522,6 @@ set(QGIS_CORE_SRCS
   qgsogrutils.cpp
   qgsoptionalexpression.cpp
   qgsowsconnection.cpp
-  qgspaintenginehack.cpp
-  qgspainting.cpp
   qgspathresolver.cpp
   qgspluginlayer.cpp
   qgspluginlayerregistry.cpp
@@ -850,6 +855,7 @@ set(QGIS_CORE_SRCS
   labeling/qgslabelingresults.cpp
   labeling/qgslabellinesettings.cpp
   labeling/qgslabelplacementsettings.cpp
+  labeling/qgslabelpointsettings.cpp
   labeling/qgslabelobstaclesettings.cpp
   labeling/qgslabelsearchtree.cpp
   labeling/qgslabelsink.cpp
@@ -949,6 +955,7 @@ set(QGIS_CORE_SRCS
   vector/qgsvectorlayerselectionproperties.cpp
   vector/qgsvectorlayertemporalproperties.cpp
   vector/qgsvectorlayertools.cpp
+  vector/qgsvectorlayertoolscontext.cpp
   vector/qgsvectorlayerundocommand.cpp
   vector/qgsvectorlayerundopassthroughcommand.cpp
   vector/qgsvectorlayerutils.cpp
@@ -1198,14 +1205,12 @@ set(QGIS_CORE_HDRS
   qgsmapunitscale.h
   qgsmargins.h
   qgsmaskidprovider.h
-  qgsmaskpaintdevice.h
   qgsmatrix4x4.h
   qgsmbtiles.h
   qgsmessagelog.h
   qgsmessageoutput.h
   qgsmimedatautils.h
   qgsmultirenderchecker.h
-  qgsnullpainterdevice.h
   qgsobjectcustomproperties.h
   qgsofflineediting.h
   qgsogcutils.h
@@ -1214,8 +1219,6 @@ set(QGIS_CORE_HDRS
   qgsoptional.h
   qgsoptionalexpression.h
   qgsowsconnection.h
-  qgspaintenginehack.h
-  qgspainting.h
   qgspathresolver.h
   qgspluginlayer.h
   qgspluginlayerregistry.h
@@ -1408,6 +1411,7 @@ set(QGIS_CORE_HDRS
   elevation/qgsprofilerenderer.h
   elevation/qgsprofilerequest.h
   elevation/qgsprofilesnapping.h
+  elevation/qgsprofilesourceregistry.h
   elevation/qgsterrainprovider.h
 
   externalstorage/qgsexternalstorage.h
@@ -1508,6 +1512,7 @@ set(QGIS_CORE_HDRS
   labeling/qgslabellinesettings.h
   labeling/qgslabelobstaclesettings.h
   labeling/qgslabelplacementsettings.h
+  labeling/qgslabelpointsettings.h
   labeling/qgslabelposition.h
   labeling/qgslabelsearchtree.h
   labeling/qgslabelsink.h
@@ -1640,6 +1645,12 @@ set(QGIS_CORE_HDRS
   mesh/qgsmeshlayerlabeling.h
   mesh/qgsmeshlayerlabelprovider.h
 
+  painting/qgsgeometrypaintdevice.h
+  painting/qgsmaskpaintdevice.h
+  painting/qgsnullpainterdevice.h
+  painting/qgspaintenginehack.h
+  painting/qgspainting.h
+
   pal/costcalculator.h
   pal/feature.h
   pal/geomfunction.h
@@ -1741,9 +1752,11 @@ set(QGIS_CORE_HDRS
   processing/models/qgsprocessingmodelchildparametersource.h
   processing/models/qgsprocessingmodelcomment.h
   processing/models/qgsprocessingmodelcomponent.h
+  processing/models/qgsprocessingmodelconfig.h
   processing/models/qgsprocessingmodelgroupbox.h
   processing/models/qgsprocessingmodeloutput.h
   processing/models/qgsprocessingmodelparameter.h
+  processing/models/qgsprocessingmodelresult.h
   processing/qgsprocessing.h
   processing/qgsprocessingalgorithm.h
   processing/qgsprocessingalgrunnertask.h
@@ -2017,6 +2030,7 @@ set(QGIS_CORE_HDRS
   vector/qgsvectorlayerselectionproperties.h
   vector/qgsvectorlayertemporalproperties.h
   vector/qgsvectorlayertools.h
+  vector/qgsvectorlayertoolscontext.h
   vector/qgsvectorlayerundocommand.h
   vector/qgsvectorlayerundopassthroughcommand.h
   vector/qgsvectorlayerutils.h
@@ -2324,6 +2338,7 @@ target_include_directories(qgis_core PUBLIC
   metadata
   network
   numericformats
+  painting
   pal
   pdf
   plot

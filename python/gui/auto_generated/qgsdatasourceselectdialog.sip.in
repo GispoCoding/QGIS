@@ -65,11 +65,13 @@ Sets a description label
 .. versionadded:: 3.8
 %End
 
-    void expandPath( const QString &path );
+    void expandPath( const QString &path, bool selectPath = false );
 %Docstring
 Expands out a file ``path`` in the view.
 
 The ``path`` must correspond to a valid directory existing on the file system.
+
+Since QGIS 3.38 the ``selectPath`` argument can be used to automatically select the path too.
 
 .. versionadded:: 3.28
 %End
@@ -100,6 +102,11 @@ Apply filter to the model
 %Docstring
 Scroll to last selected index and expand it's children
 %End
+
+    virtual void dragEnterEvent( QDragEnterEvent *event );
+
+    virtual void dropEvent( QDropEvent *event );
+
 
   signals:
 
@@ -176,11 +183,13 @@ Sets a description label
 .. versionadded:: 3.8
 %End
 
-    void expandPath( const QString &path );
+    void expandPath( const QString &path, bool selectPath = false );
 %Docstring
 Expands out a file ``path`` in the view.
 
 The ``path`` must correspond to a valid directory existing on the file system.
+
+Since QGIS 3.38 the ``selectPath`` argument can be used to automatically select the path too.
 
 .. versionadded:: 3.28
 %End

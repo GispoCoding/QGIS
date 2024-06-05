@@ -78,6 +78,7 @@ from qgis.core import (
     QgsVectorLayerJoinInfo,
     QgsVectorLayerSelectedFeatureSource,
     QgsVectorLayerSimpleLabeling,
+    QgsVectorLayerToolsContext,
     QgsWkbTypes,
 )
 from qgis.gui import QgsAttributeTableModel, QgsGui
@@ -1138,6 +1139,38 @@ class TestQgsVectorLayer(QgisTestCase, FeatureSourceTestCase):
 
         self.assertTrue(layer.commitChanges())
         checkAfter()
+
+    def test_ChangeAttributeValuesWithContext(self):
+        layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer",
+                               "addfeat", "memory")
+
+        layer.setDefaultValueDefinition(0, QgsDefaultValue("geom_to_wkt(@current_parent_geometry)", True))
+
+        f = QgsFeature()
+        f.setAttributes(["test", 123])
+        f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(100, 200)))
+
+        assert layer.dataProvider().addFeatures([f])
+        assert layer.featureCount() == 1
+        fid = 1
+
+        fields = QgsFields()
+        fields.append(QgsField("parenttxt", QVariant.String))
+        fields.append(QgsField("parentinteger", QVariant.Int))
+        pf = QgsFeature(fields)
+        pf.setAttributes(["parent", 789])
+        pf.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(1, 2)))
+
+        layer.startEditing()
+
+        expressionContext = layer.createExpressionContext()
+        expressionContext.appendScope(QgsExpressionContextUtils.parentFormScope(pf))
+        context = QgsVectorLayerToolsContext()
+        context.setExpressionContext(expressionContext)
+        self.assertTrue(layer.changeAttributeValues(fid, {1: 100}, {}, False, context))
+
+        f = layer.getFeature(1)
+        self.assertEqual(f.attributes(), ["Point (1 2)", 100])
 
     def test_ChangeAttributeAfterAddFeature(self):
         layer = createLayerWithOnePoint()
@@ -4546,6 +4579,46 @@ class TestQgsVectorLayerTransformContext(QgisTestCase):
                              Qgis.FieldDomainSplitPolicy.UnsetField)
             self.assertEqual(vl2.fields()[3].splitPolicy(),
                              Qgis.FieldDomainSplitPolicy.GeometryRatio)
+
+    def test_duplicate_policies(self):
+        vl = QgsVectorLayer('Point?crs=epsg:3111&field=field_default:integer&field=field_dupe:integer&field=field_unset:integer', 'test', 'memory')
+        self.assertTrue(vl.isValid())
+
+        with self.assertRaises(KeyError):
+            vl.setFieldDuplicatePolicy(-1, Qgis.FieldDuplicatePolicy.DefaultValue)
+        with self.assertRaises(KeyError):
+            vl.setFieldDuplicatePolicy(4, Qgis.FieldDuplicatePolicy.DefaultValue)
+
+        vl.setFieldDuplicatePolicy(0, Qgis.FieldDuplicatePolicy.DefaultValue)
+        vl.setFieldDuplicatePolicy(1, Qgis.FieldDuplicatePolicy.Duplicate)
+        vl.setFieldDuplicatePolicy(2, Qgis.FieldDuplicatePolicy.UnsetField)
+
+        self.assertEqual(vl.fields()[0].duplicatePolicy(),
+                         Qgis.FieldDuplicatePolicy.DefaultValue)
+        self.assertEqual(vl.fields()[1].duplicatePolicy(),
+                         Qgis.FieldDuplicatePolicy.Duplicate)
+        self.assertEqual(vl.fields()[2].duplicatePolicy(),
+                         Qgis.FieldDuplicatePolicy.UnsetField)
+
+        p = QgsProject()
+        p.addMapLayer(vl)
+
+        # test saving and restoring split policies
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertTrue(p.write(temp + '/test.qgs'))
+
+            p2 = QgsProject()
+            self.assertTrue(p2.read(temp + '/test.qgs'))
+
+            vl2 = list(p2.mapLayers().values())[0]
+            self.assertEqual(vl2.name(), vl.name())
+
+            self.assertEqual(vl2.fields()[0].duplicatePolicy(),
+                             Qgis.FieldDuplicatePolicy.DefaultValue)
+            self.assertEqual(vl2.fields()[1].duplicatePolicy(),
+                             Qgis.FieldDuplicatePolicy.Duplicate)
+            self.assertEqual(vl2.fields()[2].duplicatePolicy(),
+                             Qgis.FieldDuplicatePolicy.UnsetField)
 
     def test_selection_properties(self):
         vl = QgsVectorLayer(

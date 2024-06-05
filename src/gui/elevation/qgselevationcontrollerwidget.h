@@ -43,11 +43,15 @@ class GUI_EXPORT QgsElevationControllerLabels : public QWidget SIP_SKIP
 
     void setLimits( const QgsDoubleRange &limits );
     void setRange( const QgsDoubleRange &range );
+    void setInverted( bool inverted );
+    void setSignificantElevations( const QList< double > &elevations );
 
   private:
 
     QgsDoubleRange mLimits;
     QgsDoubleRange mRange;
+    bool mInverted = false;
+    QList< double > mSignificantElevations;
 
 };
 
@@ -77,6 +81,15 @@ class GUI_EXPORT QgsElevationControllerSettingsAction: public QWidgetAction
  */
 class GUI_EXPORT QgsElevationControllerWidget : public QWidget
 {
+
+#ifdef SIP_RUN
+    SIP_CONVERT_TO_SUBCLASS_CODE
+    if ( qobject_cast<QgsElevationControllerWidget *>( sipCpp ) != nullptr )
+      sipType = sipType_QgsElevationControllerWidget;
+    else
+      sipType = nullptr;
+    SIP_END
+#endif
 
     Q_OBJECT
 
@@ -149,8 +162,21 @@ class GUI_EXPORT QgsElevationControllerWidget : public QWidget
      * the upper and lower elevation.
      *
      * \see fixedRangeSize()
+     * \see fixedRangeSizeChanged()
      */
     void setFixedRangeSize( double size );
+
+    /**
+     * Sets whether the elevation slider should be inverted.
+     *
+     * \see invertedChanged()
+     */
+    void setInverted( bool inverted );
+
+    /**
+     * Sets a list of significant \a elevations to highlight in the widget.
+     */
+    void setSignificantElevations( const QList< double > &elevations );
 
   signals:
 
@@ -162,12 +188,29 @@ class GUI_EXPORT QgsElevationControllerWidget : public QWidget
      */
     void rangeChanged( const QgsDoubleRange &range );
 
+    /**
+     * Emitted when the fixed range size is changed from the widget.
+     *
+     * \see fixedRangeSize()
+     * \see setFixedRangeSize()
+     */
+    void fixedRangeSizeChanged( double size );
+
+    /**
+     * Emitted when the elevation filter slider is inverted.
+     *
+     * \see setInverted()
+     */
+    void invertedChanged( bool inverted );
+
   private:
 
     void updateWidgetMask();
 
     QToolButton *mConfigureButton = nullptr;
+    QgsElevationControllerSettingsAction *mSettingsAction = nullptr;
     QMenu *mMenu = nullptr;
+    QAction *mInvertDirectionAction = nullptr;
     QgsRangeSlider *mSlider = nullptr;
     QgsElevationControllerLabels *mSliderLabels = nullptr;
     QgsDoubleRange mRangeLimits;

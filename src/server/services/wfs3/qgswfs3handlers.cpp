@@ -671,9 +671,10 @@ void QgsWfs3DescribeCollectionHandler::handleRequest( const QgsServerApiContext 
   {
     crss.push_back( crs.toStdString() );
   }
+
   json data
   {
-    { "id", mapLayer->name().toStdString() },
+    { "id", shortName.toStdString() },
     { "title", title },
     // TODO: check if we need to expose other advertised CRS here
     {
@@ -1100,11 +1101,11 @@ const QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::field
       QgsServerQueryStringParameter::Type t;
       switch ( f.type() )
       {
-        case QVariant::Int:
-        case QVariant::LongLong:
+        case QMetaType::Type::Int:
+        case QMetaType::Type::LongLong:
           t = QgsServerQueryStringParameter::Type::Integer;
           break;
-        case QVariant::Double:
+        case QMetaType::Type::Double:
           t = QgsServerQueryStringParameter::Type::Double;
           break;
         // TODO: date & time

@@ -121,21 +121,17 @@
 %Include auto_generated/qgsmapunitscale.sip
 %Include auto_generated/qgsmargins.sip
 %Include auto_generated/qgsmaskidprovider.sip
-%Include auto_generated/qgsmaskpaintdevice.sip
 %Include auto_generated/qgsmatrix4x4.sip
 %Include auto_generated/qgsmessagelog.sip
 %Include auto_generated/qgsmessageoutput.sip
 %Include auto_generated/qgsmimedatautils.sip
 %Include auto_generated/qgsmultirenderchecker.sip
-%Include auto_generated/qgsnullpainterdevice.sip
 %Include auto_generated/qgsobjectcustomproperties.sip
 %Include auto_generated/qgsofflineediting.sip
 %Include auto_generated/qgsogcutils.sip
 %Include auto_generated/qgsoptional.sip
 %Include auto_generated/qgsoptionalexpression.sip
 %Include auto_generated/qgsowsconnection.sip
-%Include auto_generated/qgspaintenginehack.sip
-%Include auto_generated/qgspainting.sip
 %Include auto_generated/qgspathresolver.sip
 %Include auto_generated/qgspluginlayer.sip
 %Include auto_generated/qgspluginlayerregistry.sip
@@ -296,6 +292,7 @@
 %Include auto_generated/elevation/qgsprofilerenderer.sip
 %Include auto_generated/elevation/qgsprofilerequest.sip
 %Include auto_generated/elevation/qgsprofilesnapping.sip
+%Include auto_generated/elevation/qgsprofilesourceregistry.sip
 %Include auto_generated/elevation/qgsterrainprovider.sip
 %Include auto_generated/externalstorage/qgsexternalstorage.sip
 %Include auto_generated/externalstorage/qgsexternalstorageregistry.sip
@@ -381,6 +378,7 @@
 %Include auto_generated/labeling/qgslabellinesettings.sip
 %Include auto_generated/labeling/qgslabelobstaclesettings.sip
 %Include auto_generated/labeling/qgslabelplacementsettings.sip
+%Include auto_generated/labeling/qgslabelpointsettings.sip
 %Include auto_generated/labeling/qgslabelposition.sip
 %Include auto_generated/labeling/qgslabelsearchtree.sip
 %Include auto_generated/labeling/qgslabelthinningsettings.sip
@@ -486,6 +484,11 @@
 %Include auto_generated/mesh/qgsmeshadvancedediting.sip
 %Include auto_generated/mesh/qgsmeshforcebypolylines.sip
 %Include auto_generated/mesh/qgsmeshlayerlabeling.sip
+%Include auto_generated/painting/qgsgeometrypaintdevice.sip
+%Include auto_generated/painting/qgsmaskpaintdevice.sip
+%Include auto_generated/painting/qgsnullpainterdevice.sip
+%Include auto_generated/painting/qgspaintenginehack.sip
+%Include auto_generated/painting/qgspainting.sip
 %Include auto_generated/pdf/qgspdfrenderer.sip
 %Include auto_generated/plot/qgsplot.sip
 %Include auto_generated/pointcloud/qgspointcloudattribute.sip
@@ -551,6 +554,7 @@
 %Include auto_generated/processing/models/qgsprocessingmodelgroupbox.sip
 %Include auto_generated/processing/models/qgsprocessingmodeloutput.sip
 %Include auto_generated/processing/models/qgsprocessingmodelparameter.sip
+%Include auto_generated/processing/models/qgsprocessingmodelresult.sip
 %Include auto_generated/processing/qgsprocessing.sip
 %Include auto_generated/processing/qgsprocessingalgorithm.sip
 %Include auto_generated/processing/qgsprocessingalgrunnertask.sip
@@ -767,6 +771,7 @@
 %Include auto_generated/vector/qgsvectorlayerselectionproperties.sip
 %Include auto_generated/vector/qgsvectorlayertemporalproperties.sip
 %Include auto_generated/vector/qgsvectorlayertools.sip
+%Include auto_generated/vector/qgsvectorlayertoolscontext.sip
 %Include auto_generated/vector/qgsvectorlayerundocommand.sip
 %Include auto_generated/vector/qgsvectorlayerundopassthroughcommand.sip
 %Include auto_generated/vector/qgsvectorlayerutils.sip

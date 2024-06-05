@@ -82,9 +82,11 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
      *
      * The \a path must correspond to a valid directory existing on the file system.
      *
+     * Since QGIS 3.38 the \a selectPath argument can be used to automatically select the path too.
+     *
      * \since QGIS 3.28
      */
-    void expandPath( const QString &path );
+    void expandPath( const QString &path, bool selectPath = false );
 
     /**
      * Returns the (possibly invalid) uri of the selected data source
@@ -101,6 +103,9 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
     void setFilter();
     //! Scroll to last selected index and expand it's children
     void showEvent( QShowEvent *e ) override;
+
+    void dragEnterEvent( QDragEnterEvent *event ) override;
+    void dropEvent( QDropEvent *event ) override;
 
   signals:
 
@@ -134,6 +139,9 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
     void refreshModel( const QModelIndex &index );
 
     void setValid( bool valid );
+
+    //! Returns file name if object meets drop criteria.
+    QString acceptableFilePath( QDropEvent *event ) const;
 
     QgsBrowserProxyModel mBrowserProxyModel;
     QgsBrowserGuiModel *mBrowserModel = nullptr;
@@ -195,9 +203,11 @@ class GUI_EXPORT QgsDataSourceSelectDialog: public QDialog
      *
      * The \a path must correspond to a valid directory existing on the file system.
      *
+     * Since QGIS 3.38 the \a selectPath argument can be used to automatically select the path too.
+     *
      * \since QGIS 3.28
      */
-    void expandPath( const QString &path );
+    void expandPath( const QString &path, bool selectPath = false );
 
     /**
      * Returns the (possibly invalid) uri of the selected data source

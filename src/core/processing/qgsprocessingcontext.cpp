@@ -21,6 +21,10 @@
 #include "qgsproviderregistry.h"
 #include "qgsprocessing.h"
 
+//
+// QgsProcessingContext
+//
+
 QgsProcessingContext::QgsProcessingContext()
   : mPreferredVectorFormat( QgsProcessingUtils::defaultVectorExtension() )
   , mPreferredRasterFormat( QgsProcessingUtils::defaultRasterExtension() )
@@ -123,6 +127,7 @@ std::function<void ( const QgsFeature & )> QgsProcessingContext::defaultInvalidG
 void QgsProcessingContext::takeResultsFrom( QgsProcessingContext &context )
 {
   setLayersToLoadOnCompletion( context.mLayersToLoadOnCompletion );
+  mModelResult = context.mModelResult;
   context.mLayersToLoadOnCompletion.clear();
   tempLayerStore.transferLayersFromStore( context.temporaryLayerStore() );
 }
@@ -303,4 +308,20 @@ void QgsProcessingContext::LayerDetails::setOutputLayerName( QgsMapLayer *layer 
   {
     layer->setName( name );
   }
+}
+
+
+QgsProcessingModelInitialRunConfig *QgsProcessingContext::modelInitialRunConfig()
+{
+  return mModelConfig.get();
+}
+
+void QgsProcessingContext::setModelInitialRunConfig( std::unique_ptr< QgsProcessingModelInitialRunConfig > config )
+{
+  mModelConfig = std::move( config );
+}
+
+std::unique_ptr< QgsProcessingModelInitialRunConfig > QgsProcessingContext::takeModelInitialRunConfig()
+{
+  return std::move( mModelConfig );
 }

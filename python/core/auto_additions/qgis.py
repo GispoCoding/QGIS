@@ -949,6 +949,12 @@ Qgis.LabelOverlapHandling.AllowOverlapAtNoCost.__doc__ = "Labels may freely over
 Qgis.LabelOverlapHandling.__doc__ = "Label overlap handling.\n\n.. versionadded:: 3.26\n\n" + '* ``PreventOverlap``: ' + Qgis.LabelOverlapHandling.PreventOverlap.__doc__ + '\n' + '* ``AllowOverlapIfRequired``: ' + Qgis.LabelOverlapHandling.AllowOverlapIfRequired.__doc__ + '\n' + '* ``AllowOverlapAtNoCost``: ' + Qgis.LabelOverlapHandling.AllowOverlapAtNoCost.__doc__
 # --
 Qgis.LabelOverlapHandling.baseClass = Qgis
+# monkey patching scoped based enum
+Qgis.LabelPrioritization.PreferCloser.__doc__ = "Prefer closer labels, falling back to alternate positions before larger distances"
+Qgis.LabelPrioritization.PreferPositionOrdering.__doc__ = "Prefer labels follow position ordering, falling back to more distance labels before alternate positions"
+Qgis.LabelPrioritization.__doc__ = "Label prioritization.\n\n.. versionadded:: 3.38\n\n" + '* ``PreferCloser``: ' + Qgis.LabelPrioritization.PreferCloser.__doc__ + '\n' + '* ``PreferPositionOrdering``: ' + Qgis.LabelPrioritization.PreferPositionOrdering.__doc__
+# --
+Qgis.LabelPrioritization.baseClass = Qgis
 QgsPalLayerSettings.Placement = Qgis.LabelPlacement
 # monkey patching scoped based enum
 QgsPalLayerSettings.AroundPoint = Qgis.LabelPlacement.AroundPoint
@@ -1019,7 +1025,10 @@ QgsPalLayerSettings.BottomSlightlyRight.__doc__ = "Label below point, slightly r
 QgsPalLayerSettings.BottomRight = Qgis.LabelPredefinedPointPosition.BottomRight
 QgsPalLayerSettings.BottomRight.is_monkey_patched = True
 QgsPalLayerSettings.BottomRight.__doc__ = "Label on bottom right of point"
-Qgis.LabelPredefinedPointPosition.__doc__ = "Positions for labels when using the Qgis.LabelPlacement.OrderedPositionsAroundPoint placement mode.\n\n.. note::\n\n   Prior to QGIS 3.26 this was available as :py:class:`QgsPalLayerSettings`.PredefinedPointPosition\n\n.. versionadded:: 3.26\n\n" + '* ``TopLeft``: ' + Qgis.LabelPredefinedPointPosition.TopLeft.__doc__ + '\n' + '* ``TopSlightlyLeft``: ' + Qgis.LabelPredefinedPointPosition.TopSlightlyLeft.__doc__ + '\n' + '* ``TopMiddle``: ' + Qgis.LabelPredefinedPointPosition.TopMiddle.__doc__ + '\n' + '* ``TopSlightlyRight``: ' + Qgis.LabelPredefinedPointPosition.TopSlightlyRight.__doc__ + '\n' + '* ``TopRight``: ' + Qgis.LabelPredefinedPointPosition.TopRight.__doc__ + '\n' + '* ``MiddleLeft``: ' + Qgis.LabelPredefinedPointPosition.MiddleLeft.__doc__ + '\n' + '* ``MiddleRight``: ' + Qgis.LabelPredefinedPointPosition.MiddleRight.__doc__ + '\n' + '* ``BottomLeft``: ' + Qgis.LabelPredefinedPointPosition.BottomLeft.__doc__ + '\n' + '* ``BottomSlightlyLeft``: ' + Qgis.LabelPredefinedPointPosition.BottomSlightlyLeft.__doc__ + '\n' + '* ``BottomMiddle``: ' + Qgis.LabelPredefinedPointPosition.BottomMiddle.__doc__ + '\n' + '* ``BottomSlightlyRight``: ' + Qgis.LabelPredefinedPointPosition.BottomSlightlyRight.__doc__ + '\n' + '* ``BottomRight``: ' + Qgis.LabelPredefinedPointPosition.BottomRight.__doc__
+QgsPalLayerSettings.OverPoint = Qgis.LabelPredefinedPointPosition.OverPoint
+QgsPalLayerSettings.OverPoint.is_monkey_patched = True
+QgsPalLayerSettings.OverPoint.__doc__ = "Label directly centered over point (since QGIS 3.38)"
+Qgis.LabelPredefinedPointPosition.__doc__ = "Positions for labels when using the Qgis.LabelPlacement.OrderedPositionsAroundPoint placement mode.\n\n.. note::\n\n   Prior to QGIS 3.26 this was available as :py:class:`QgsPalLayerSettings`.PredefinedPointPosition\n\n.. versionadded:: 3.26\n\n" + '* ``TopLeft``: ' + Qgis.LabelPredefinedPointPosition.TopLeft.__doc__ + '\n' + '* ``TopSlightlyLeft``: ' + Qgis.LabelPredefinedPointPosition.TopSlightlyLeft.__doc__ + '\n' + '* ``TopMiddle``: ' + Qgis.LabelPredefinedPointPosition.TopMiddle.__doc__ + '\n' + '* ``TopSlightlyRight``: ' + Qgis.LabelPredefinedPointPosition.TopSlightlyRight.__doc__ + '\n' + '* ``TopRight``: ' + Qgis.LabelPredefinedPointPosition.TopRight.__doc__ + '\n' + '* ``MiddleLeft``: ' + Qgis.LabelPredefinedPointPosition.MiddleLeft.__doc__ + '\n' + '* ``MiddleRight``: ' + Qgis.LabelPredefinedPointPosition.MiddleRight.__doc__ + '\n' + '* ``BottomLeft``: ' + Qgis.LabelPredefinedPointPosition.BottomLeft.__doc__ + '\n' + '* ``BottomSlightlyLeft``: ' + Qgis.LabelPredefinedPointPosition.BottomSlightlyLeft.__doc__ + '\n' + '* ``BottomMiddle``: ' + Qgis.LabelPredefinedPointPosition.BottomMiddle.__doc__ + '\n' + '* ``BottomSlightlyRight``: ' + Qgis.LabelPredefinedPointPosition.BottomSlightlyRight.__doc__ + '\n' + '* ``BottomRight``: ' + Qgis.LabelPredefinedPointPosition.BottomRight.__doc__ + '\n' + '* ``OverPoint``: ' + Qgis.LabelPredefinedPointPosition.OverPoint.__doc__
 # --
 Qgis.LabelPredefinedPointPosition.baseClass = Qgis
 QgsPalLayerSettings.OffsetType = Qgis.LabelOffsetType
@@ -1197,6 +1206,35 @@ Qgis.SublayerFlag.__doc__ = "Flags which reflect the properties of sublayers in 
 Qgis.SublayerFlag.baseClass = Qgis
 Qgis.SublayerFlags.baseClass = Qgis
 SublayerFlags = Qgis  # dirty hack since SIP seems to introduce the flags in module
+QgsColorRampShader.Type = Qgis.ShaderInterpolationMethod
+# monkey patching scoped based enum
+QgsColorRampShader.Interpolated = Qgis.ShaderInterpolationMethod.Linear
+QgsColorRampShader.Type.Interpolated = Qgis.ShaderInterpolationMethod.Linear
+QgsColorRampShader.Interpolated.is_monkey_patched = True
+QgsColorRampShader.Interpolated.__doc__ = "Interpolates the color between two class breaks linearly"
+QgsColorRampShader.Discrete = Qgis.ShaderInterpolationMethod.Discrete
+QgsColorRampShader.Discrete.is_monkey_patched = True
+QgsColorRampShader.Discrete.__doc__ = "Assigns the color of the higher class for every pixel between two class breaks"
+QgsColorRampShader.Exact = Qgis.ShaderInterpolationMethod.Exact
+QgsColorRampShader.Exact.is_monkey_patched = True
+QgsColorRampShader.Exact.__doc__ = "Assigns the color of the exact matching value in the color ramp item list"
+Qgis.ShaderInterpolationMethod.__doc__ = "Color ramp shader interpolation methods.\n\n.. note::\n\n   Prior to QGIS 3.38 this was available as :py:class:`QgsColorRampShader`.Type\n\n.. versionadded:: 3.38\n\n" + '* ``Interpolated``: ' + Qgis.ShaderInterpolationMethod.Linear.__doc__ + '\n' + '* ``Discrete``: ' + Qgis.ShaderInterpolationMethod.Discrete.__doc__ + '\n' + '* ``Exact``: ' + Qgis.ShaderInterpolationMethod.Exact.__doc__
+# --
+Qgis.ShaderInterpolationMethod.baseClass = Qgis
+QgsColorRampShader.ClassificationMode = Qgis.ShaderClassificationMethod
+# monkey patching scoped based enum
+QgsColorRampShader.Continuous = Qgis.ShaderClassificationMethod.Continuous
+QgsColorRampShader.Continuous.is_monkey_patched = True
+QgsColorRampShader.Continuous.__doc__ = "Uses breaks from color palette"
+QgsColorRampShader.EqualInterval = Qgis.ShaderClassificationMethod.EqualInterval
+QgsColorRampShader.EqualInterval.is_monkey_patched = True
+QgsColorRampShader.EqualInterval.__doc__ = "Uses equal interval"
+QgsColorRampShader.Quantile = Qgis.ShaderClassificationMethod.Quantile
+QgsColorRampShader.Quantile.is_monkey_patched = True
+QgsColorRampShader.Quantile.__doc__ = "Uses quantile (i.e. equal pixel) count"
+Qgis.ShaderClassificationMethod.__doc__ = "Color ramp shader classification methods.\n\n.. note::\n\n   Prior to QGIS 3.38 this was available as :py:class:`QgsColorRampShader`.ClassificationMode\n\n.. versionadded:: 3.38\n\n" + '* ``Continuous``: ' + Qgis.ShaderClassificationMethod.Continuous.__doc__ + '\n' + '* ``EqualInterval``: ' + Qgis.ShaderClassificationMethod.EqualInterval.__doc__ + '\n' + '* ``Quantile``: ' + Qgis.ShaderClassificationMethod.Quantile.__doc__
+# --
+Qgis.ShaderClassificationMethod.baseClass = Qgis
 QgsRasterPipe.Role = Qgis.RasterPipeInterfaceRole
 # monkey patching scoped based enum
 QgsRasterPipe.UnknownRole = Qgis.RasterPipeInterfaceRole.Unknown
@@ -1355,6 +1393,31 @@ Qgis.SublayerPromptMode.NeverAskLoadAll.__doc__ = "Never ask users to select sub
 Qgis.SublayerPromptMode.__doc__ = "Specifies how to handle layer sources with multiple sublayers.\n\n.. versionadded:: 3.22\n\n" + '* ``AlwaysAsk``: ' + Qgis.SublayerPromptMode.AlwaysAsk.__doc__ + '\n' + '* ``AskExcludingRasterBands``: ' + Qgis.SublayerPromptMode.AskExcludingRasterBands.__doc__ + '\n' + '* ``NeverAskSkip``: ' + Qgis.SublayerPromptMode.NeverAskSkip.__doc__ + '\n' + '* ``NeverAskLoadAll``: ' + Qgis.SublayerPromptMode.NeverAskLoadAll.__doc__
 # --
 Qgis.SublayerPromptMode.baseClass = Qgis
+QgsFields.FieldOrigin = Qgis.FieldOrigin
+# monkey patching scoped based enum
+QgsFields.OriginUnknown = Qgis.FieldOrigin.Unknown
+QgsFields.FieldOrigin.OriginUnknown = Qgis.FieldOrigin.Unknown
+QgsFields.OriginUnknown.is_monkey_patched = True
+QgsFields.OriginUnknown.__doc__ = "The field origin has not been specified"
+QgsFields.OriginProvider = Qgis.FieldOrigin.Provider
+QgsFields.FieldOrigin.OriginProvider = Qgis.FieldOrigin.Provider
+QgsFields.OriginProvider.is_monkey_patched = True
+QgsFields.OriginProvider.__doc__ = "Field originates from the underlying data provider of the vector layer"
+QgsFields.OriginJoin = Qgis.FieldOrigin.Join
+QgsFields.FieldOrigin.OriginJoin = Qgis.FieldOrigin.Join
+QgsFields.OriginJoin.is_monkey_patched = True
+QgsFields.OriginJoin.__doc__ = "Field originates from a joined layer"
+QgsFields.OriginEdit = Qgis.FieldOrigin.Edit
+QgsFields.FieldOrigin.OriginEdit = Qgis.FieldOrigin.Edit
+QgsFields.OriginEdit.is_monkey_patched = True
+QgsFields.OriginEdit.__doc__ = "Field has been temporarily added in editing mode"
+QgsFields.OriginExpression = Qgis.FieldOrigin.Expression
+QgsFields.FieldOrigin.OriginExpression = Qgis.FieldOrigin.Expression
+QgsFields.OriginExpression.is_monkey_patched = True
+QgsFields.OriginExpression.__doc__ = "Field is calculated from an expression"
+Qgis.FieldOrigin.__doc__ = "Field origin.\n\n.. note::\n\n   Prior to QGIS 3.38 this was available as :py:class:`QgsFields`.FieldOrigin\n\n.. versionadded:: 3.38\n\n" + '* ``OriginUnknown``: ' + Qgis.FieldOrigin.Unknown.__doc__ + '\n' + '* ``OriginProvider``: ' + Qgis.FieldOrigin.Provider.__doc__ + '\n' + '* ``OriginJoin``: ' + Qgis.FieldOrigin.Join.__doc__ + '\n' + '* ``OriginEdit``: ' + Qgis.FieldOrigin.Edit.__doc__ + '\n' + '* ``OriginExpression``: ' + Qgis.FieldOrigin.Expression.__doc__
+# --
+Qgis.FieldOrigin.baseClass = Qgis
 # monkey patching scoped based enum
 Qgis.FieldConfigurationFlag.NoFlag.__doc__ = "No flag is defined"
 Qgis.FieldConfigurationFlag.NotSearchable.__doc__ = "Defines if the field is searchable (used in the locator search for instance)"
@@ -1518,6 +1581,14 @@ Qgis.GpsQualityIndicator.Simulation.__doc__ = "Simulation mode"
 Qgis.GpsQualityIndicator.__doc__ = "GPS signal quality indicator\n\n.. versionadded:: 3.22.6\n\n" + '* ``Unknown``: ' + Qgis.GpsQualityIndicator.Unknown.__doc__ + '\n' + '* ``Invalid``: ' + Qgis.GpsQualityIndicator.Invalid.__doc__ + '\n' + '* ``GPS``: ' + Qgis.GpsQualityIndicator.GPS.__doc__ + '\n' + '* ``DGPS``: ' + Qgis.GpsQualityIndicator.DGPS.__doc__ + '\n' + '* ``PPS``: ' + Qgis.GpsQualityIndicator.PPS.__doc__ + '\n' + '* ``RTK``: ' + Qgis.GpsQualityIndicator.RTK.__doc__ + '\n' + '* ``FloatRTK``: ' + Qgis.GpsQualityIndicator.FloatRTK.__doc__ + '\n' + '* ``Estimated``: ' + Qgis.GpsQualityIndicator.Estimated.__doc__ + '\n' + '* ``Manual``: ' + Qgis.GpsQualityIndicator.Manual.__doc__ + '\n' + '* ``Simulation``: ' + Qgis.GpsQualityIndicator.Simulation.__doc__
 # --
 Qgis.GpsQualityIndicator.baseClass = Qgis
+# monkey patching scoped based enum
+Qgis.GpsNavigationStatus.NotValid.__doc__ = "Navigation status not valid"
+Qgis.GpsNavigationStatus.Safe.__doc__ = "Safe"
+Qgis.GpsNavigationStatus.Caution.__doc__ = "Caution"
+Qgis.GpsNavigationStatus.Unsafe.__doc__ = "Unsafe"
+Qgis.GpsNavigationStatus.__doc__ = "GPS navigation status.\n\n.. versionadded:: 3.38\n\n" + '* ``NotValid``: ' + Qgis.GpsNavigationStatus.NotValid.__doc__ + '\n' + '* ``Safe``: ' + Qgis.GpsNavigationStatus.Safe.__doc__ + '\n' + '* ``Caution``: ' + Qgis.GpsNavigationStatus.Caution.__doc__ + '\n' + '* ``Unsafe``: ' + Qgis.GpsNavigationStatus.Unsafe.__doc__
+# --
+Qgis.GpsNavigationStatus.baseClass = Qgis
 # monkey patching scoped based enum
 Qgis.GpsInformationComponent.Location.__doc__ = "2D location (latitude/longitude), as a QgsPointXY value"
 Qgis.GpsInformationComponent.Altitude.__doc__ = "Altitude/elevation above or below the mean sea level"
@@ -3110,6 +3181,13 @@ Qgis.ProcessingModelChildParameterSource.ModelOutput.__doc__ = "Parameter value 
 Qgis.ProcessingModelChildParameterSource.__doc__ = "Processing model child parameter sources.\n\n.. versionadded:: 3.34\n\n" + '* ``ModelParameter``: ' + Qgis.ProcessingModelChildParameterSource.ModelParameter.__doc__ + '\n' + '* ``ChildOutput``: ' + Qgis.ProcessingModelChildParameterSource.ChildOutput.__doc__ + '\n' + '* ``StaticValue``: ' + Qgis.ProcessingModelChildParameterSource.StaticValue.__doc__ + '\n' + '* ``Expression``: ' + Qgis.ProcessingModelChildParameterSource.Expression.__doc__ + '\n' + '* ``ExpressionText``: ' + Qgis.ProcessingModelChildParameterSource.ExpressionText.__doc__ + '\n' + '* ``ModelOutput``: ' + Qgis.ProcessingModelChildParameterSource.ModelOutput.__doc__
 # --
 Qgis.ProcessingModelChildParameterSource.baseClass = Qgis
+# monkey patching scoped based enum
+Qgis.ProcessingModelChildAlgorithmExecutionStatus.NotExecuted.__doc__ = "Child has not been executed"
+Qgis.ProcessingModelChildAlgorithmExecutionStatus.Success.__doc__ = "Child was successfully executed"
+Qgis.ProcessingModelChildAlgorithmExecutionStatus.Failed.__doc__ = "Child encountered an error while executing"
+Qgis.ProcessingModelChildAlgorithmExecutionStatus.__doc__ = "Reflects the status of a child algorithm in a Processing model.\n\n.. versionadded:: 3.38\n\n" + '* ``NotExecuted``: ' + Qgis.ProcessingModelChildAlgorithmExecutionStatus.NotExecuted.__doc__ + '\n' + '* ``Success``: ' + Qgis.ProcessingModelChildAlgorithmExecutionStatus.Success.__doc__ + '\n' + '* ``Failed``: ' + Qgis.ProcessingModelChildAlgorithmExecutionStatus.Failed.__doc__
+# --
+Qgis.ProcessingModelChildAlgorithmExecutionStatus.baseClass = Qgis
 QgsProcessingParameterTinInputLayers.Type = Qgis.ProcessingTinInputLayerType
 # monkey patching scoped based enum
 QgsProcessingParameterTinInputLayers.Vertices = Qgis.ProcessingTinInputLayerType.Vertices
@@ -3152,6 +3230,13 @@ Qgis.FieldDomainMergePolicy.GeometryWeighted.__doc__ = "New values are computed 
 Qgis.FieldDomainMergePolicy.__doc__ = "Merge policy for field domains.\n\nWhen a feature is built by merging multiple features, defines how the value of\nattributes following the domain are computed.\n\n.. versionadded:: 3.26\n\n" + '* ``DefaultValue``: ' + Qgis.FieldDomainMergePolicy.DefaultValue.__doc__ + '\n' + '* ``Sum``: ' + Qgis.FieldDomainMergePolicy.Sum.__doc__ + '\n' + '* ``GeometryWeighted``: ' + Qgis.FieldDomainMergePolicy.GeometryWeighted.__doc__
 # --
 Qgis.FieldDomainMergePolicy.baseClass = Qgis
+# monkey patching scoped based enum
+Qgis.FieldDuplicatePolicy.DefaultValue.__doc__ = "Use default field value"
+Qgis.FieldDuplicatePolicy.Duplicate.__doc__ = "Duplicate original value"
+Qgis.FieldDuplicatePolicy.UnsetField.__doc__ = "Clears the field value so that the data provider backend will populate using any backend triggers or similar logic (since QGIS 3.30)"
+Qgis.FieldDuplicatePolicy.__doc__ = "Duplicate policy for fields.\n\nWhen a feature is duplicated, defines how the value of attributes are computed.\n\n.. versionadded:: 3.38\n\n" + '* ``DefaultValue``: ' + Qgis.FieldDuplicatePolicy.DefaultValue.__doc__ + '\n' + '* ``Duplicate``: ' + Qgis.FieldDuplicatePolicy.Duplicate.__doc__ + '\n' + '* ``UnsetField``: ' + Qgis.FieldDuplicatePolicy.UnsetField.__doc__
+# --
+Qgis.FieldDuplicatePolicy.baseClass = Qgis
 # monkey patching scoped based enum
 Qgis.FieldDomainType.Coded.__doc__ = "Coded field domain"
 Qgis.FieldDomainType.Range.__doc__ = "Numeric range field domain (min/max)"
@@ -3198,7 +3283,8 @@ Qgis.RasterElevationMode.baseClass = Qgis
 # monkey patching scoped based enum
 Qgis.MeshElevationMode.FixedElevationRange.__doc__ = "Layer has a fixed elevation range"
 Qgis.MeshElevationMode.FromVertices.__doc__ = "Elevation should be taken from mesh vertices"
-Qgis.MeshElevationMode.__doc__ = "Mesh layer elevation modes.\n\n.. versionadded:: 3.38\n\n" + '* ``FixedElevationRange``: ' + Qgis.MeshElevationMode.FixedElevationRange.__doc__ + '\n' + '* ``FromVertices``: ' + Qgis.MeshElevationMode.FromVertices.__doc__
+Qgis.MeshElevationMode.FixedRangePerGroup.__doc__ = "Layer has a fixed (manually specified) elevation range per group"
+Qgis.MeshElevationMode.__doc__ = "Mesh layer elevation modes.\n\n.. versionadded:: 3.38\n\n" + '* ``FixedElevationRange``: ' + Qgis.MeshElevationMode.FixedElevationRange.__doc__ + '\n' + '* ``FromVertices``: ' + Qgis.MeshElevationMode.FromVertices.__doc__ + '\n' + '* ``FixedRangePerGroup``: ' + Qgis.MeshElevationMode.FixedRangePerGroup.__doc__
 # --
 Qgis.MeshElevationMode.baseClass = Qgis
 # monkey patching scoped based enum

@@ -26,6 +26,7 @@
 #include "qgshistoryentry.h"
 #include "qgsproviderregistry.h"
 #include "qgsprovidermetadata.h"
+#include "qgscodeeditorwidget.h"
 
 #include <QClipboard>
 #include <QShortcut>
@@ -45,6 +46,13 @@ QgsQueryResultWidget::QgsQueryResultWidget( QWidget *parent, QgsAbstractDatabase
 
   mProgressBar->hide();
 
+  mSqlEditor = new QgsCodeEditorSQL();
+  mCodeEditorWidget = new QgsCodeEditorWidget( mSqlEditor, mMessageBar );
+  QVBoxLayout *vl = new QVBoxLayout();
+  vl->setContentsMargins( 0, 0, 0, 0 );
+  vl->addWidget( mCodeEditorWidget );
+  mSqlEditorContainer->setLayout( vl );
+
   connect( mExecuteButton, &QPushButton::pressed, this, &QgsQueryResultWidget::executeQuery );
   connect( mClearButton, &QPushButton::pressed, this, [ = ]
   {
@@ -59,6 +67,10 @@ QgsQueryResultWidget::QgsQueryResultWidget( QWidget *parent, QgsAbstractDatabase
   }
          );
   connect( mSqlEditor, &QgsCodeEditorSQL::textChanged, this, &QgsQueryResultWidget::updateButtons );
+  connect( mSqlEditor, &QgsCodeEditorSQL::selectionChanged, this, [ = ]
+  {
+    mExecuteButton->setText( mSqlEditor->selectedText().isEmpty() ? tr( "Execute" ) : tr( "Execute Selection" ) );
+  } );
   connect( mFilterToolButton, &QToolButton::pressed, this, [ = ]
   {
     if ( mConnection )
@@ -172,7 +184,7 @@ void QgsQueryResultWidget::executeQuery()
   cancelRunningQuery();
   if ( mConnection )
   {
-    const QString sql { mSqlEditor->text( ) };
+    const QString sql { mSqlEditor->selectedText().isEmpty() ? mSqlEditor->text() : mSqlEditor->selectedText() };
 
     bool ok = false;
     mCurrentHistoryEntryId = QgsGui::historyProviderRegistry()->addEntry( QStringLiteral( "dbquery" ),
@@ -228,7 +240,9 @@ void QgsQueryResultWidget::updateButtons()
 {
   mFilterLineEdit->setEnabled( mFirstRowFetched );
   mFilterToolButton->setEnabled( mFirstRowFetched );
-  mExecuteButton->setEnabled( ! mSqlEditor->text().isEmpty() );
+  const bool isEmpty = mSqlEditor->text().isEmpty();
+  mExecuteButton->setEnabled( !isEmpty );
+  mClearButton->setEnabled( !isEmpty );
   mLoadAsNewLayerGroupBox->setVisible( mConnection && mConnection->capabilities().testFlag( QgsAbstractDatabaseProviderConnection::Capability::SqlLayers ) );
   mLoadAsNewLayerGroupBox->setEnabled(
     mSqlErrorMessage.isEmpty() &&

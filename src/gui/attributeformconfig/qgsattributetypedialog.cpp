@@ -61,8 +61,8 @@ QgsAttributeTypeDialog::QgsAttributeTypeDialog( QgsVectorLayer *vl, int fieldIdx
 
   connect( mWidgetTypeComboBox, static_cast< void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsAttributeTypeDialog::onCurrentWidgetChanged );
 
-  if ( vl->fields().fieldOrigin( fieldIdx ) == QgsFields::OriginJoin ||
-       vl->fields().fieldOrigin( fieldIdx ) == QgsFields::OriginExpression )
+  if ( vl->fields().fieldOrigin( fieldIdx ) == Qgis::FieldOrigin::Join ||
+       vl->fields().fieldOrigin( fieldIdx ) == Qgis::FieldOrigin::Expression )
   {
     isFieldEditableCheckBox->setEnabled( false );
   }
@@ -124,6 +124,12 @@ QgsAttributeTypeDialog::QgsAttributeTypeDialog( QgsVectorLayer *vl, int fieldIdx
 
   connect( mSplitPolicyComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsAttributeTypeDialog::updateSplitPolicyLabel );
   updateSplitPolicyLabel();
+
+  mDuplicatePolicyComboBox->addItem( tr( "Duplicate Value" ), QVariant::fromValue( Qgis::FieldDuplicatePolicy::Duplicate ) );
+  mDuplicatePolicyComboBox->addItem( tr( "Use Default Value" ), QVariant::fromValue( Qgis::FieldDuplicatePolicy::DefaultValue ) );
+  mDuplicatePolicyComboBox->addItem( tr( "Remove Value" ), QVariant::fromValue( Qgis::FieldDuplicatePolicy::UnsetField ) );
+  connect( mDuplicatePolicyComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsAttributeTypeDialog::updateDuplicatePolicyLabel );
+  updateDuplicatePolicyLabel();
 }
 
 QgsAttributeTypeDialog::~QgsAttributeTypeDialog()
@@ -346,6 +352,7 @@ QgsExpressionContext QgsAttributeTypeDialog::createExpressionContext() const
       << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
       << QgsExpressionContextUtils::layerScope( mLayer )
       << QgsExpressionContextUtils::formScope( )
+      << QgsExpressionContextUtils::parentFormScope( QgsFeature() )
       << QgsExpressionContextUtils::mapToolCaptureScope( QList<QgsPointLocator::Match>() );
 
   return context;
@@ -378,6 +385,17 @@ Qgis::FieldDomainSplitPolicy QgsAttributeTypeDialog::splitPolicy() const
 void QgsAttributeTypeDialog::setSplitPolicy( Qgis::FieldDomainSplitPolicy policy )
 {
   mSplitPolicyComboBox->setCurrentIndex( mSplitPolicyComboBox->findData( QVariant::fromValue( policy ) ) );
+  updateSplitPolicyLabel();
+}
+
+Qgis::FieldDuplicatePolicy QgsAttributeTypeDialog::duplicatePolicy() const
+{
+  return mDuplicatePolicyComboBox->currentData().value< Qgis::FieldDuplicatePolicy >();
+}
+
+void QgsAttributeTypeDialog::setDuplicatePolicy( Qgis::FieldDuplicatePolicy policy )
+{
+  mDuplicatePolicyComboBox->setCurrentIndex( mDuplicatePolicyComboBox->findData( QVariant::fromValue( policy ) ) );
   updateSplitPolicyLabel();
 }
 
@@ -496,6 +514,26 @@ void QgsAttributeTypeDialog::updateSplitPolicyLabel()
       break;
   }
   mSplitPolicyDescriptionLabel->setText( QStringLiteral( "<i>%1</i>" ).arg( helperText ) );
+}
+
+void QgsAttributeTypeDialog::updateDuplicatePolicyLabel()
+{
+  QString helperText;
+  switch ( mDuplicatePolicyComboBox->currentData().value< Qgis::FieldDuplicatePolicy >() )
+  {
+    case Qgis::FieldDuplicatePolicy::DefaultValue:
+      helperText = tr( "Resets the field by recalculating its default value." );
+      break;
+
+    case Qgis::FieldDuplicatePolicy::Duplicate:
+      helperText = tr( "Copies the current field value without change." );
+      break;
+
+    case Qgis::FieldDuplicatePolicy::UnsetField:
+      helperText = tr( "Clears the field to an unset state." );
+      break;
+  }
+  mDuplicatePolicyDescriptionLabel->setText( QStringLiteral( "<i>%1</i>" ).arg( helperText ) );
 }
 
 QStandardItem *QgsAttributeTypeDialog::currentItem() const

@@ -337,16 +337,6 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
 
   Qgis::WkbType wkbType = layer->wkbType();
 
-  // Special handling for Shapefiles
-  if ( layer->providerType() == QLatin1String( "ogr" ) && layer->storageType() == QLatin1String( "ESRI Shapefile" ) )
-  {
-    // convert field names to lowercase
-    for ( int fldIdx = 0; fldIdx < fields.count(); ++fldIdx )
-    {
-      fields.rename( fldIdx, fields.at( fldIdx ).name().toLower() );
-    }
-  }
-
   bool convertGeometryToSinglePart = false;
   if ( forceSinglePartGeom && QgsWkbTypes::isMultiType( wkbType ) )
   {
@@ -439,7 +429,7 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
       {
         delete writer;
 
-        const QString msg = QObject::tr( "Failed to transform a point while drawing a feature with ID '%1'. Writing stopped. (Exception: %2)" )
+        const QString msg = QObject::tr( "Failed to transform feature with ID '%1'. Writing stopped. (Exception: %2)" )
                             .arg( fet.id() ).arg( e.what() );
         QgsMessageLog::logMessage( msg, QObject::tr( "Vector import" ) );
         if ( errorMessage )

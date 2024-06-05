@@ -31,6 +31,7 @@
 #include "qgsgui.h"
 #include "qgsmapcanvas.h"
 #include "qgsvectorlayertools.h"
+#include "qgsvectorlayertoolscontext.h"
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgsmaptooldigitizefeature.h"
 
@@ -488,7 +489,7 @@ void TestQgsRelationReferenceWidget::testChainFilterDeleteForeignKey()
   QCOMPARE( cbs[2]->currentText(), QString( "sleeve" ) );
 
   // set a null foreign key
-  w.setForeignKeys( QVariantList() << QVariant( QVariant::Int ) );
+  w.setForeignKeys( QVariantList() << QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) );
   QCOMPARE( cbs[0]->currentText(), QString( "material" ) );
   QCOMPARE( cbs[0]->isEnabled(), true );
   QCOMPARE( cbs[1]->currentText(), QString( "diameter" ) );
@@ -517,30 +518,57 @@ void TestQgsRelationReferenceWidget::testSetGetForeignKey()
 {
   QWidget parentWidget;
   QgsRelationReferenceWidget w( &parentWidget );
+
   w.setRelation( *mRelation, true );
   w.init();
 
   QSignalSpy spy( &w, &QgsRelationReferenceWidget::foreignKeysChanged );
-
-  w.setForeignKeys( QVariantList() << 0 );
-  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 0 ) );
-  QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "(0)" ) );
-  QCOMPARE( spy.count(), 1 );
-
-  w.setForeignKeys( QVariantList() << 11 );
-  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 11 ) );
-  QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "(11)" ) );
-  QCOMPARE( spy.count(), 2 );
-
-  w.setForeignKeys( QVariantList() << 12 );
-  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 12 ) );
-  QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "(12)" ) );
-  QCOMPARE( spy.count(), 3 );
+  QEventLoop loop;
 
   w.setForeignKeys( QVariantList() << QVariant() );
+
+  QTimer::singleShot( 1000, &loop, &QEventLoop::quit );
+  loop.exec();
+
   QVERIFY( w.foreignKeys().at( 0 ).isNull() );
   QVERIFY( w.foreignKeys().at( 0 ).isValid() );
+  QCOMPARE( spy.count(), 1 );
+
+  w.setForeignKeys( QVariantList() << 12 );
+
+  QTimer::singleShot( 1000, &loop, &QEventLoop::quit );
+  loop.exec();
+
+  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 12 ) );
+  QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "12" ) );
+  QCOMPARE( spy.count(), 2 );
+
+  w.setForeignKeys( QVariantList() << 11 );
+
+  QTimer::singleShot( 1000, &loop, &QEventLoop::quit );
+  loop.exec();
+
+  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 11 ) );
+  QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "11" ) );
+  QCOMPARE( spy.count(), 3 );
+
+  w.setForeignKeys( QVariantList() << 0 );
+
+  QTimer::singleShot( 1000, &loop, &QEventLoop::quit );
+  loop.exec();
+
+  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 0 ) );
+  QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "(0)" ) );
   QCOMPARE( spy.count(), 4 );
+
+  w.setForeignKeys( QVariantList() << QVariant() );
+
+  QTimer::singleShot( 1000, &loop, &QEventLoop::quit );
+  loop.exec();
+
+  QVERIFY( w.foreignKeys().at( 0 ).isNull() );
+  QVERIFY( w.foreignKeys().at( 0 ).isValid() );
+  QCOMPARE( spy.count(), 5 );
 }
 
 // Test issue https://github.com/qgis/QGIS/issues/29884
@@ -582,11 +610,9 @@ void TestQgsRelationReferenceWidget::testIdentifyOnMap()
 // referenced layer
 class DummyVectorLayerTools : public QgsVectorLayerTools // clazy:exclude=missing-qobject-macro
 {
-    bool addFeature( QgsVectorLayer *layer, const QgsAttributeMap &, const QgsGeometry &, QgsFeature *feat = nullptr, QWidget *parentWidget = nullptr, bool showModal = true, bool hideParent = false ) const override
+    bool addFeatureV2( QgsVectorLayer *layer, const QgsAttributeMap &, const QgsGeometry &, QgsFeature *feat, const QgsVectorLayerToolsContext &context ) const override
     {
-      Q_UNUSED( parentWidget );
-      Q_UNUSED( showModal );
-      Q_UNUSED( hideParent );
+      Q_UNUSED( context );
       feat->setAttribute( QStringLiteral( "pk" ), 13 );
       feat->setAttribute( QStringLiteral( "material" ), QStringLiteral( "steel" ) );
       feat->setAttribute( QStringLiteral( "diameter" ), 140 );

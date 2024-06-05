@@ -127,6 +127,7 @@ QgsVectorTileLayer *QgsVectorTileLayer::clone() const
   const QgsVectorTileLayer::LayerOptions options( mTransformContext );
   QgsVectorTileLayer *layer = new QgsVectorTileLayer( source(), name(), options );
   layer->setRenderer( renderer() ? renderer()->clone() : nullptr );
+  layer->setLabeling( labeling() ? labeling()->clone() : nullptr );
   return layer;
 }
 
@@ -709,8 +710,8 @@ void QgsVectorTileLayer::selectByGeometry( const QgsGeometry &geometry, const Qg
   auto addDerivedFields = []( QgsFeature & feature, const int tileZoom, const QString & layer )
   {
     QgsFields fields = feature.fields();
-    fields.append( QgsField( QStringLiteral( "tile_zoom" ), QVariant::Int ) );
-    fields.append( QgsField( QStringLiteral( "tile_layer" ), QVariant::String ) );
+    fields.append( QgsField( QStringLiteral( "tile_zoom" ), QMetaType::Type::Int ) );
+    fields.append( QgsField( QStringLiteral( "tile_layer" ), QMetaType::Type::QString ) );
     QgsAttributes attributes = feature.attributes();
     attributes << tileZoom << layer;
     feature.setFields( fields );

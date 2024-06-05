@@ -65,12 +65,44 @@ class DummyAlgorithm : public QgsProcessingAlgorithm
 {
   public:
 
-    DummyAlgorithm( const QString &name ) : mName( name ) { mFlags = Qgis::ProcessingAlgorithmFlags(); }
+    DummyAlgorithm( const QString &name )
+      : mName( name )
+    {
+      mFlags = Qgis::ProcessingAlgorithmFlags();
+    }
 
     void initAlgorithm( const QVariantMap & = QVariantMap() ) override {}
     QString name() const override { return mName; }
     QString displayName() const override { return mName; }
-    QVariantMap processAlgorithm( const QVariantMap &, QgsProcessingContext &, QgsProcessingFeedback * ) override { return QVariantMap(); }
+
+    // we use static members here as the algorithm instance will be internally privately cloned before executing
+    static bool mRaiseProcessException;
+    static bool mPrepared;
+
+    bool prepareAlgorithm( const QVariantMap &, QgsProcessingContext &, QgsProcessingFeedback * ) final
+    {
+      mPrepared = true;
+      return true;
+    }
+    static bool mProcessed;
+    QVariantMap processAlgorithm( const QVariantMap &, QgsProcessingContext &context, QgsProcessingFeedback * ) final
+    {
+      mProcessed = true;
+
+      QgsVectorLayer *layer3111 = new QgsVectorLayer( "Point?crs=epsg:3111", "v1", "memory" );
+      context.temporaryLayerStore()->addMapLayer( layer3111 );
+
+      if ( mRaiseProcessException )
+        throw QgsProcessingException( QString() );
+
+      return QVariantMap();
+    }
+    static bool mPostProcessed;
+    QVariantMap postProcessAlgorithm( QgsProcessingContext &, QgsProcessingFeedback * ) final
+    {
+      mPostProcessed = true;
+      return QVariantMap();
+    }
 
     Qgis::ProcessingAlgorithmFlags flags() const override { return mFlags; }
     DummyAlgorithm *createInstance() const override { return new DummyAlgorithm( name() ); }
@@ -515,6 +547,10 @@ class DummyProvider : public QgsProcessingProvider // clazy:exclude=missing-qobj
 
     friend class TestQgsProcessing;
 };
+bool DummyAlgorithm::mPrepared = false;
+bool DummyAlgorithm::mRaiseProcessException = false;
+bool DummyAlgorithm::mProcessed = false;
+bool DummyAlgorithm::mPostProcessed = false;
 
 class DummyProviderNoLoad : public DummyProvider // clazy:exclude=missing-qobject-macro
 {
@@ -789,6 +825,7 @@ class TestQgsProcessing: public QgsTest
     void parameterAnnotationLayer();
     void parameterVectorTileOut();
     void checkParamValues();
+    void runAlgorithm();
     void combineLayerExtent();
     void processingFeatureSource();
     void processingFeatureSink();
@@ -800,6 +837,7 @@ class TestQgsProcessing: public QgsTest
     void asJsonMap();
     void tempUtils();
     void convertCompatible();
+    void convertCompatibleDuplicateFids();
     void create();
     void combineFields();
     void fieldNamesToIndices();
@@ -1272,12 +1310,28 @@ void TestQgsProcessing::context()
   context.temporaryLayerStore()->addMapLayer( vector );
   QCOMPARE( context.temporaryLayerStore()->mapLayer( vector->id() ), vector );
 
+  QgsProcessingModelChildAlgorithmResult res1;
+  res1.setInputs( {{ QStringLiteral( "INPUT1" ), 1 }} );
+  res1.setOutputs( {{ QStringLiteral( "RESULT1" ), 1 }} );
+
+  QgsProcessingModelChildAlgorithmResult res2;
+  res2.setInputs( {{ QStringLiteral( "INPUT2" ), 2 }} );
+  res2.setOutputs( {{ QStringLiteral( "RESULT2" ), 2 }} );
+
+  context.modelResult().childResults().insert( QStringLiteral( "CHILD1" ), res1 );
+  context.modelResult().childResults().insert( QStringLiteral( "CHILD2" ), res2 );
+
   QgsProcessingContext context2;
   context2.copyThreadSafeSettings( context );
   QCOMPARE( context2.defaultEncoding(), context.defaultEncoding() );
   QCOMPARE( context2.invalidGeometryCheck(), context.invalidGeometryCheck() );
   QCOMPARE( context2.flags(), context.flags() );
   QCOMPARE( context2.project(), context.project() );
+  QCOMPARE( context2.modelResult().childResults().count(), 2 );
+  QCOMPARE( context2.modelResult().childResults().value( QStringLiteral( "CHILD1" ) ).inputs().value( QStringLiteral( "INPUT1" ) ).toInt(), 1 );
+  QCOMPARE( context2.modelResult().childResults().value( QStringLiteral( "CHILD2" ) ).inputs().value( QStringLiteral( "INPUT2" ) ).toInt(), 2 );
+  QCOMPARE( context2.modelResult().childResults().value( QStringLiteral( "CHILD1" ) ).outputs().value( QStringLiteral( "RESULT1" ) ).toInt(), 1 );
+  QCOMPARE( context2.modelResult().childResults().value( QStringLiteral( "CHILD2" ) ).outputs().value( QStringLiteral( "RESULT2" ) ).toInt(), 2 );
   QCOMPARE( static_cast< int >( context2.logLevel() ), static_cast< int >( Qgis::ProcessingLogLevel::Verbose ) );
   // layers from temporaryLayerStore must not be copied by copyThreadSafeSettings
   QVERIFY( context2.temporaryLayerStore()->mapLayers().isEmpty() );
@@ -1354,6 +1408,14 @@ void TestQgsProcessing::context()
   QCOMPARE( context2.layersToLoadOnCompletion().count(), 2 );
   QCOMPARE( context2.layersToLoadOnCompletion().keys().at( 0 ), v1->id() );
   QCOMPARE( context2.layersToLoadOnCompletion().keys().at( 1 ), v2->id() );
+
+  QgsProcessingContext context3;
+  context3.takeResultsFrom( context );
+  QCOMPARE( context3.modelResult().childResults().count(), 2 );
+  QCOMPARE( context3.modelResult().childResults().value( QStringLiteral( "CHILD1" ) ).inputs().value( QStringLiteral( "INPUT1" ) ).toInt(), 1 );
+  QCOMPARE( context3.modelResult().childResults().value( QStringLiteral( "CHILD2" ) ).inputs().value( QStringLiteral( "INPUT2" ) ).toInt(), 2 );
+  QCOMPARE( context3.modelResult().childResults().value( QStringLiteral( "CHILD1" ) ).outputs().value( QStringLiteral( "RESULT1" ) ).toInt(), 1 );
+  QCOMPARE( context3.modelResult().childResults().value( QStringLiteral( "CHILD2" ) ).outputs().value( QStringLiteral( "RESULT2" ) ).toInt(), 2 );
 
   // make sure postprocessor is correctly deleted
   ppDeleted = false;
@@ -2309,7 +2371,7 @@ void TestQgsProcessing::createFeatureSink()
   // memory layer parameters
   destination = QStringLiteral( "memory:mylayer" );
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "my_field" ), QVariant::String, QString(), 100 ) );
+  fields.append( QgsField( QStringLiteral( "my_field" ), QMetaType::Type::QString, QString(), 100 ) );
   sink.reset( QgsProcessingUtils::createFeatureSink( destination, context, fields, Qgis::WkbType::PointZM, QgsCoordinateReferenceSystem::fromEpsgId( 3111 ), QVariantMap(), QStringList(), QStringList(), QgsFeatureSink::RegeneratePrimaryKey ) );
   QVERIFY( sink.get() );
   layer = qobject_cast< QgsVectorLayer *>( QgsProcessingUtils::mapLayerFromString( destination, context, false ) );
@@ -2322,7 +2384,7 @@ void TestQgsProcessing::createFeatureSink()
   QCOMPARE( layer->crs().authid(), QStringLiteral( "EPSG:3111" ) );
   QCOMPARE( layer->fields().size(), 1 );
   QCOMPARE( layer->fields().at( 0 ).name(), QStringLiteral( "my_field" ) );
-  QCOMPARE( layer->fields().at( 0 ).type(), QVariant::String );
+  QCOMPARE( layer->fields().at( 0 ).type(), QMetaType::Type::QString );
   QCOMPARE( destination, layer->id() );
   QCOMPARE( context.temporaryLayerStore()->mapLayer( layer->id() ), layer ); // layer should be in store
   QCOMPARE( layer->featureCount(), 0L );
@@ -2346,7 +2408,7 @@ void TestQgsProcessing::createFeatureSink()
   QCOMPARE( layer->crs().authid(), QStringLiteral( "EPSG:3111" ) );
   QCOMPARE( layer->fields().size(), 1 );
   QCOMPARE( layer->fields().at( 0 ).name(), QStringLiteral( "my_field" ) );
-  QCOMPARE( layer->fields().at( 0 ).type(), QVariant::String );
+  QCOMPARE( layer->fields().at( 0 ).type(), QMetaType::Type::QString );
   QCOMPARE( layer->featureCount(), 1L );
 
   // no extension, should default to shp
@@ -2366,7 +2428,7 @@ void TestQgsProcessing::createFeatureSink()
   QCOMPARE( layer->fields().size(), 2 );
   QCOMPARE( layer->fields().at( 0 ).name(), QStringLiteral( "fid" ) );
   QCOMPARE( layer->fields().at( 1 ).name(), QStringLiteral( "my_field" ) );
-  QCOMPARE( layer->fields().at( 1 ).type(), QVariant::String );
+  QCOMPARE( layer->fields().at( 1 ).type(), QMetaType::Type::QString );
   QCOMPARE( layer->featureCount(), 1L );
   // append to existing OGR layer
   QgsRemappingSinkDefinition remapDef;
@@ -2376,7 +2438,7 @@ void TestQgsProcessing::createFeatureSink()
   remapDef.setDestinationWkbType( Qgis::WkbType::Polygon );
   remapDef.addMappedField( QStringLiteral( "my_field" ), QgsProperty::fromExpression( QStringLiteral( "field2 || @extra" ) ) );
   QgsFields fields2;
-  fields2.append( QgsField( "field2", QVariant::String ) );
+  fields2.append( QgsField( "field2", QMetaType::Type::QString ) );
   context.expressionContext().appendScope( new QgsExpressionContextScope() );
   context.expressionContext().scope( 0 )->setVariable( QStringLiteral( "extra" ), 2 );
   sink.reset( QgsProcessingUtils::createFeatureSink( destination, context, fields2, Qgis::WkbType::Point, QgsCoordinateReferenceSystem::fromEpsgId( 4326 ), QVariantMap(), QStringList(), QStringList(), QgsFeatureSink::SinkFlags(), &remapDef ) );
@@ -2476,7 +2538,7 @@ void TestQgsProcessing::createFeatureSinkPostgres()
   QgsProcessingContext context;
 
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "my_field" ), QVariant::String, QString(), 100 ) );
+  fields.append( QgsField( QStringLiteral( "my_field" ), QMetaType::Type::QString, QString(), 100 ) );
 
   // save to database
   QString destination = "postgres://dbname='qgis_test' service='qgis_test' table=\"public\".\"test_feature_sink\" (geom)";
@@ -2630,7 +2692,7 @@ void TestQgsProcessing::parameters()
 
   // correctly setup feature
   QgsFields fields;
-  fields.append( QgsField( "a_field", QVariant::String, QString(), 30 ) );
+  fields.append( QgsField( "a_field", QMetaType::Type::QString, QString(), 30 ) );
   QgsFeature f( fields );
   f.setAttribute( 0, QStringLiteral( "field value" ) );
   context.expressionContext().setFeature( f );
@@ -3146,7 +3208,6 @@ void TestQgsProcessing::parameterCrs()
   QVERIFY( !def->checkValueIsAcceptable( false ) );
   QVERIFY( !def->checkValueIsAcceptable( true ) );
   QVERIFY( !def->checkValueIsAcceptable( 5 ) );
-  QVERIFY( def->checkValueIsAcceptable( "EPSG:12003" ) );
   QVERIFY( def->checkValueIsAcceptable( "EPSG:3111" ) );
   QVERIFY( def->checkValueIsAcceptable( QVariant::fromValue( r1 ) ) );
   QVERIFY( def->checkValueIsAcceptable( QgsCoordinateReferenceSystem() ) );
@@ -3207,7 +3268,7 @@ void TestQgsProcessing::parameterCrs()
   QCOMPARE( def->valueAsPythonString( QVariant(), context ), QStringLiteral( "None" ) );
   QCOMPARE( def->valueAsPythonString( QgsCoordinateReferenceSystem( "EPSG:3111" ), context ), QStringLiteral( "QgsCoordinateReferenceSystem('EPSG:3111')" ) );
   QCOMPARE( def->valueAsPythonString( QgsCoordinateReferenceSystem(), context ), QStringLiteral( "QgsCoordinateReferenceSystem()" ) );
-  QCOMPARE( def->valueAsPythonString( "EPSG:12003", context ), QStringLiteral( "'EPSG:12003'" ) );
+  QCOMPARE( def->valueAsPythonString( "EPSG:3857", context ), QStringLiteral( "'EPSG:3857'" ) );
   QCOMPARE( def->valueAsPythonString( "ProjectCrs", context ), QStringLiteral( "'ProjectCrs'" ) );
   QCOMPARE( def->valueAsPythonString( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QStringLiteral( "'c:\\\\test\\\\new data\\\\test.dat'" ) );
   QCOMPARE( def->valueAsPythonString( raster1, context ), QString( QString( "'" ) + testDataDir + QStringLiteral( "landsat_4326.tif'" ) ) );
@@ -3218,7 +3279,7 @@ void TestQgsProcessing::parameterCrs()
   QCOMPARE( def->valueAsJsonObject( QVariant(), context ), QVariant() );
   QCOMPARE( def->valueAsJsonObject( QgsCoordinateReferenceSystem( "EPSG:3111" ), context ), QVariant( QStringLiteral( "EPSG:3111" ) ) );
   QCOMPARE( def->valueAsJsonObject( QgsCoordinateReferenceSystem(), context ), QVariant( QString() ) );
-  QCOMPARE( def->valueAsJsonObject( "EPSG:12003", context ), QVariant( QStringLiteral( "EPSG:12003" ) ) );
+  QCOMPARE( def->valueAsJsonObject( "EPSG:3857", context ), QVariant( QStringLiteral( "EPSG:3857" ) ) );
   QCOMPARE( def->valueAsJsonObject( "ProjectCrs", context ), QVariant( QStringLiteral( "ProjectCrs" ) ) );
   QCOMPARE( def->valueAsJsonObject( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QVariant( QStringLiteral( "c:\\test\\new data\\test.dat" ) ) );
   QCOMPARE( def->valueAsJsonObject( raster1, context ), QVariant( QString( testDataDir + QStringLiteral( "landsat_4326.tif" ) ) ) );
@@ -3232,7 +3293,7 @@ void TestQgsProcessing::parameterCrs()
   QVERIFY( ok );
   QCOMPARE( def->valueAsString( QgsCoordinateReferenceSystem(), context, ok ), QString() );
   QVERIFY( ok );
-  QCOMPARE( def->valueAsString( "EPSG:12003", context, ok ), QStringLiteral( "EPSG:12003" ) );
+  QCOMPARE( def->valueAsString( "EPSG:3857", context, ok ), QStringLiteral( "EPSG:3857" ) );
   QVERIFY( ok );
   QCOMPARE( def->valueAsString( "ProjectCrs", context, ok ), QStringLiteral( "ProjectCrs" ) );
   QVERIFY( ok );
@@ -11041,6 +11102,9 @@ void TestQgsProcessing::parameterDxfLayers()
   QVERIFY( !def->checkValueIsAcceptable( layerList ) );
   layerMap["layer"] = "layerName";
   layerMap["attributeIndex"] = -1;
+  layerMap["overriddenLayerName"] = QString();
+  layerMap["buildDataDefinedBlocks"] = DEFAULT_DXF_DATA_DEFINED_BLOCKS;
+  layerMap["dataDefinedBlocksMaximumNumberOfClasses"] = -1;
   layerList[0] = layerMap;
   QVERIFY( def->checkValueIsAcceptable( layerList ) );
   QVERIFY( !def->checkValueIsAcceptable( layerList, &context ) ); //no corresponding layer in the context's project
@@ -11050,6 +11114,18 @@ void TestQgsProcessing::parameterDxfLayers()
   QVERIFY( !def->checkValueIsAcceptable( layerList, &context ) );
 
   layerMap["attributeIndex"] = -1;
+  layerList[0] = layerMap;
+  QVERIFY( def->checkValueIsAcceptable( layerList, &context ) );
+
+  layerMap["overriddenLayerName"] = QStringLiteral( "My Point Layer" );
+  layerList[0] = layerMap;
+  QVERIFY( def->checkValueIsAcceptable( layerList, &context ) );
+
+  layerMap["buildDataDefinedBlocks"] = false;
+  layerList[0] = layerMap;
+  QVERIFY( def->checkValueIsAcceptable( layerList, &context ) );
+
+  layerMap["dataDefinedBlocksMaximumNumberOfClasses"] = 8;
   layerList[0] = layerMap;
   QVERIFY( def->checkValueIsAcceptable( layerList, &context ) );
 
@@ -11074,15 +11150,18 @@ void TestQgsProcessing::parameterDxfLayers()
   QVariantMap wrongLayerMap;
   wrongLayerMap["layer"] = "NonSpatialLayer";
   wrongLayerMap["attributeIndex"] = -1;
+  wrongLayerMap["overriddenLayerName"] = QString();
+  wrongLayerMap["buildDataDefinedBlocks"] = DEFAULT_DXF_DATA_DEFINED_BLOCKS;
+  wrongLayerMap["dataDefinedBlocksMaximumNumberOfClasses"] = -1;
   QVariantList wrongLayerMapList;
   wrongLayerMapList.append( wrongLayerMap );
   QVERIFY( !def->checkValueIsAcceptable( wrongLayerMapList, &context ) );
 
   // Check values
   const QString valueAsPythonString = def->valueAsPythonString( layerList, context );
-  QCOMPARE( valueAsPythonString, QStringLiteral( "[{'layer': '%1','attributeIndex': -1}]" ).arg( vectorLayer->source() ) );
+  QCOMPARE( valueAsPythonString, QStringLiteral( "[{'layer': '%1','attributeIndex': -1,'overriddenLayerName': 'My Point Layer','buildDataDefinedBlocks': False,'dataDefinedBlocksMaximumNumberOfClasses': 8}]" ).arg( vectorLayer->source() ) );
   QCOMPARE( QString::fromStdString( QgsJsonUtils::jsonFromVariant( def->valueAsJsonObject( layerList, context ) ).dump() ),
-            QStringLiteral( "[{\"attributeIndex\":-1,\"layer\":\"memory://%1\"}]" ).arg( vectorLayer->source() ) );
+            QStringLiteral( "[{\"attributeIndex\":-1,\"buildDataDefinedBlocks\":false,\"dataDefinedBlocksMaximumNumberOfClasses\":8,\"layer\":\"memory://%1\",\"overriddenLayerName\":\"My Point Layer\"}]" ).arg( vectorLayer->source() ) );
   bool ok = false;
   QCOMPARE( def->valueAsString( layerList, context, ok ), QString() );
   QVERIFY( !ok );
@@ -11093,16 +11172,31 @@ void TestQgsProcessing::parameterDxfLayers()
   const QString pythonCode = def->asPythonString();
   QCOMPARE( pythonCode, QStringLiteral( "QgsProcessingParameterDxfLayers('dxf input layer', '')" ) );
 
+  // Default values for parameters other than the vector layer
+  layerMap["overriddenLayerName"] = QString();
+  layerMap["buildDataDefinedBlocks"] = DEFAULT_DXF_DATA_DEFINED_BLOCKS;
+  layerMap["dataDefinedBlocksMaximumNumberOfClasses"] = -1;
+  layerList[0] = layerMap;
+
   const QgsDxfExport::DxfLayer dxfLayer( vectorLayer );
   QList<QgsDxfExport::DxfLayer> dxfList = def->parameterAsLayers( QVariant( vectorLayer->source() ), context );
   QCOMPARE( dxfList.at( 0 ).layer()->source(), dxfLayer.layer()->source() );
   QCOMPARE( dxfList.at( 0 ).layerOutputAttributeIndex(), dxfLayer.layerOutputAttributeIndex() );
+  QCOMPARE( dxfList.at( 0 ).overriddenName(), dxfLayer.overriddenName() );
+  QCOMPARE( dxfList.at( 0 ).buildDataDefinedBlocks(), dxfLayer.buildDataDefinedBlocks() );
+  QCOMPARE( dxfList.at( 0 ).dataDefinedBlocksMaximumNumberOfClasses(), dxfLayer.dataDefinedBlocksMaximumNumberOfClasses() );
   dxfList = def->parameterAsLayers( QVariant( QStringList() << vectorLayer->source() ), context );
   QCOMPARE( dxfList.at( 0 ).layer()->source(), dxfLayer.layer()->source() );
   QCOMPARE( dxfList.at( 0 ).layerOutputAttributeIndex(), dxfLayer.layerOutputAttributeIndex() );
+  QCOMPARE( dxfList.at( 0 ).overriddenName(), dxfLayer.overriddenName() );
+  QCOMPARE( dxfList.at( 0 ).buildDataDefinedBlocks(), dxfLayer.buildDataDefinedBlocks() );
+  QCOMPARE( dxfList.at( 0 ).dataDefinedBlocksMaximumNumberOfClasses(), dxfLayer.dataDefinedBlocksMaximumNumberOfClasses() );
   dxfList = def->parameterAsLayers( layerList, context );
   QCOMPARE( dxfList.at( 0 ).layer()->source(), dxfLayer.layer()->source() );
   QCOMPARE( dxfList.at( 0 ).layerOutputAttributeIndex(), dxfLayer.layerOutputAttributeIndex() );
+  QCOMPARE( dxfList.at( 0 ).overriddenName(), dxfLayer.overriddenName() );
+  QCOMPARE( dxfList.at( 0 ).buildDataDefinedBlocks(), dxfLayer.buildDataDefinedBlocks() );
+  QCOMPARE( dxfList.at( 0 ).dataDefinedBlocksMaximumNumberOfClasses(), dxfLayer.dataDefinedBlocksMaximumNumberOfClasses() );
 }
 
 void TestQgsProcessing::parameterAnnotationLayer()
@@ -11755,6 +11849,69 @@ void TestQgsProcessing::checkParamValues()
 {
   DummyAlgorithm a( "asd" );
   a.checkParameterVals();
+}
+
+void TestQgsProcessing::runAlgorithm()
+{
+  std::unique_ptr< DummyAlgorithm > a = std::make_unique< DummyAlgorithm >( "asd" );
+  a->mRaiseProcessException = false;
+  a->mPrepared = false;
+  a->mProcessed = false;
+  a->mPostProcessed = false;
+  QgsProcessingContext context;
+  QgsProcessingFeedback feedback;
+  bool ok = false;
+  QVariantMap res = a->run( QVariantMap(), context, &feedback, &ok );
+  QVERIFY( ok );
+  QVERIFY( a->mPrepared );
+  QVERIFY( a->mProcessed );
+  QVERIFY( a->mPostProcessed );
+  // ensure layer added by the algorithm in processAlgorithm is present in context
+  QCOMPARE( context.temporaryLayerStore()->count(), 1 );
+  context.temporaryLayerStore()->removeAllMapLayers();
+
+  // try with an algorithm which raises an exception, postProcessAlgorithm should not be called
+  a = std::make_unique< DummyAlgorithm >( "asd" );
+  a->mRaiseProcessException = true;
+  a->mPrepared = false;
+  a->mProcessed = false;
+  a->mPostProcessed = false;
+  ok = false;
+  res = a->run( QVariantMap(), context, &feedback, &ok );
+  QVERIFY( !ok );
+  QVERIFY( a->mPrepared );
+  QVERIFY( a->mProcessed );
+  QVERIFY( !a->mPostProcessed );
+  // ensure layer added by the algorithm in processAlgorithm is present in context, this should
+  // always be the case even if an exception occurs
+  QCOMPARE( context.temporaryLayerStore()->count(), 1 );
+  context.temporaryLayerStore()->removeAllMapLayers();
+
+  // try without internally catching exceptions in run, postProcessAlgorithm should not be called
+  a = std::make_unique< DummyAlgorithm >( "asd" );
+  a->mRaiseProcessException = true;
+  a->mPrepared = false;
+  a->mProcessed = false;
+  a->mPostProcessed = false;
+  ok = false;
+  bool caught = false;
+  try
+  {
+    res = a->run( QVariantMap(), context, &feedback, &ok, QVariantMap(), false );
+  }
+  catch ( QgsProcessingException & )
+  {
+    caught = true;
+  }
+  QVERIFY( caught );
+  QVERIFY( !ok );
+  QVERIFY( a->mPrepared );
+  QVERIFY( a->mProcessed );
+  QVERIFY( !a->mPostProcessed );
+  // ensure layer added by the algorithm in processAlgorithm is present in context, this should
+  // always be the case even if an exception occurs
+  QCOMPARE( context.temporaryLayerStore()->count(), 1 );
+  context.temporaryLayerStore()->removeAllMapLayers();
 }
 
 void TestQgsProcessing::combineLayerExtent()
@@ -12475,6 +12632,44 @@ void TestQgsProcessing::convertCompatible()
   out = QgsProcessingParameters::parameterAsCompatibleSourceLayerPathAndLayerName( def.get(), params, context, QStringList() << "shp", QString( "shp" ), &feedback, &layerName );
   QCOMPARE( out, QString( testDataDir + "points.shp" ) );
   QCOMPARE( layerName, QString() );
+}
+
+void TestQgsProcessing::convertCompatibleDuplicateFids()
+{
+  // Create a memory layer
+  QgsVectorLayer *layer = new QgsVectorLayer{"Point", "vl", "memory"};
+  // Add fields
+  QgsFields fields;
+  fields.append( QgsField( QStringLiteral( "fid" ), QMetaType::Type::Int ) );
+  fields.append( QgsField( QStringLiteral( "name" ), QMetaType::Type::QString ) );
+  layer->dataProvider()->addAttributes( fields.toList() );
+  layer->updateFields();
+
+  // Add features with duplicate FIDs
+  for ( int i = 1; i <= 12; ++i )
+  {
+    QgsFeature f( fields, i );
+    f.setAttributes( {{ 123, QString::number( i ) }} );
+    f.setGeometry( QgsGeometry( new QgsPoint( i, i ) ) );
+    QVERIFY( layer->dataProvider()->addFeature( f ) );
+  }
+
+  QgsProject p;
+  p.addMapLayer( layer );
+
+  QgsProcessingContext context;
+  context.setProject( &p );
+
+  QgsProcessingFeedback feedback;
+  std::unique_ptr< QgsProcessingParameterDefinition > def( new QgsProcessingParameterFeatureSource( QStringLiteral( "source" ) ) );
+  QVariantMap params;
+  params.insert( QStringLiteral( "source" ), QgsProcessingFeatureSourceDefinition( layer->id(), false ) );
+
+  QgsProcessingParameters::parameterAsCompatibleSourceLayerPath( def.get(), params, context, QStringList() << "gpkg", QString( "gpkg" ), &feedback );
+  const QStringList logs( feedback.textLog().split( '\n', Qt::SplitBehaviorFlags::SkipEmptyParts ) );
+  QCOMPARE( logs.size(), 11 );
+  QVERIFY( logs.first().startsWith( QStringLiteral( "Error writing feature # 2" ) ) );
+  QVERIFY( logs.last().startsWith( QStringLiteral( "There were 11 errors writing features" ) ) );
 }
 
 void TestQgsProcessing::create()

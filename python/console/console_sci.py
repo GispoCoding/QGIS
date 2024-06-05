@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 """
 /***************************************************************************
 Python Console for QGIS
@@ -18,13 +17,17 @@ email                : lrssvtml (at) gmail (dot) com
  ***************************************************************************/
 Some portions of code were taken from https://code.google.com/p/pydee/
 """
+from __future__ import annotations
 
 import code
 import os
 import re
 import sys
 import traceback
-from typing import Optional
+from typing import (
+    Optional,
+    TYPE_CHECKING
+)
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -34,18 +37,18 @@ from qgis.PyQt.QtGui import QKeySequence, QFontMetrics, QClipboard
 from qgis.PyQt.QtWidgets import QShortcut, QApplication
 from qgis.core import (
     QgsApplication,
-    QgsSettings,
     Qgis,
     QgsProcessingUtils
 )
 from qgis.gui import (
     QgsCodeEditorPython,
-    QgsCodeEditorColorScheme,
     QgsCodeEditor,
     QgsCodeInterpreter
 )
 
 from .process_wrapper import ProcessWrapper
+if TYPE_CHECKING:
+    from .console import PythonConsoleWidget
 
 _init_statements = [
     # Python
@@ -150,11 +153,11 @@ SUBPROCESS = 2  # Sending input to a subprocess
 
 class PythonInterpreter(QgsCodeInterpreter, code.InteractiveInterpreter):
 
-    def __init__(self, shell):
+    def __init__(self, shell: ShellScintilla):
         super(QgsCodeInterpreter, self).__init__()
         code.InteractiveInterpreter.__init__(self, locals=None)
 
-        self.shell = shell
+        self.shell: ShellScintilla = shell
         self.sub_process = None
         self.buffer = []
 
@@ -219,7 +222,7 @@ class PythonInterpreter(QgsCodeInterpreter, code.InteractiveInterpreter):
             re.findall(r'^\d.[0-9]*', Qgis.QGIS_VERSION)[0]
 
         if cmd == "?":
-            self.shell.parent.shellOut.insertHelp()
+            self.shell.console_widget.shell_output.insertHelp()
         elif cmd == '_pyqgis':
             webbrowser.open("https://qgis.org/pyqgis/{}".format(version))
         elif cmd == '_api':
@@ -280,15 +283,15 @@ class PythonInterpreter(QgsCodeInterpreter, code.InteractiveInterpreter):
 
 class ShellScintilla(QgsCodeEditorPython):
 
-    def __init__(self, parent=None):
+    def __init__(self, console_widget: PythonConsoleWidget):
         # We set the ImmediatelyUpdateHistory flag here, as users can easily
         # crash QGIS by entering a Python command, and we don't want the
-        # history leading to the crash lost..
-        super().__init__(parent, [], QgsCodeEditor.Mode.CommandInput,
+        # history leading to the crash lost...
+        super().__init__(console_widget, [], QgsCodeEditor.Mode.CommandInput,
                          flags=QgsCodeEditor.Flags(QgsCodeEditor.Flag.CodeFolding | QgsCodeEditor.Flag.ImmediatelyUpdateHistory))
 
-        self.parent = parent
-        self._interpreter = PythonInterpreter(self)
+        self.console_widget: PythonConsoleWidget = console_widget
+        self._interpreter = PythonInterpreter(shell=self)
         self.setInterpreter(self._interpreter)
 
         self.opening = ['(', '{', '[', "'", '"']
@@ -335,12 +338,12 @@ class ShellScintilla(QgsCodeEditorPython):
     def on_session_history_cleared(self):
         msgText = QCoreApplication.translate('PythonConsole',
                                              'Session history cleared successfully.')
-        self.parent.callWidgetMessageBar(msgText)
+        self.console_widget.callWidgetMessageBar(msgText)
 
     def on_persistent_history_cleared(self):
         msgText = QCoreApplication.translate('PythonConsole',
                                              'History cleared successfully.')
-        self.parent.callWidgetMessageBar(msgText)
+        self.console_widget.callWidgetMessageBar(msgText)
 
     def keyPressEvent(self, e):
 

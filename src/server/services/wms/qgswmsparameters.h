@@ -199,7 +199,7 @@ namespace QgsWms
        * \param defaultValue Default value of the parameter
        */
       QgsWmsParameter( const QgsWmsParameter::Name name = QgsWmsParameter::UNKNOWN,
-                       const QVariant::Type type = QVariant::String,
+                       const QMetaType::Type type = QMetaType::Type::QString,
                        const QVariant defaultValue = QVariant( "" ) );
 
       /**
@@ -362,7 +362,8 @@ namespace QgsWms
         USE_TITLE_AS_LAYERNAME,
         CODEC,
         NO_MTEXT,
-        FORCE_2D
+        FORCE_2D,
+        EXPORT_LINES_WITH_ZERO_WIDTH
       };
       Q_ENUM( DxfFormatOption )
 
@@ -1408,6 +1409,13 @@ namespace QgsWms
        * \since QGIS 3.12
        */
       bool isForce2D() const;
+
+      /**
+       * \returns true if the lines are export to dxf with minimal (hairline) width
+       *
+       * \since QGIS 3.38
+       */
+      bool exportLinesWithZeroWidth() const;
 
       /**
        * Returns if a GeoPDF shall be exported

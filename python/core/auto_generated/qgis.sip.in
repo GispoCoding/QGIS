@@ -550,6 +550,12 @@ The development version
       AllowOverlapAtNoCost,
     };
 
+    enum class LabelPrioritization
+    {
+      PreferCloser,
+      PreferPositionOrdering,
+    };
+
     enum class LabelPlacement
       {
       AroundPoint,
@@ -577,6 +583,7 @@ The development version
       BottomMiddle,
       BottomSlightlyRight,
       BottomRight,
+      OverPoint,
     };
 
     enum class LabelOffsetType
@@ -661,6 +668,20 @@ The development version
     };
     typedef QFlags<Qgis::SublayerFlag> SublayerFlags;
 
+
+    enum class ShaderInterpolationMethod
+      {
+      Linear,
+      Discrete,
+      Exact,
+    };
+
+    enum class ShaderClassificationMethod
+      {
+      Continuous,
+      EqualInterval,
+      Quantile,
+    };
 
     enum class RasterPipeInterfaceRole
       {
@@ -769,6 +790,15 @@ The development version
       AskExcludingRasterBands,
       NeverAskSkip,
       NeverAskLoadAll,
+    };
+
+    enum class FieldOrigin
+      {
+      Unknown,
+      Provider,
+      Join,
+      Edit,
+      Expression
     };
 
     enum class FieldConfigurationFlag
@@ -893,6 +923,14 @@ The development version
       Estimated,
       Manual,
       Simulation,
+    };
+
+    enum class GpsNavigationStatus
+    {
+      NotValid,
+      Safe,
+      Caution,
+      Unsafe,
     };
 
     enum class GpsInformationComponent
@@ -1791,6 +1829,13 @@ The development version
       ModelOutput,
     };
 
+    enum class ProcessingModelChildAlgorithmExecutionStatus
+    {
+      NotExecuted,
+      Success,
+      Failed,
+    };
+
     enum class ProcessingTinInputLayerType
       {
       Vertices,
@@ -1817,6 +1862,13 @@ The development version
       DefaultValue,
       Sum,
       GeometryWeighted,
+    };
+
+    enum class FieldDuplicatePolicy
+    {
+      DefaultValue,
+      Duplicate,
+      UnsetField,
     };
 
     enum class FieldDomainType
@@ -1865,7 +1917,8 @@ The development version
     enum class MeshElevationMode
     {
       FixedElevationRange,
-      FromVertices
+      FromVertices,
+      FixedRangePerGroup,
     };
 
     enum class BetweenLineConstraint

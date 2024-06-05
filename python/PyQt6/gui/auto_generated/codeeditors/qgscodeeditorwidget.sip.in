@@ -1,0 +1,156 @@
+/************************************************************************
+ * This file has been generated automatically from                      *
+ *                                                                      *
+ * src/gui/codeeditors/qgscodeeditorwidget.h                            *
+ *                                                                      *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ ************************************************************************/
+
+
+
+
+
+class QgsCodeEditorWidget : QgsPanelWidget
+{
+%Docstring(signature="appended")
+A widget which wraps a :py:class:`QgsCodeEditor` in additional functionality.
+
+This widget wraps an existing :py:class:`QgsCodeEditor` object in a widget which provides
+additional standard functionality, such as search/replace tools. The caller
+must create an unparented :py:class:`QgsCodeEditor` object (or a subclass of :py:class:`QgsCodeEditor`)
+first, and then construct a :py:class:`QgsCodeEditorWidget` passing this object to the
+constructor.
+
+.. note::
+
+   may not be available in Python bindings, depending on platform support
+
+.. versionadded:: 3.38
+%End
+
+%TypeHeaderCode
+#include "qgscodeeditorwidget.h"
+%End
+  public:
+
+    QgsCodeEditorWidget( QgsCodeEditor *editor /Transfer/,
+                         QgsMessageBar *messageBar = 0,
+                         QWidget *parent /TransferThis/ = 0 );
+%Docstring
+Constructor for QgsCodeEditorWidget, wrapping the specified ``editor`` widget.
+
+Ownership of ``editor`` will be transferred to this widget.
+
+If an explicit ``messageBar`` is specified then it will be used to provide
+feedback, otherwise an integrated message bar will be used.
+%End
+    ~QgsCodeEditorWidget();
+
+    virtual void resizeEvent( QResizeEvent *event );
+
+    virtual void showEvent( QShowEvent *event );
+
+
+    QgsCodeEditor *editor();
+%Docstring
+Returns the wrapped code editor.
+%End
+
+    bool isSearchBarVisible() const;
+%Docstring
+Returns ``True`` if the search bar is visible.
+%End
+
+    QgsMessageBar *messageBar();
+%Docstring
+Returns the message bar associated with the widget, to use for user feedback.
+%End
+
+    QgsScrollBarHighlightController *scrollbarHighlightController();
+%Docstring
+Returns the scrollbar highlight controller, which can be used to add highlights
+in the code editor scrollbar.
+%End
+
+    void addWarning( int lineNumber, const QString &warning );
+%Docstring
+Adds a ``warning`` message and indicator to the specified a ``lineNumber``.
+
+This method calls :py:func:`QgsCodeEditor.addWarning()`, but also automatically adds
+highlights to the widget scrollbars locating the warning location.
+
+.. seealso:: :py:func:`clearWarnings`
+%End
+
+    void clearWarnings();
+%Docstring
+Clears all warning messages from the editor.
+
+This method calls :py:func:`QgsCodeEditor.clearWarnings()`, but also removes
+highlights from the widget scrollbars at the warning locations.
+
+.. seealso:: :py:func:`addWarning`
+%End
+
+  public slots:
+
+    void showSearchBar();
+%Docstring
+Shows the search bar.
+
+.. seealso:: :py:func:`hideSearchBar`
+
+.. seealso:: :py:func:`setSearchBarVisible`
+%End
+
+    void hideSearchBar();
+%Docstring
+Hides the search bar.
+
+.. seealso:: :py:func:`showSearchBar`
+
+.. seealso:: :py:func:`setSearchBarVisible`
+%End
+
+    void setSearchBarVisible( bool visible );
+%Docstring
+Sets whether the search bar is ``visible``.
+
+.. seealso:: :py:func:`showSearchBar`
+
+.. seealso:: :py:func:`hideSearchBar`
+
+.. seealso:: :py:func:`setReplaceBarVisible`
+%End
+
+    void setReplaceBarVisible( bool visible );
+%Docstring
+Sets whether the replace bar is ``visible``.
+
+.. seealso:: :py:func:`setSearchBarVisible`
+%End
+
+    void triggerFind();
+%Docstring
+Triggers a find operation, using the default behavior.
+
+This will automatically open the search bar and start a find operation using
+the default behavior, e.g. searching for any selected text in the code editor.
+%End
+
+  signals:
+
+    void searchBarToggled( bool visible );
+%Docstring
+Emitted when the visibility of the search bar is changed.
+%End
+
+};
+
+/************************************************************************
+ * This file has been generated automatically from                      *
+ *                                                                      *
+ * src/gui/codeeditors/qgscodeeditorwidget.h                            *
+ *                                                                      *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ ************************************************************************/

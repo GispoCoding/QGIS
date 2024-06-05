@@ -278,7 +278,7 @@ Qgis::GeometryOperationResult QgsVectorLayerEditUtils::addPart( const QgsPointSe
     geometry = f.geometry();
   }
 
-  Qgis::GeometryOperationResult errorCode = geometry.addPart( points,  mLayer->geometryType() );
+  Qgis::GeometryOperationResult errorCode = geometry.addPartV2( points,  mLayer->wkbType() );
   if ( errorCode == Qgis::GeometryOperationResult::Success )
   {
     if ( firstPart && QgsWkbTypes::isSingleType( mLayer->wkbType() )
@@ -317,7 +317,7 @@ Qgis::GeometryOperationResult QgsVectorLayerEditUtils::addPart( QgsCurve *ring, 
       ring = ring->reversed();
     }
   }
-  Qgis::GeometryOperationResult errorCode = geometry.addPart( ring, mLayer->geometryType() );
+  Qgis::GeometryOperationResult errorCode = geometry.addPartV2( ring, mLayer->wkbType() );
 
   if ( errorCode == Qgis::GeometryOperationResult::Success )
   {
@@ -521,8 +521,7 @@ Qgis::GeometryOperationResult QgsVectorLayerEditUtils::splitFeatures( const QgsC
           switch ( field.splitPolicy() )
           {
             case Qgis::FieldDomainSplitPolicy::DefaultValue:
-              // TODO!!!
-
+              //do nothing - default values ​​are determined
               break;
 
             case Qgis::FieldDomainSplitPolicy::Duplicate:
@@ -867,7 +866,7 @@ bool QgsVectorLayerEditUtils::mergeFeatures( const QgsFeatureId &targetFeatureId
   {
     QVariant val = mergeAttributes.at( i );
 
-    bool isDefaultValue = mLayer->fields().fieldOrigin( i ) == QgsFields::OriginProvider &&
+    bool isDefaultValue = mLayer->fields().fieldOrigin( i ) == Qgis::FieldOrigin::Provider &&
                           mLayer->dataProvider() &&
                           mLayer->dataProvider()->defaultValueClause( mLayer->fields().fieldOriginIndex( i ) ) == val;
 

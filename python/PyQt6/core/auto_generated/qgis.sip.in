@@ -550,6 +550,12 @@ The development version
       AllowOverlapAtNoCost,
     };
 
+    enum class LabelPrioritization /BaseType=IntEnum/
+    {
+      PreferCloser,
+      PreferPositionOrdering,
+    };
+
     enum class LabelPlacement /BaseType=IntEnum/
       {
       AroundPoint,
@@ -577,6 +583,7 @@ The development version
       BottomMiddle,
       BottomSlightlyRight,
       BottomRight,
+      OverPoint,
     };
 
     enum class LabelOffsetType /BaseType=IntEnum/
@@ -661,6 +668,20 @@ The development version
     };
     typedef QFlags<Qgis::SublayerFlag> SublayerFlags;
 
+
+    enum class ShaderInterpolationMethod /BaseType=IntEnum/
+      {
+      Linear,
+      Discrete,
+      Exact,
+    };
+
+    enum class ShaderClassificationMethod /BaseType=IntEnum/
+      {
+      Continuous,
+      EqualInterval,
+      Quantile,
+    };
 
     enum class RasterPipeInterfaceRole /BaseType=IntEnum/
       {
@@ -769,6 +790,15 @@ The development version
       AskExcludingRasterBands,
       NeverAskSkip,
       NeverAskLoadAll,
+    };
+
+    enum class FieldOrigin /BaseType=IntEnum/
+      {
+      Unknown,
+      Provider,
+      Join,
+      Edit,
+      Expression
     };
 
     enum class FieldConfigurationFlag /BaseType=IntFlag/
@@ -893,6 +923,14 @@ The development version
       Estimated,
       Manual,
       Simulation,
+    };
+
+    enum class GpsNavigationStatus /BaseType=IntEnum/
+    {
+      NotValid,
+      Safe,
+      Caution,
+      Unsafe,
     };
 
     enum class GpsInformationComponent /BaseType=IntFlag/
@@ -1791,6 +1829,13 @@ The development version
       ModelOutput,
     };
 
+    enum class ProcessingModelChildAlgorithmExecutionStatus /BaseType=IntEnum/
+    {
+      NotExecuted,
+      Success,
+      Failed,
+    };
+
     enum class ProcessingTinInputLayerType /BaseType=IntEnum/
       {
       Vertices,
@@ -1817,6 +1862,13 @@ The development version
       DefaultValue,
       Sum,
       GeometryWeighted,
+    };
+
+    enum class FieldDuplicatePolicy /BaseType=IntEnum/
+    {
+      DefaultValue,
+      Duplicate,
+      UnsetField,
     };
 
     enum class FieldDomainType /BaseType=IntEnum/
@@ -1865,7 +1917,8 @@ The development version
     enum class MeshElevationMode /BaseType=IntEnum/
     {
       FixedElevationRange,
-      FromVertices
+      FromVertices,
+      FixedRangePerGroup,
     };
 
     enum class BetweenLineConstraint /BaseType=IntEnum/
