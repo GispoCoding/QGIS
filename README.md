@@ -67,6 +67,8 @@ Bugikorjaukset tehdään ensin tähän repositorioon omiin haaroihinsa.
 
 3. Kun teet PR:ää QGIS:n viralliseen repoon, tee ensin kehityshaaralle rebase upstream-repositorion master-haarasta. Käythän myös tarkasti läpi PR:n templatessa olevan tarkistuslistan.
 
+4. Kun tekemäsi PR on mergetty QGIS:n viralliseen repoon, poista haara tästä repositoriosta.
+
 ---
 
 <img src="images/README-md/main_logo.png" width="300">
