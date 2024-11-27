@@ -11782,7 +11782,7 @@ Sandro Santilli <strk@kbt.io>	2024-05-28
 
     Cleanup the chat session to match what's on the website
 
-    See https://qgis.org/en/site/forusers/support.html
+    See https://qgis.org/resources/support/
 
 Alessandro Pasotti <elpaso@itopen.it>	2024-05-28
 
@@ -311466,7 +311466,7 @@ Matthias Kuhn <matthias@opengis.ch>	2015-11-24
     Remove CODING from source tree
 
     It has all been moved to
-    http://qgis.org/en/site/getinvolved/development/qgisdevelopersguide.html
+    https://docs.qgis.org/latest/en/docs/developers_guide/index.html
     Where it is managed as .rst and translatable.
 
 Matthias Kuhn <matthias@opengis.ch>	2015-11-24

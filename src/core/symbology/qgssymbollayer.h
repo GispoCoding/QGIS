@@ -229,7 +229,6 @@ class CORE_EXPORT QgsSymbolLayer
 
     virtual ~QgsSymbolLayer();
 
-    QgsSymbolLayer( const QgsSymbolLayer &other ) = delete;
     QgsSymbolLayer &operator=( const QgsSymbolLayer &other ) = delete;
 
     /**
@@ -691,6 +690,7 @@ class CORE_EXPORT QgsSymbolLayer
     void setExtentBuffer( double distance );
 
   protected:
+    QgsSymbolLayer( const QgsSymbolLayer &other ) SIP_SKIP;
 
     /**
      * Constructor for QgsSymbolLayer.
@@ -802,7 +802,6 @@ class CORE_EXPORT QgsMarkerSymbolLayer : public QgsSymbolLayer
       Bottom, //!< Align to bottom of symbol
     };
 
-    QgsMarkerSymbolLayer( const QgsMarkerSymbolLayer &other ) = delete;
     QgsMarkerSymbolLayer &operator=( const QgsMarkerSymbolLayer &other ) = delete;
 
     void startRender( QgsSymbolRenderContext &context ) override;
@@ -1020,6 +1019,8 @@ class CORE_EXPORT QgsMarkerSymbolLayer : public QgsSymbolLayer
     virtual QRectF bounds( QPointF point, QgsSymbolRenderContext &context ) = 0;
 
   protected:
+
+    QgsMarkerSymbolLayer( const QgsMarkerSymbolLayer &other ) SIP_SKIP;
 
     /**
      * Constructor for QgsMarkerSymbolLayer.

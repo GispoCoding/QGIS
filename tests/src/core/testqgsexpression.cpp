@@ -436,6 +436,13 @@ class TestQgsExpression: public QObject
       QCOMPARE( exp.parserErrors().first().lastColumn, lastColumn );
     }
 
+    void parser_error_message_replace()
+    {
+      QgsExpression exp( QString( "1+" ) );
+      QCOMPARE( exp.hasParserError(), true );
+      QCOMPARE( exp.parserErrorString(), "\nIncomplete expression. You might not have finished the full expression." );
+    }
+
     void max_errors()
     {
       QgsExpression e( "wkt_geom&#x9;OBJECTID&#x9;id&#x9;a&#x9;b&#x9;c&#x9;d&#x9;e&#x9;f&#x9;g&#x9;h&#x9;i&#x9;j&#x9;k&#x9;l&#x9;m&#x9;n&#x9;o&#x9;p&#x9;q&#x9;r&#x9;" );
@@ -1821,6 +1828,14 @@ class TestQgsExpression: public QObject
       QTest::newRow( "try valid" ) << "try(to_int('1'),0)" << false << QVariant( 1 );
       QTest::newRow( "try invalid with alternative" ) << "try(to_int('a'),0)" << false << QVariant( 0 );
       QTest::newRow( "try invalid without alternative" ) << "try(to_int('a'))" << false << QVariant();
+
+      QTest::newRow( "to_bool with empty string" ) << "to_bool('')" << false << QVariant( false );
+      QTest::newRow( "to_bool with non-empty string" ) << "to_bool('0')" << false << QVariant( true );
+      QTest::newRow( "to_bool with zero" ) << "to_bool(0)" << false << QVariant( false );
+      QTest::newRow( "to_bool with number" ) << "to_bool(123)" << false << QVariant( true );
+      QTest::newRow( "to_bool with null" ) << "to_bool(null)" << false << QVariant( false );
+      QTest::newRow( "to_bool with empty list" ) << "to_bool(array())" << false << QVariant( false );
+      QTest::newRow( "to_bool with non-empty list" ) << "to_bool(array(1,2,3))" << false << QVariant( true );
 
       // Datetime functions
       QTest::newRow( "make date" ) << "make_date(2012,6,28)" << false << QVariant( QDate( 2012, 6, 28 ) );

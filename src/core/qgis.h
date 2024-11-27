@@ -1192,7 +1192,7 @@ class CORE_EXPORT Qgis
       Right SIP_MONKEYPATCH_COMPAT_NAME( QuadrantRight ), //!< Right middle
       BelowLeft SIP_MONKEYPATCH_COMPAT_NAME( QuadrantBelowLeft ), //!< Below left
       Below SIP_MONKEYPATCH_COMPAT_NAME( QuadrantBelow ), //!< Below center
-      BelowRight SIP_MONKEYPATCH_COMPAT_NAME( QuadrantBelowRight ), //!< BelowRight
+      BelowRight SIP_MONKEYPATCH_COMPAT_NAME( QuadrantBelowRight ), //!< Below right
     };
     Q_ENUM( LabelQuadrantPosition )
 
@@ -2712,14 +2712,22 @@ class CORE_EXPORT Qgis
      *
      * \since QGIS 3.28
      */
-    enum class TextComponent SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextRenderer, TextPart ) : int
-      {
-      Text, //!< Text component
-      Buffer, //!< Buffer component
-      Background, //!< Background shape
-      Shadow, //!< Drop shadow
+    enum class TextComponent SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextRenderer, TextPart ) : int SIP_ENUM_BASETYPE( IntFlag )
+    {
+      Text = 1 << 0, //!< Text component
+      Buffer = 1 << 1, //!< Buffer component
+      Background = 1 << 2, //!< Background shape
+      Shadow = 1 << 3, //!< Drop shadow
     };
     Q_ENUM( TextComponent )
+
+    /**
+     * Text components.
+     *
+     * \since QGIS 3.42
+     */
+    Q_DECLARE_FLAGS( TextComponents, TextComponent )
+    Q_FLAG( TextComponents )
 
     /**
      * Text horizontal alignment.
@@ -5606,6 +5614,27 @@ class CORE_EXPORT Qgis
     Q_ENUM( DocumentationBrowser )
 
     /**
+     * Action to be performed by the mouse handles
+     *
+     * \since QGIS 3.42
+     */
+    enum class MouseHandlesAction : int
+    {
+      MoveItem, //!< Move item
+      ResizeUp, //!< Resize up (Top handle)
+      ResizeDown, //!< Resize down (Bottom handle)
+      ResizeLeft, //!< Resize left (Left handle)
+      ResizeRight, //!< Resize right (Right handle)
+      ResizeLeftUp, //!< Resize left up (Top left handle)
+      ResizeRightUp, //!< Resize right up (Top right handle)
+      ResizeLeftDown, //!< Resize left down (Bottom left handle)
+      ResizeRightDown, //!< Resize right down (Bottom right handle)
+      SelectItem, //!< Select item
+      NoAction //!< No action
+    };
+    Q_ENUM( MouseHandlesAction )
+
+    /**
      * Identify search radius in mm
      */
     static const double DEFAULT_SEARCH_RADIUS_MM;
@@ -5761,6 +5790,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolLayerFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolLayerUserFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolPreviewFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolRenderHints )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TextComponents )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TextRendererFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TiledSceneProviderCapabilities )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TiledSceneRendererFlags )
