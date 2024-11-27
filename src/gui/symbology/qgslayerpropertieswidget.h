@@ -113,6 +113,7 @@ class GUI_EXPORT QgsLayerPropertiesWidget : public QgsPanelWidget, public QgsExp
   private slots:
     void reloadLayer();
     void mEnabledCheckBox_toggled( bool enabled );
+    void mExtentBufferSpinBox_valueChanged( double value );
     void updateProperty();
 
   private:

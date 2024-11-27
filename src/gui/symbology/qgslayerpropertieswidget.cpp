@@ -121,6 +121,7 @@ QgsLayerPropertiesWidget::QgsLayerPropertiesWidget( QgsSymbolLayer *layer, const
 
   setupUi( this );
   connect( mEnabledCheckBox, &QCheckBox::toggled, this, &QgsLayerPropertiesWidget::mEnabledCheckBox_toggled );
+  connect( mExtentBufferSpinBox, static_cast < void ( QgsDoubleSpinBox::* )( double ) > ( &QgsDoubleSpinBox::valueChanged ), this, &QgsLayerPropertiesWidget::mExtentBufferSpinBox_valueChanged );
   // initialize the sub-widgets
   // XXX Should this thing be here this way? Initialize all the widgets just for the sake of one layer?
   // TODO Make this on demand creation
@@ -142,6 +143,7 @@ QgsLayerPropertiesWidget::QgsLayerPropertiesWidget( QgsSymbolLayer *layer, const
 
   connect( mEnabledCheckBox, &QAbstractButton::toggled, mEnabledDDBtn, &QWidget::setEnabled );
   mEnabledCheckBox->setChecked( mLayer->enabled() );
+  mExtentBufferSpinBox->setValue( mLayer->extentBuffer() );
 
   // set the corresponding widget
   updateSymbolLayerWidget( layer );
@@ -159,6 +161,7 @@ QgsLayerPropertiesWidget::QgsLayerPropertiesWidget( QgsSymbolLayer *layer, const
   mEffectWidget->setPaintEffect( mLayer->paintEffect() );
 
   registerDataDefinedButton( mEnabledDDBtn, QgsSymbolLayer::Property::LayerEnabled );
+  registerDataDefinedButton( mExtentBufferDDBtn, QgsSymbolLayer::Property::ExtentBuffer );
 }
 
 void QgsLayerPropertiesWidget::setContext( const QgsSymbolWidgetContext &context )
@@ -463,5 +466,11 @@ void QgsLayerPropertiesWidget::reloadLayer()
 void QgsLayerPropertiesWidget::mEnabledCheckBox_toggled( bool enabled )
 {
   mLayer->setEnabled( enabled );
+  emitSignalChanged();
+}
+
+void QgsLayerPropertiesWidget::mExtentBufferSpinBox_valueChanged( double value )
+{
+  mLayer->setExtentBuffer( value );
   emitSignalChanged();
 }
