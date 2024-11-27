@@ -38,6 +38,7 @@
 #include <QDomDocument>
 #include <QPolygonF>
 #include <QThread>
+#include <algorithm>
 
 QgsPropertiesDefinition QgsFeatureRenderer::sPropertyDefinitions;
 
@@ -415,6 +416,22 @@ QString QgsFeatureRenderer::legendKeyToExpression( const QString &, QgsVectorLay
 QgsLegendSymbolList QgsFeatureRenderer::legendSymbolItems() const
 {
   return QgsLegendSymbolList();
+}
+
+double QgsFeatureRenderer::maximumExtentBuffer( QgsRenderContext &context ) const
+{
+  QgsSymbolList symbolList = symbols( context );
+
+  if ( symbolList.empty() )
+    return 0;
+
+  auto it = std::max_element( symbolList.constBegin(), symbolList.constEnd(), []( const QgsSymbol * a, const QgsSymbol * b )
+  {
+    return a->maximumExtentBuffer() < b->maximumExtentBuffer();
+  }
+                            );
+
+  return ( *it )->maximumExtentBuffer();
 }
 
 QList<QgsLayerTreeModelLegendNode *> QgsFeatureRenderer::createLegendNodes( QgsLayerTreeLayer *nodeLayer ) const

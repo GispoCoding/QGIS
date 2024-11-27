@@ -653,6 +653,16 @@ class CORE_EXPORT QgsFeatureRenderer
      */
     void copyRendererData( QgsFeatureRenderer *destRenderer ) const;
 
+    /**
+     * Returns the maximum extent buffer found in this renderer's
+     * symbols' symbol layers.
+     *
+     * \note Returns 0 if the renderer doesn't have any symbols.
+     * \since QGIS 3.42
+     */
+
+    double maximumExtentBuffer( QgsRenderContext &context ) const;
+
   protected:
     QgsFeatureRenderer( const QString &type );
 
