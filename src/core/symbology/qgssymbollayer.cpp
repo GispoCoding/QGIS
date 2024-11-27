@@ -118,6 +118,7 @@ void QgsSymbolLayer::initPropertyDefinitions()
     { static_cast< int >( QgsSymbolLayer::Property::LineClipping ), QgsPropertyDefinition( "lineClipping", QgsPropertyDefinition::DataTypeString, QObject::tr( "Line clipping mode" ),  QObject::tr( "string " ) + QLatin1String( "[<b>no</b>|<b>during_render</b>|<b>before_render</b>]" ), origin )},
     { static_cast< int >( QgsSymbolLayer::Property::SkipMultiples ), QgsPropertyDefinition( "skipMultiples", QObject::tr( "Skip multiples of" ), QgsPropertyDefinition::DoublePositive, origin )},
     { static_cast< int >( QgsSymbolLayer::Property::ShowMarker ), QgsPropertyDefinition( "showMarker", QObject::tr( "Show marker" ), QgsPropertyDefinition::Boolean, origin )},
+    { static_cast< int >( QgsSymbolLayer::Property::ExtentBuffer ), QgsPropertyDefinition( "extentBuffer", QObject::tr( "Extent buffer" ), QgsPropertyDefinition::Double, origin )},
   };
 }
 
@@ -236,6 +237,7 @@ QgsSymbolLayer::QgsSymbolLayer( Qgis::SymbolType type, bool locked )
   , mLocked( locked )
   , mId( QUuid::createUuid().toString() )
 {
+
 }
 
 Qgis::SymbolLayerFlags QgsSymbolLayer::flags() const
@@ -280,6 +282,11 @@ void QgsSymbolLayer::setFillColor( const QColor & )
 QColor QgsSymbolLayer::fillColor() const
 {
   return QColor();
+}
+
+void QgsSymbolLayer::setExtentBuffer( double distance )
+{
+  mExtentBuffer = distance;
 }
 
 void QgsSymbolLayer::prepareExpressions( const QgsSymbolRenderContext &context )
@@ -444,6 +451,7 @@ void QgsSymbolLayer::restoreOldDataDefinedProperties( const QVariantMap &stringM
     { "rotation", static_cast< int >( QgsSymbolLayer::Property::Angle )},
     { "horizontal_anchor_point", static_cast< int >( QgsSymbolLayer::Property::HorizontalAnchor ) },
     { "vertical_anchor_point", static_cast< int >( QgsSymbolLayer::Property::VerticalAnchor ) },
+    { "extent_buffer", static_cast< int >( QgsSymbolLayer::Property::ExtentBuffer ) },
   };
 
   QVariantMap::const_iterator propIt = stringMap.constBegin();

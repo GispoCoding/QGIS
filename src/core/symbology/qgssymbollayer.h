@@ -218,6 +218,7 @@ class CORE_EXPORT QgsSymbolLayer
       LineClipping SIP_MONKEYPATCH_COMPAT_NAME( PropertyLineClipping ), //!< Line clipping mode \since QGIS 3.24
       SkipMultiples, //!< Skip multiples of \since QGIS 3.40
       ShowMarker, //!< Show markers \since QGIS 3.40
+      ExtentBuffer, //!< Extent buffer \since QGIS 3.42
     };
     // *INDENT-ON*
 
@@ -673,6 +674,22 @@ class CORE_EXPORT QgsSymbolLayer
      */
     bool installMasks( QgsRenderContext &context, bool recursive, const QRectF &rect = QRectF() );
 
+    /**
+     * Returns the layer's extent buffer distance.
+     *
+     * \since QGIS 3.42
+     */
+
+    double extentBuffer() const { return mExtentBuffer; }
+
+    /**
+     * Sets the layer's extent buffer distance.
+     *
+     * \since QGIS 3.42
+     */
+
+    void setExtentBuffer( double distance );
+
   protected:
 
     /**
@@ -681,6 +698,8 @@ class CORE_EXPORT QgsSymbolLayer
      * \param locked if TRUE, then symbol layer colors will be locked and will ignore any symbol-level color changes.
      */
     QgsSymbolLayer( Qgis::SymbolType type, bool locked = false );
+
+    double mExtentBuffer = 0;
 
     Qgis::SymbolType mType;
 

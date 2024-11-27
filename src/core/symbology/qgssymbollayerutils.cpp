@@ -1355,6 +1355,7 @@ QgsSymbolLayer *QgsSymbolLayerUtils::loadSymbolLayer( QDomElement &element, cons
   const QString layerClass = element.attribute( QStringLiteral( "class" ) );
   const bool locked = element.attribute( QStringLiteral( "locked" ) ).toInt();
   const bool enabled = element.attribute( QStringLiteral( "enabled" ), QStringLiteral( "1" ) ).toInt();
+  const double extentBuffer = element.attribute( QStringLiteral( "extentBuffer" ), QStringLiteral( "0" ) ).toDouble();
   const int pass = element.attribute( QStringLiteral( "pass" ) ).toInt();
   const QString id = element.attribute( QStringLiteral( "id" ) );
   const Qgis::SymbolLayerUserFlags userFlags = qgsFlagKeysToValue( element.attribute( QStringLiteral( "userFlags" ) ), Qgis::SymbolLayerUserFlags() );
@@ -1374,6 +1375,7 @@ QgsSymbolLayer *QgsSymbolLayerUtils::loadSymbolLayer( QDomElement &element, cons
     layer->setLocked( locked );
     layer->setRenderingPass( pass );
     layer->setEnabled( enabled );
+    layer->setExtentBuffer( extentBuffer );
     layer->setUserFlags( userFlags );
 
     // old project format, empty is missing, keep the actual layer one
@@ -1461,6 +1463,7 @@ QDomElement QgsSymbolLayerUtils::saveSymbol( const QString &name, const QgsSymbo
     QDomElement layerEl = doc.createElement( QStringLiteral( "layer" ) );
     layerEl.setAttribute( QStringLiteral( "class" ), layer->layerType() );
     layerEl.setAttribute( QStringLiteral( "enabled" ), layer->enabled() );
+    layerEl.setAttribute( QStringLiteral( "extentBuffer" ), layer->extentBuffer() );
     layerEl.setAttribute( QStringLiteral( "locked" ), layer->isLocked() );
     layerEl.setAttribute( QStringLiteral( "pass" ), layer->renderingPass() );
     layerEl.setAttribute( QStringLiteral( "id" ), layer->id() );

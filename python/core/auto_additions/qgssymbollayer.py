@@ -286,6 +286,9 @@ QgsSymbolLayer.SkipMultiples.__doc__ = "Skip multiples of \n.. versionadded:: 3.
 QgsSymbolLayer.ShowMarker = QgsSymbolLayer.Property.ShowMarker
 QgsSymbolLayer.ShowMarker.is_monkey_patched = True
 QgsSymbolLayer.ShowMarker.__doc__ = "Show markers \n.. versionadded:: 3.40"
+QgsSymbolLayer.ExtentBuffer = QgsSymbolLayer.Property.ExtentBuffer
+QgsSymbolLayer.ExtentBuffer.is_monkey_patched = True
+QgsSymbolLayer.ExtentBuffer.__doc__ = "Extent buffer \n.. versionadded:: 3.42"
 QgsSymbolLayer.Property.__doc__ = """Data definable properties.
 
 * ``Size``: Symbol size
@@ -605,6 +608,10 @@ QgsSymbolLayer.Property.__doc__ = """Data definable properties.
 * ``ShowMarker``: Show markers
 
   .. versionadded:: 3.40
+
+* ``ExtentBuffer``: Extent buffer
+
+  .. versionadded:: 3.42
 
 
 """

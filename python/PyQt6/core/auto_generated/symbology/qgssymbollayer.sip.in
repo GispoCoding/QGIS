@@ -173,6 +173,7 @@ class QgsSymbolLayer
       LineClipping,
       SkipMultiples,
       ShowMarker,
+      ExtentBuffer,
     };
 
     static const QgsPropertiesDefinition &propertyDefinitions();
@@ -687,6 +688,22 @@ for mask geometries. Only mask geometries which intersect ``rect`` will be insta
 .. versionadded:: 3.30
 %End
 
+
+    double extentBuffer() const;
+%Docstring
+Returns the layer's extent buffer distance.
+
+.. versionadded:: 3.42
+%End
+
+
+    void setExtentBuffer( double distance );
+%Docstring
+Sets the layer's extent buffer distance.
+
+.. versionadded:: 3.42
+%End
+
   protected:
 
     QgsSymbolLayer( Qgis::SymbolType type, bool locked = false );
@@ -696,6 +713,7 @@ Constructor for QgsSymbolLayer.
 :param type: specifies the associated symbol type
 :param locked: if ``True``, then symbol layer colors will be locked and will ignore any symbol-level color changes.
 %End
+
 
 
 
