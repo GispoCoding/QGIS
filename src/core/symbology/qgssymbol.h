@@ -867,6 +867,16 @@ class CORE_EXPORT QgsSymbol
      */
     void stopFeatureRender( const QgsFeature &feature, QgsRenderContext &context, int layer = -1 );
 
+    /**
+     * Returns the maximum extent buffer found in this symbol's
+     * symbol layers
+     *
+     * \note Returns 0 if the symbol doesn't have any symbol layers.
+     * \since QGIS 3.42
+     */
+
+    double maximumExtentBuffer() const;
+
   protected:
 
     /**

@@ -20,12 +20,14 @@
 #include <QSvgGenerator>
 #include <QPicture>
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <random>
 
 #include "qgssymbol.h"
 #include "qgspolyhedralsurface.h"
+#include "qgsrectangle.h"
 #include "qgssymbollayer.h"
 
 #include "qgsgeometrygeneratorsymbollayer.h"
@@ -1387,6 +1389,7 @@ QgsSymbolLayerList QgsSymbol::cloneLayers() const
     layer->setLocked( ( *it )->isLocked() );
     layer->setRenderingPass( ( *it )->renderingPass() );
     layer->setEnabled( ( *it )->enabled() );
+    layer->setExtentBuffer( ( *it )->extentBuffer() );
     layer->setId( ( *it )->id() );
     layer->setUserFlags( ( *it )->userFlags() );
     lst.append( layer );
@@ -1860,8 +1863,42 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
   // step 2 - determine which layers to render
   std::vector< int > allLayers;
   allLayers.reserve( mLayers.count() );
+
+  const QgsRectangle &mapExtent = context.mapExtent();
+  const double maxExtentBuffer = maximumExtentBuffer();
+
   for ( int i = 0; i < mLayers.count(); ++i )
+  {
+    QgsSymbolLayer *layer = mLayers[i];
+
+    bool checkDataDefined = layer->dataDefinedProperties().hasActiveProperties();
+    const double extentBuffer = checkDataDefined ? layer->dataDefinedProperties().valueAsDouble( QgsSymbolLayer::Property::ExtentBuffer, context.expressionContext(), 0 ) : layer->extentBuffer();
+
+    if ( mLayers.count() == 1 )
+    {
+      // If the extent buffer is negative and abs(extentBuffer) * 2 is larger than the width or height of the map extent
+      // the buffered extent should effectively be empty and the symbol layer not rendered, however proceeding
+      // with the extent buffering in this case will grow the extent, so check for this case upfront.
+      bool bufferDisappearsExtent = extentBuffer < 0 && ( mapExtent.width() + ( extentBuffer * 2 ) < 0 || mapExtent.height() + ( extentBuffer * 2 ) < 0 );
+      if ( bufferDisappearsExtent )
+        return;
+
+      if ( !geom.intersects( mapExtent.buffered( extentBuffer ) ) )
+        return;
+    }
+
+    if ( extentBuffer < maxExtentBuffer )
+    {
+      bool bufferDisappearsExtent = extentBuffer < 0 && ( mapExtent.width() + ( extentBuffer * 2 ) < 0 || mapExtent.height() + ( extentBuffer * 2 ) < 0 );
+      if ( bufferDisappearsExtent )
+        continue;
+
+      if ( !geom.intersects( mapExtent.buffered( extentBuffer ) ) )
+        continue;
+    }
+
     allLayers.emplace_back( i );
+  }
 
   std::vector< int > layerToRender;
   if ( layer == -1 )
@@ -2221,6 +2258,20 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
 QgsSymbolRenderContext *QgsSymbol::symbolRenderContext()
 {
   return mSymbolRenderContext.get();
+}
+
+double QgsSymbol::maximumExtentBuffer() const
+{
+  if ( mLayers.empty() )
+    return 0;
+
+  auto it = std::max_element( mLayers.constBegin(), mLayers.constEnd(), []( const QgsSymbolLayer * a, const QgsSymbolLayer * b )
+  {
+    return a->extentBuffer() < b->extentBuffer();
+  }
+                            );
+
+  return ( *it )->extentBuffer();
 }
 
 void QgsSymbol::renderVertexMarker( QPointF pt, QgsRenderContext &context, Qgis::VertexMarkerType currentVertexMarkerType, double currentVertexMarkerSize )
