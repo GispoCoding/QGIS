@@ -1011,6 +1011,31 @@ class TestQgsSymbol(QgisTestCase):
                 )
             )
 
+    def testMaximumExtentBuffer(self):
+        sym = QgsMarkerSymbol()
+
+        layer1 = sym.symbolLayer(0)
+
+        self.assertEqual(sym.maximumExtentBuffer(), 0)
+
+        layer2 = QgsSimpleMarkerSymbolLayer.create({'color': '#ffffff', 'size': '3', 'outline_color': 'black'})
+        layer2.setExtentBuffer(-10)
+
+        layer3 = QgsSimpleMarkerSymbolLayer.create({'color': '#ffffff', 'size': '3', 'outline_color': 'black'})
+        layer3.setExtentBuffer(10)
+
+        sym.appendSymbolLayer(layer2)
+        self.assertEqual(sym.maximumExtentBuffer(), 0)
+
+        sym.appendSymbolLayer(layer3)
+        self.assertEqual(sym.maximumExtentBuffer(), 10)
+
+        layer3.setExtentBuffer(-5)
+        self.assertEqual(sym.maximumExtentBuffer(), 0)
+
+        layer1.setExtentBuffer(-20)
+        self.assertEqual(sym.maximumExtentBuffer(), -5)
+
 
 class TestQgsMarkerSymbol(QgisTestCase):
 
