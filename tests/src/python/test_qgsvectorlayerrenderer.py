@@ -805,12 +805,13 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         def createSymbol() -> QgsMarkerSymbol:
             return QgsMarkerSymbol.createSimple({'color': '#33aa33', 'outline_style': 'no', 'size': '5'})
 
-        def createGeometryGenerator() -> QgsGeometryGeneratorSymbolLayer:
+        def createGeometryGenerator(*, extent_buffer: float = 0) -> QgsGeometryGeneratorSymbolLayer:
             geomgen = QgsGeometryGeneratorSymbolLayer.create(
                 {'geometryModifier': 'make_point($x + if($x <= 0, 5, -5), $y)'}
             )
             geomgen.setSymbolType(QgsSymbol.SymbolType.Marker)
             geomgen.subSymbol().setSize(2.5)
+            geomgen.setExtentBuffer(extent_buffer)
 
             return geomgen
 
@@ -851,11 +852,7 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         )
 
         sym2 = createSymbol()
-
-        geomgen = createGeometryGenerator()
-        geomgen.setExtentBuffer(1)
-
-        sym2.appendSymbolLayer(geomgen)
+        sym2.appendSymbolLayer(createGeometryGenerator(extent_buffer=1))
 
         renderer2 = QgsSingleSymbolRenderer(sym2)
         point_layer.setRenderer(renderer2)
@@ -864,6 +861,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
             self.render_map_settings_check(
                 'buffer_extent',
                 'buffer_extent',
+                mapsettings,
+            )
+        )
+
+        sym3 = createSymbol()
+
+        geomgen_largesymbol = createGeometryGenerator(extent_buffer=1)
+        geomgen_largesymbol.subSymbol().setSize(4)
+
+        sym3.appendSymbolLayer(geomgen_largesymbol)
+        sym3.appendSymbolLayer(createGeometryGenerator(extent_buffer=2))
+
+        renderer3 = QgsSingleSymbolRenderer(sym3)
+        point_layer.setRenderer(renderer3)
+
+        self.assertTrue(
+            self.render_map_settings_check(
+                'buffer_extent_multiple_layers',
+                'buffer_extent_multiple_layers',
                 mapsettings,
             )
         )
