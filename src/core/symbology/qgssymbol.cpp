@@ -1864,37 +1864,30 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
   std::vector< int > allLayers;
   allLayers.reserve( mLayers.count() );
 
-  const QgsRectangle &mapExtent = context.mapExtent();
-  const double maxExtentBuffer = maximumExtentBuffer();
+  // if there's only one symbol layer the filtering should effectively already be done in the feature request,
+  // no need the check individual layers
+  bool checkExtentBuffers = mLayers.count() > 1;
 
   for ( int i = 0; i < mLayers.count(); ++i )
   {
     QgsSymbolLayer *layer = mLayers[i];
 
-    bool checkDataDefined = layer->dataDefinedProperties().hasActiveProperties();
-    const double extentBuffer = checkDataDefined ? layer->dataDefinedProperties().valueAsDouble( QgsSymbolLayer::Property::ExtentBuffer, context.expressionContext(), 0 ) : layer->extentBuffer();
-
-    if ( mLayers.count() == 1 )
+    if ( checkExtentBuffers )
     {
-      // If the extent buffer is negative and abs(extentBuffer) * 2 is larger than the width or height of the map extent
-      // the buffered extent should effectively be empty and the symbol layer not rendered, however proceeding
-      // with the extent buffering in this case will grow the extent, so check for this case upfront.
-      bool bufferDisappearsExtent = extentBuffer < 0 && ( mapExtent.width() + ( extentBuffer * 2 ) < 0 || mapExtent.height() + ( extentBuffer * 2 ) < 0 );
-      if ( bufferDisappearsExtent )
-        return;
+      bool checkDataDefined = layer->dataDefinedProperties().hasActiveProperties();
+      const double extentBuffer = checkDataDefined ? layer->dataDefinedProperties().valueAsDouble( QgsSymbolLayer::Property::ExtentBuffer, context.expressionContext(), 0 ) : layer->extentBuffer();
 
-      if ( !geom.intersects( mapExtent.buffered( extentBuffer ) ) )
-        return;
-    }
+      if ( extentBuffer < maximumExtentBuffer() )
+      {
+        const QgsRectangle &mapExtent = context.mapExtent();
 
-    if ( extentBuffer < maxExtentBuffer )
-    {
-      bool bufferDisappearsExtent = extentBuffer < 0 && ( mapExtent.width() + ( extentBuffer * 2 ) < 0 || mapExtent.height() + ( extentBuffer * 2 ) < 0 );
-      if ( bufferDisappearsExtent )
-        continue;
+        bool bufferDisappearsExtent = extentBuffer < 0 && ( mapExtent.width() + ( extentBuffer * 2 ) < 0 || mapExtent.height() + ( extentBuffer * 2 ) < 0 );
+        if ( bufferDisappearsExtent )
+          continue;
 
-      if ( !geom.intersects( mapExtent.buffered( extentBuffer ) ) )
-        continue;
+        if ( !geom.intersects( mapExtent.buffered( extentBuffer ) ) )
+          continue;
+      }
     }
 
     allLayers.emplace_back( i );
