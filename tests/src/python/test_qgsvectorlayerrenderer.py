@@ -36,6 +36,7 @@ from qgis.core import (
     QgsRuleBasedRenderer,
     QgsSingleSymbolRenderer,
     QgsSymbol,
+    QgsSymbolLayer,
     QgsVectorLayer,
 )
 import unittest
