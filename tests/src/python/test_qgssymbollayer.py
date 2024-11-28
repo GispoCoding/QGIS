@@ -298,6 +298,9 @@ class TestQgsSymbolLayer(QgisTestCase):
         layer.setRenderingPass(5)
         self.assertEqual(layer.renderingPass(), 5)
 
+        layer.setExtentBuffer(10)
+        self.assertEqual(layer.extentBuffer(), 10)
+
     def testSaveRestore(self):
         """ Test saving and restoring base symbol layer properties to xml"""
 
@@ -306,6 +309,7 @@ class TestQgsSymbolLayer(QgisTestCase):
         layer.setLocked(True)
         layer.setRenderingPass(5)
         layer.setUserFlags(Qgis.SymbolLayerUserFlag.DisableSelectionRecoloring)
+        layer.setExtentBuffer(10)
 
         symbol = QgsFillSymbol()
         symbol.changeSymbolLayer(0, layer)
@@ -320,6 +324,7 @@ class TestQgsSymbolLayer(QgisTestCase):
         self.assertEqual(restored_layer.renderingPass(), 5)
         self.assertEqual(restored_layer.userFlags(),
                          Qgis.SymbolLayerUserFlag.DisableSelectionRecoloring)
+        self.assertEqual(restored_layer.extentBuffer(), 10)
 
     def testClone(self):
         """ test that base symbol layer properties are cloned with layer """
@@ -329,6 +334,7 @@ class TestQgsSymbolLayer(QgisTestCase):
         layer.setLocked(True)
         layer.setRenderingPass(5)
         layer.setUserFlags(Qgis.SymbolLayerUserFlag.DisableSelectionRecoloring)
+        layer.setExtentBuffer(10)
 
         symbol = QgsFillSymbol()
         symbol.changeSymbolLayer(0, layer)
@@ -340,6 +346,7 @@ class TestQgsSymbolLayer(QgisTestCase):
         self.assertEqual(cloned_layer.renderingPass(), 5)
         self.assertEqual(cloned_layer.userFlags(),
                          Qgis.SymbolLayerUserFlag.DisableSelectionRecoloring)
+        self.assertEqual(cloned_layer.extentBuffer(), 10)
 
     def testRenderFillLayerDisabled(self):
         """ test that rendering a fill symbol with disabled layer works"""
