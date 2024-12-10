@@ -14,6 +14,7 @@
  ***************************************************************************/
 #include "qgsvectorlayereditutils.h"
 
+#include "qgsexpressioncontextutils.h"
 #include "qgsunsetattributevalue.h"
 #include "qgsvectordataprovider.h"
 #include "qgsfeatureiterator.h"
@@ -444,6 +445,56 @@ Qgis::GeometryOperationResult QgsVectorLayerEditUtils::splitFeatures( const QgsC
     QgsGeometry featureGeom = originalGeom;
     splitFunctionReturn = featureGeom.splitGeometry( curve, newGeometries, preserveCircular, topologicalEditing, featureTopologyTestPoints );
     topologyTestPoints.append( featureTopologyTestPoints );
+
+    // sort geometries if it's controlled by an expression
+    const QString splitFeaturesOrderByExpression = mLayer->geometryOptions()->splitFeaturesOrderByExpression();
+    if ( ! splitFeaturesOrderByExpression.isEmpty() )
+    {
+      QgsExpression expression( splitFeaturesOrderByExpression );
+
+      if ( expression.isValid() && newGeometries.size() >= 1 )
+      {
+        newGeometries.push_front( featureGeom );
+
+        auto evaluateExpression = [this, &expression, &feat]( const QgsGeometry & splitGeom ) -> double
+        {
+          QgsExpressionContext context = mLayer->createExpressionContext();
+          context.setFeature( feat );
+          context.setFields( feat.fields() );
+          context.appendScope( QgsExpressionContextUtils::splitFeaturesScope( splitGeom ) );
+
+          expression.prepare( &context );
+          QVariant res = expression.evaluate( &context );
+
+          return res.toDouble();
+        };
+
+        switch ( mLayer->geometryOptions()->splitFeaturesSortOrder() )
+        {
+          case Qt::SortOrder::DescendingOrder:
+          {
+            std::sort( newGeometries.begin(), newGeometries.end(), [&evaluateExpression]( const QgsGeometry & a, const QgsGeometry & b ) -> bool
+            {
+              return evaluateExpression( a ) > evaluateExpression( b );
+            } );
+
+            break;
+          }
+          case Qt::SortOrder::AscendingOrder:
+          {
+            std::sort( newGeometries.begin(), newGeometries.end(), [&evaluateExpression]( const QgsGeometry & a, const QgsGeometry & b ) -> bool
+            {
+              return evaluateExpression( a ) < evaluateExpression( b );
+            } );
+            break;
+          }
+        }
+
+        featureGeom = newGeometries[0];
+        newGeometries.pop_front();
+      }
+    }
+
     if ( splitFunctionReturn == Qgis::GeometryOperationResult::Success )
     {
       //change this geometry
