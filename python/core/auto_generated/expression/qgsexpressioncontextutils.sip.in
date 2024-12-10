@@ -195,6 +195,14 @@ Sets the expression context variables which are available for expressions trigge
 a map tool capture like add feature.
 %End
 
+    static QgsExpressionContextScope *splitFeaturesScope( const QgsGeometry &geom ) /Factory/;
+%Docstring
+Sets the expression context variable which is available for expressions triggered by
+the split features map tool.
+
+.. versionadded:: 3.42
+%End
+
     static QgsExpressionContextScope *mapLayerPositionScope( const QgsPointXY &position ) /Factory/;
 %Docstring
 Sets the expression context variables which are available for expressions triggered by moving the mouse over a feature

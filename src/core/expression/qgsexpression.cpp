@@ -883,6 +883,8 @@ void QgsExpression::initVariableHelp()
                                 "<dt>distance</dt><dd>The distance between the mouse cursor and the snapped point at the time of snapping</dd>"
                                 "</dl>" ) );
 
+  // split feature variable
+  sVariableHelpTexts()->insert( QStringLiteral( "split_geometry" ), QCoreApplication::translate( "variable_help", "Geometry of the split feature." ) );
 
   //symbol variables
   sVariableHelpTexts()->insert( QStringLiteral( "geometry_part_count" ), QCoreApplication::translate( "variable_help", "Number of parts in rendered feature's geometry." ) );

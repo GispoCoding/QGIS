@@ -188,6 +188,14 @@ class CORE_EXPORT QgsExpressionContextUtils
     static QgsExpressionContextScope *mapToolCaptureScope( const QList<QgsPointLocator::Match> &matches ) SIP_FACTORY;
 
     /**
+     * Sets the expression context variable which is available for expressions triggered by
+     * the split features map tool.
+     *
+     * \since QGIS 3.42
+     */
+    static QgsExpressionContextScope *splitFeaturesScope( const QgsGeometry &geom ) SIP_FACTORY;
+
+    /**
      * Sets the expression context variables which are available for expressions triggered by moving the mouse over a feature
      * of the currently selected layer.
      * \param position map coordinates of the current pointer position in the CRS of the layer which triggered the action.

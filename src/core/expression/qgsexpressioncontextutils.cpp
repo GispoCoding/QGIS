@@ -577,6 +577,16 @@ QgsExpressionContextScope *QgsExpressionContextUtils::mapToolCaptureScope( const
   return scope;
 }
 
+QgsExpressionContextScope *QgsExpressionContextUtils::splitFeaturesScope( const QgsGeometry &geom )
+{
+  QgsExpressionContextScope *scope = new QgsExpressionContextScope( QObject::tr( "Split Features" ) );
+
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "split_geometry" ), geom ) );
+
+  return scope;
+}
+
+
 QgsExpressionContextScope *QgsExpressionContextUtils::mapLayerPositionScope( const QgsPointXY &position )
 {
   QgsExpressionContextScope *scope = new QgsExpressionContextScope( QObject::tr( "Map Layer Position" ) );

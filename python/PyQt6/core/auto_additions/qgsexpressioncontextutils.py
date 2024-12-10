@@ -16,6 +16,7 @@ try:
     QgsExpressionContextUtils.setLayerVariables = staticmethod(QgsExpressionContextUtils.setLayerVariables)
     QgsExpressionContextUtils.mapSettingsScope = staticmethod(QgsExpressionContextUtils.mapSettingsScope)
     QgsExpressionContextUtils.mapToolCaptureScope = staticmethod(QgsExpressionContextUtils.mapToolCaptureScope)
+    QgsExpressionContextUtils.splitFeaturesScope = staticmethod(QgsExpressionContextUtils.splitFeaturesScope)
     QgsExpressionContextUtils.mapLayerPositionScope = staticmethod(QgsExpressionContextUtils.mapLayerPositionScope)
     QgsExpressionContextUtils.updateSymbolScope = staticmethod(QgsExpressionContextUtils.updateSymbolScope)
     QgsExpressionContextUtils.layoutScope = staticmethod(QgsExpressionContextUtils.layoutScope)
