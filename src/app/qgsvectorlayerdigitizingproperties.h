@@ -17,6 +17,7 @@
 #ifndef QGSVECTORLAYERDIGITIZINGPROPERTIES_H
 #define QGSVECTORLAYERDIGITIZINGPROPERTIES_H
 
+#include "qgsexpressioncontextgenerator.h"
 #include "qgsmaplayerconfigwidget.h"
 #include "qgsmaplayerconfigwidgetfactory.h"
 #include "ui_qgsvectorlayerdigitizingproperties.h"
@@ -26,15 +27,22 @@ class QgsMapLayerComboBox;
 class QgsDoubleSpinBox;
 
 
-class QgsVectorLayerDigitizingPropertiesPage : public QgsMapLayerConfigWidget, private Ui::QgsVectorLayerDigitizingPropertiesPage
+class QgsVectorLayerDigitizingPropertiesPage : public QgsMapLayerConfigWidget, private Ui::QgsVectorLayerDigitizingPropertiesPage, private QgsExpressionContextGenerator
 {
     Q_OBJECT
 
   public:
     explicit QgsVectorLayerDigitizingPropertiesPage( QgsMapLayer *layer, QgsMapCanvas *canvas, QWidget *parent = nullptr );
 
+    /*
+     * Creates the expression context for this widget.
+     *
+     * \since QGIS 3.42
+     */
+    QgsExpressionContext createExpressionContext() const override;
+
   public slots:
-    virtual void apply();
+    virtual void apply() override;
 
   private:
     bool mRemoveDuplicateNodesManuallyActivated = false;

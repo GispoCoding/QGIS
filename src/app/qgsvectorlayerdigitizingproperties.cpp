@@ -19,6 +19,7 @@
 #include "qgsanalysis.h"
 #include "qgscollapsiblegroupbox.h"
 #include "qgsdoublespinbox.h"
+#include "qgsexpressioncontextutils.h"
 #include "qgsgeometrycheckfactory.h"
 #include "qgsgeometrycheckregistry.h"
 #include "qgsgeometrycheck.h"
@@ -118,12 +119,29 @@ QgsVectorLayerDigitizingPropertiesPage::QgsVectorLayerDigitizingPropertiesPage( 
     }
     mTopologyChecksGroupBox->setLayout( topologyCheckLayout );
     mTopologyChecksGroupBox->setVisible( !topologyCheckFactories.isEmpty() );
+
+    if ( vlayer->geometryType() != Qgis::GeometryType::Point )
+    {
+      const QString splitFeaturesOrderByExpression = vlayer->geometryOptions()->splitFeaturesOrderByExpression();
+      const Qt::SortOrder splitFeaturesSortOrder = vlayer->geometryOptions()->splitFeaturesSortOrder();
+      mSplitFeaturesExpressionLineEdit->setExpression( splitFeaturesOrderByExpression );
+      mSplitFeaturesOrderComboBox->setCurrentIndex( splitFeaturesSortOrder );
+
+      mSplitFeaturesExpressionLineEdit->setExpectedOutputFormat( tr( "numeric" ) );
+      mSplitFeaturesExpressionLineEdit->registerExpressionContextGenerator( this );
+      mSplitFeaturesExpressionLineEdit->setLayer( vlayer );
+    }
+    else
+    {
+      mSplitFeaturesSortGroupBox->hide();
+    }
   }
   else
   {
     mRemoveDuplicateNodesCheckbox->setEnabled( false );
     mGeometryPrecisionLineEdit->setEnabled( false );
     mGeometryAutoFixesGroupBox->setEnabled( false );
+    mSplitFeaturesSortGroupBox->setEnabled( false );
   }
 
   setProperty( "helpPage", QStringLiteral( "working_with_vector/vector_properties.html#digitizing-properties" ) );
@@ -163,8 +181,20 @@ void QgsVectorLayerDigitizingPropertiesPage::apply()
 
     vlayer->geometryOptions()->setCheckConfiguration( QStringLiteral( "QgsGeometryGapCheck" ), gapCheckConfig );
   }
+
+  vlayer->geometryOptions()->setSplitFeaturesOrderByExpression( mSplitFeaturesExpressionLineEdit->expression() );
+  vlayer->geometryOptions()->setSplitFeaturesSortOrder( static_cast<Qt::SortOrder>( mSplitFeaturesOrderComboBox->currentIndex() ) );
 }
 
+QgsExpressionContext QgsVectorLayerDigitizingPropertiesPage::createExpressionContext() const
+{
+  QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
+  context << QgsExpressionContextUtils::splitFeaturesScope( QgsGeometry() );
+
+  context.setHighlightedVariables( QStringList() << QStringLiteral( "split_geometry" ) );
+
+  return context;
+}
 
 QgsVectorLayerDigitizingPropertiesFactory::QgsVectorLayerDigitizingPropertiesFactory( QObject *parent )
   : QObject( parent )

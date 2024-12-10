@@ -121,6 +121,48 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="mSplitFeaturesSortGroupBox">
+         <property name="title">
+          <string>Split features</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Controls the order in which the split features digitizing tool creates new features, for example according to the split geometries using the @split_geometry variable. This affects autogenerating fields (such as id fields) so that the first feature in the resulting list will inherit the original feature's attributes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Sort expression</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QgsExpressionLineEdit" name="mSplitFeaturesExpressionLineEdit" native="true"/>
+          </item>
+          <item>
+           <widget class="QComboBox" name="mSplitFeaturesOrderComboBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <item>
+             <property name="text">
+              <string>Ascending</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Descending</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer_4">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -144,6 +186,12 @@
    <class>QgsScrollArea</class>
    <extends>QScrollArea</extends>
    <header>qgsscrollarea.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsExpressionLineEdit</class>
+   <extends>QWidget</extends>
+   <header>qgsexpressionlineedit.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
