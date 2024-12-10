@@ -160,6 +160,13 @@ class TestQgsMapToolUtils
       return *diffFids.constBegin();
     }
 
+    QSet<QgsFeatureId> newFeatureIds( QSet<QgsFeatureId> oldFids = QSet<QgsFeatureId>() )
+    {
+      QSet<QgsFeatureId> newFids = existingFeatureIds();
+
+      return newFids.subtract( oldFids );
+    }
+
     QPoint mapToScreen( double mapX, double mapY )
     {
       const QgsPointXY pt = mMapTool->canvas()->mapSettings().mapToPixel().transform( mapX, mapY );

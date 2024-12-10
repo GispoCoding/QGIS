@@ -13,6 +13,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsfeature.h"
+#include "qgsgeometryoptions.h"
 #include "qgstest.h"
 
 #include "qgisapp.h"
@@ -44,6 +46,7 @@ class TestQgsMapToolSplitFeatures : public QObject
     void testSplitSomeOfSelectedLines();
     // see https://github.com/qgis/QGIS/issues/29270
     void testSplitPolygonSnapToSegment();
+    void testSplitWithOrderByExpression();
 
   private:
     QPoint mapToPoint( double x, double y );
@@ -251,6 +254,113 @@ void TestQgsMapToolSplitFeatures::testSplitPolygonSnapToSegment()
 
   mCanvas->snappingUtils()->setConfig( oldCfg );
 }
+
+void TestQgsMapToolSplitFeatures::testSplitWithOrderByExpression()
+{
+  Qt::SortOrder oldOrder = mPolygonLayer->geometryOptions()->splitFeaturesSortOrder();
+  const QString oldExpression = mPolygonLayer->geometryOptions()->splitFeaturesOrderByExpression();
+  mCanvas->setCurrentLayer( mPolygonLayer );
+
+  // no expression
+  QSet<QgsFeatureId> oldFids = mUtils->existingFeatureIds();
+
+  mUtils->mouseClick( 1, 11, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 1, 5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 1, 5, Qt::RightButton, Qt::KeyboardModifiers(), true );
+
+  QgsFeatureId newFid = mUtils->newFeatureId( oldFids );
+
+  QCOMPARE( mPolygonLayer->featureCount(), 3 );
+
+  QgsFeature oldFeat = mPolygonLayer->getFeature( 1 );
+  QgsFeature newFeat = mPolygonLayer->getFeature( newFid );
+
+  QCOMPARE( oldFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((1 10 21, 1 5 10, 0 5 10, 0 10 20, 1 10 21))" ) );
+  QCOMPARE( newFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((1 5 10, 1 10 21, 10 10 30, 10 5 20, 1 5 10))" ) );
+
+  mPolygonLayer->undoStack()->undo();
+
+
+  // with expression
+  mPolygonLayer->geometryOptions()->setSplitFeaturesOrderByExpression( QStringLiteral( "area(@split_geometry)" ) );
+
+  oldFids = mUtils->existingFeatureIds();
+
+  mUtils->mouseClick( 1, 11, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 1, 5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 1, 5, Qt::RightButton, Qt::KeyboardModifiers(), true );
+
+  newFid = mUtils->newFeatureId( oldFids );
+
+  QCOMPARE( mPolygonLayer->featureCount(), 3 );
+
+  oldFeat = mPolygonLayer->getFeature( 1 );
+  newFeat = mPolygonLayer->getFeature( newFid );
+
+  QCOMPARE( oldFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((1 5 10, 1 10 21, 10 10 30, 10 5 20, 1 5 10))" ) );
+  QCOMPARE( newFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((1 10 21, 1 5 10, 0 5 10, 0 10 20, 1 10 21))" ) );
+
+  mPolygonLayer->undoStack()->undo();
+
+  // with ascending order
+  mPolygonLayer->geometryOptions()->setSplitFeaturesSortOrder( Qt::SortOrder::AscendingOrder );
+  oldFids = mUtils->existingFeatureIds();
+
+  mUtils->mouseClick( 1, 11, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 1, 5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 1, 5, Qt::RightButton, Qt::KeyboardModifiers(), true );
+
+  newFid = mUtils->newFeatureId( oldFids );
+
+  QCOMPARE( mPolygonLayer->featureCount(), 3 );
+
+  oldFeat = mPolygonLayer->getFeature( 1 );
+  newFeat = mPolygonLayer->getFeature( newFid );
+
+  QCOMPARE( oldFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((1 10 21, 1 5 10, 0 5 10, 0 10 20, 1 10 21))" ) );
+  QCOMPARE( newFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((1 5 10, 1 10 21, 10 10 30, 10 5 20, 1 5 10))" ) );
+
+  mPolygonLayer->undoStack()->undo();
+
+  // multiple splits
+  mPolygonLayer->geometryOptions()->setSplitFeaturesSortOrder( Qt::SortOrder::DescendingOrder );
+  oldFids = mUtils->existingFeatureIds();
+
+  mUtils->mouseClick( 0, 9, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 10, 9, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 10, 8, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 0, 7, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  mUtils->mouseClick( 0, 7, Qt::RightButton, Qt::KeyboardModifiers(), true );
+
+  const QSet<QgsFeatureId> newFids = mUtils->newFeatureIds( oldFids );
+
+  QCOMPARE( mPolygonLayer->featureCount(), 4 );
+  QCOMPARE( newFids.size(), 2 );
+
+  QList<QgsFeatureId> newFidsList = newFids.values();
+  std::sort( newFidsList.rbegin(), newFidsList.rend() );
+
+  const QgsFeatureId newFid1 = newFidsList.at( 0 );
+  const QgsFeatureId newFid2 = newFidsList.at( 1 );
+
+  oldFeat = mPolygonLayer->getFeature( 1 );
+  const QgsFeature newFeat1 = mPolygonLayer->getFeature( newFid1 );
+  const QgsFeature newFeat2 = mPolygonLayer->getFeature( newFid2 );
+
+  QCOMPARE( oldFeat.geometry().asWkt(), QStringLiteral( "Polygon Z ((0 7 20, 10 8 20, 10 5 20, 0 5 10, 0 7 20))" ) );
+  QCOMPARE( newFeat1.geometry().asWkt(), QStringLiteral( "Polygon Z ((0 9 20, 10 9 30, 10 8 20, 0 7 20, 0 9 20))" ) );
+  QCOMPARE( newFeat2.geometry().asWkt(), QStringLiteral( "Polygon Z ((10 9 30, 0 9 20, 0 10 20, 10 10 30, 10 9 30))" ) );
+
+  QCOMPARE( oldFeat.geometry().area() > newFeat1.geometry().area(), true );
+  QCOMPARE( newFeat1.geometry().area() > newFeat2.geometry().area(), true );
+
+  mPolygonLayer->undoStack()->undo();
+
+  // reset
+  mPolygonLayer->geometryOptions()->setSplitFeaturesSortOrder( oldOrder );
+  mPolygonLayer->geometryOptions()->setSplitFeaturesOrderByExpression( oldExpression );
+}
+
 
 QGSTEST_MAIN( TestQgsMapToolSplitFeatures )
 #include "testqgsmaptoolsplitfeatures.moc"
