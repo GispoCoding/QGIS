@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsgeometryoptions.h"
-#include "moc_qgsgeometryoptions.cpp"
 #include "qgsxmlutils.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
@@ -64,6 +63,28 @@ void QgsGeometryOptions::apply( QgsGeometry &geometry ) const
     geometry.removeDuplicateNodes( 4 * std::numeric_limits<double>::epsilon(), true );
 }
 
+QString QgsGeometryOptions::splitFeaturesOrderByExpression() const
+{
+  return mSplitFeaturesSortExpression;
+}
+
+void QgsGeometryOptions::setSplitFeaturesOrderByExpression( const QString &expression )
+{
+  mSplitFeaturesSortExpression = expression;
+  emit splitFeaturesSortingChanged();
+}
+
+Qt::SortOrder QgsGeometryOptions::splitFeaturesSortOrder() const
+{
+  return mSplitFeaturesSortOrder;
+}
+
+void QgsGeometryOptions::setSplitFeaturesSortOrder( Qt::SortOrder sortOrder )
+{
+  mSplitFeaturesSortOrder = sortOrder;
+  emit splitFeaturesSortingChanged();
+}
+
 QStringList QgsGeometryOptions::geometryChecks() const
 {
   return mGeometryChecks;
@@ -101,6 +122,11 @@ void QgsGeometryOptions::writeXml( QDomNode &node ) const
   QDomElement checkConfigurationElement = QgsXmlUtils::writeVariant( mCheckConfiguration, doc );
   checkConfigurationElement.setTagName( QStringLiteral( "checkConfiguration" ) );
   geometryOptionsElement.appendChild( checkConfigurationElement );
+
+  QDomElement splitFeaturesElement = doc.createElement( QStringLiteral( "splitFeaturesOrderExpression" ) );
+  splitFeaturesElement.setAttribute( QStringLiteral( "expression" ), mSplitFeaturesSortExpression );
+  splitFeaturesElement.setAttribute( QStringLiteral( "sortOrder" ), mSplitFeaturesSortOrder );
+  geometryOptionsElement.appendChild( splitFeaturesElement );
 }
 
 void QgsGeometryOptions::readXml( const QDomNode &node )
@@ -116,4 +142,8 @@ void QgsGeometryOptions::readXml( const QDomNode &node )
   const QDomElement checkConfigurationElem = node.namedItem( QStringLiteral( "checkConfiguration" ) ).toElement();
   const QVariant checkConfiguration = QgsXmlUtils::readVariant( checkConfigurationElem );
   mCheckConfiguration = checkConfiguration.toMap();
+
+  const QDomElement splitFeaturesElem = node.namedItem( QStringLiteral( "splitFeaturesOrderExpression" ) ).toElement();
+  setSplitFeaturesOrderByExpression( splitFeaturesElem.attribute( "expression", QString() ) );
+  setSplitFeaturesSortOrder( static_cast<Qt::SortOrder>( splitFeaturesElem.attribute( "sortOrder", 0 ).toInt() ) );
 }

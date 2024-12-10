@@ -105,6 +105,58 @@ Set the configuration for the check ``checkId``.
 .. versionadded:: 3.4
 %End
 
+    QString splitFeaturesOrderByExpression() const;
+%Docstring
+Returns the expression which will be used to sort features when using the split features map tool.
+
+.. seealso:: :py:func:`setSplitFeaturesOrderByExpression`
+
+.. seealso:: :py:func:`splitFeaturesSortOrder`
+
+.. seealso:: :py:func:`setSplitFeaturesSortOrder`
+
+.. versionadded:: 3.42
+%End
+
+    void setSplitFeaturesOrderByExpression( const QString &expression );
+%Docstring
+Sets the expression which will be used to sort features when using the split features map tool.
+
+.. seealso:: :py:func:`splitFeaturesOrderByExpression`
+
+.. seealso:: :py:func:`splitFeaturesSortOrder`
+
+.. seealso:: :py:func:`setSplitFeaturesSortOrder`
+
+.. versionadded:: 3.42
+%End
+
+    Qt::SortOrder splitFeaturesSortOrder() const;
+%Docstring
+Returns the order split features will be sorted by the expression
+
+.. seealso:: :py:func:`splitFeaturesOrderByExpression`
+
+.. seealso:: :py:func:`setSplitFeaturesOrderByExpression`
+
+.. seealso:: :py:func:`setSplitFeaturesSortOrder`
+
+.. versionadded:: 3.42
+%End
+
+    void setSplitFeaturesSortOrder( Qt::SortOrder sortOrder );
+%Docstring
+Sets the order split features will be sorted by the expression.
+
+.. seealso:: :py:func:`splitFeaturesOrderByExpression`
+
+.. seealso:: :py:func:`setSplitFeaturesOrderByExpression`
+
+.. seealso:: :py:func:`splitFeaturesSortOrder`
+
+.. versionadded:: 3.42
+%End
+
     void writeXml( QDomNode &node ) const;
 %Docstring
 Write the geometry options to the ``node``.
@@ -150,6 +202,14 @@ Geometries which are edited on this layer will be rounded to multiples of this v
 Set to 0.0 to disable.
 
 .. versionadded:: 3.4
+%End
+
+    void splitFeaturesSortingChanged();
+%Docstring
+The order in which new features will be created in when using the split features map tool.
+The order is controlled by an expression and can be set to be either ascending or descending.
+
+.. versionadded:: 3.42
 %End
 
 };

@@ -119,6 +119,50 @@ class CORE_EXPORT QgsGeometryOptions : public QObject
     void setCheckConfiguration( const QString &checkId, const QVariantMap &checkConfiguration );
 
     /**
+     * Returns the expression which will be used to sort features when using the split features map tool.
+     *
+     * \see setSplitFeaturesOrderByExpression()
+     * \see splitFeaturesSortOrder()
+     * \see setSplitFeaturesSortOrder()
+     *
+     * \since QGIS 3.42
+     */
+    QString splitFeaturesOrderByExpression() const;
+
+    /**
+     * Sets the expression which will be used to sort features when using the split features map tool.
+     *
+     * \see splitFeaturesOrderByExpression()
+     * \see splitFeaturesSortOrder()
+     * \see setSplitFeaturesSortOrder()
+     *
+     * \since QGIS 3.42
+     */
+    void setSplitFeaturesOrderByExpression( const QString &expression );
+
+    /**
+     * Returns the order split features will be sorted by the expression
+     *
+     * \see splitFeaturesOrderByExpression()
+     * \see setSplitFeaturesOrderByExpression()
+     * \see setSplitFeaturesSortOrder()
+     *
+     * \since QGIS 3.42
+     */
+    Qt::SortOrder splitFeaturesSortOrder() const;
+
+    /**
+     * Sets the order split features will be sorted by the expression.
+     *
+     * \see splitFeaturesOrderByExpression()
+     * \see setSplitFeaturesOrderByExpression()
+     * \see splitFeaturesSortOrder()
+     *
+     * \since QGIS 3.42
+     */
+    void setSplitFeaturesSortOrder( Qt::SortOrder sortOrder );
+
+    /**
      * Write the geometry options to the \a node.
      *
      * \since QGIS 3.4
@@ -169,6 +213,14 @@ class CORE_EXPORT QgsGeometryOptions : public QObject
      */
     void geometryPrecisionChanged();
 
+    /**
+     * The order in which new features will be created in when using the split features map tool.
+     * The order is controlled by an expression and can be set to be either ascending or descending.
+     *
+     * \since QGIS 3.42
+     */
+    void splitFeaturesSortingChanged();
+
   private:
 
     /**
@@ -189,6 +241,9 @@ class CORE_EXPORT QgsGeometryOptions : public QObject
 
     QStringList mGeometryChecks;
     QVariantMap mCheckConfiguration;
+
+    QString mSplitFeaturesSortExpression;
+    Qt::SortOrder mSplitFeaturesSortOrder = Qt::SortOrder::DescendingOrder;
 };
 
 #endif // QGSGEOMETRYOPTIONS_H
