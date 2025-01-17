@@ -43,6 +43,7 @@ class TestQgsMapToolAddPart : public QObject
     void testAddPart();
     void testAddPartClockWise();
     void testAddPartToSingleGeometryLess();
+    void testAddPartAvoidOverLap();
 
   private:
     QPoint mapToPoint( double x, double y );
@@ -273,6 +274,42 @@ void TestQgsMapToolAddPart::testAddPartToSingleGeometryLess()
       QVERIFY2( !vl->getFeature( 1 ).geometry().isNull(), QString( "failed for %1" ).arg( geomType ).toLocal8Bit().data() );
     }
   }
+}
+
+void TestQgsMapToolAddPart::testAddPartAvoidOverLap()
+{
+  mCanvas->setCurrentLayer( mLayerMultiPolygon );
+
+  QgsVectorLayer *layer = new QgsVectorLayer( QStringLiteral( "Polygon?crs=EPSG:3946" ), QStringLiteral( "polygon" ), QStringLiteral( "memory" ) );
+
+  QVERIFY( layer->isValid() );
+  QgsProject::instance()->addMapLayer( layer );
+
+  layer->startEditing();
+  QgsFeature f;
+  const QString wkt( "Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))" );
+  f.setGeometry( QgsGeometry::fromWkt( wkt ) );
+  layer->dataProvider()->addFeatures( QgsFeatureList() << f );
+  QCOMPARE( layer->featureCount(), ( long ) 1 );
+  QCOMPARE( layer->getFeature( 1 ).geometry().asWkt(), wkt );
+
+  TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
+  QgsProject::instance()->setAvoidIntersectionsMode( Qgis::AvoidIntersectionsMode::AvoidIntersectionsLayers );
+  QgsProject::instance()->setAvoidIntersectionsLayers( QList<QgsVectorLayer *>() << layer );
+
+  utils.mouseMove( -1, -1 );
+  utils.mouseClick( -1, -1, Qt::LeftButton );
+  utils.mouseMove( -1, 2 );
+  utils.mouseClick( -1, 2, Qt::LeftButton );
+  utils.mouseMove( 2, 2 );
+  utils.mouseClick( 2, 2, Qt::LeftButton );
+  utils.mouseMove( 2, -1 );
+  utils.mouseClick( 2, -1, Qt::LeftButton );
+  utils.mouseClick( 2, -1, Qt::RightButton );
+
+  QgsFeature feat = mLayerMultiPolygon->getFeature( 1 );
+
+  QCOMPARE( feat.geometry().asWkt(), QStringLiteral( "MultiPolygon (((2 4, 4 4, 4 2, 2 2, 2 4)),((5 6, 6 6, 6 5, 5 5, 5 6)),((15 16, 16 16, 16 15, 15 15, 15 16)),((2 -1, -1 -1, -1 2, 2 2, 2 -1),(1 0, 1 1, 0 1, 0 0, 1 0)))" ) );
 }
 
 QGSTEST_MAIN( TestQgsMapToolAddPart )
