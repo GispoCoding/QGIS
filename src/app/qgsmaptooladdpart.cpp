@@ -13,6 +13,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsavoidintersectionsoperation.h"
 #include "qgsmaptooladdpart.h"
 #include "moc_qgsmaptooladdpart.cpp"
 #include "qgsadvanceddigitizingdockwidget.h"
@@ -104,6 +105,30 @@ void QgsMapToolAddPart::layerPolygonCaptured( const QgsCurvePolygon *polygon )
     return;
   layer->beginEditCommand( tr( "Part added" ) );
   Qgis::GeometryOperationResult errorCode = layer->addPart( polygon->exteriorRing()->clone() );
+
+  QgsAvoidIntersectionsOperation avoidIntersections;
+  connect( &avoidIntersections, &QgsAvoidIntersectionsOperation::messageEmitted, this, &QgsMapTool::messageEmitted );
+
+  QgsFeatureIterator selectedFeatures = layer->getSelectedFeatures();
+  QgsFeature selectedFeature;
+  selectedFeatures.nextFeature( selectedFeature );
+
+  QgsGeometry geom = selectedFeature.geometry();
+  const QgsAvoidIntersectionsOperation::Result res = avoidIntersections.apply( layer, selectedFeature.id(), geom );
+
+  if ( res.operationResult != Qgis::GeometryOperationResult::Success && res.operationResult != Qgis::GeometryOperationResult::NothingHappened )
+  {
+    const QString errorMessage = tr( "Error occurred while removing overlap!" );
+
+    emit messageEmitted( errorMessage, Qgis::MessageLevel::Warning );
+    layer->destroyEditCommand();
+    return;
+  }
+  else if ( res.geometryHasChanged )
+  {
+    layer->changeGeometry( selectedFeature.id(), geom );
+  }
+
   finalizeEditCommand( layer, errorCode );
 }
 
