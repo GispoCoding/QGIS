@@ -158,6 +158,10 @@ QValidator::State QgsFieldValidator::validate( QString &s, int &i ) const
   {
     return Acceptable;
   }
+  else if ( mField.type() == QMetaType::Type::QVariantPair ) // range types
+  {
+    return Acceptable;
+  }
   else
   {
     QgsDebugError(

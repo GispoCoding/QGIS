@@ -1116,6 +1116,19 @@ bool QgsPostgresProvider::loadFields()
       fieldType = QMetaType::Type::QString;
       fieldSize = -1;
     }
+    else if ( fieldTType == 'r' )
+    {
+      if ( fieldTypeName == QLatin1String( "tsrange" ) || fieldTypeName == QLatin1String( "tstzrange" ) || fieldTypeName == QLatin1String( "daterange" ) )
+      {
+        fieldType = QMetaType::Type::QVariantPair;
+        fieldSize = -1;
+      }
+      else
+      {
+        QgsMessageLog::logMessage( tr( "Field %1 ignored, because of unsupported type %2" ).arg( fieldName, fieldTypeName ), tr( "PostGIS" ) );
+        continue;
+      }
+    }
     else
     {
       QgsMessageLog::logMessage( tr( "Field %1 ignored, because of unsupported type %2" ).arg( fieldName, fieldTType ), tr( "PostGIS" ) );

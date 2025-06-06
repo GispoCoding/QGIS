@@ -451,6 +451,32 @@ void QgsAttributeTableModel::loadAttributes()
     beginRemoveColumns( QModelIndex(), attributes.size(), mFieldCount + mExtraColumns - 1 );
   }
 
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << "doing something";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+  qDebug() << " ";
+
   mFieldCount = attributes.size();
   mAttributes = attributes;
   mWidgetDatas.resize( mFieldCount );

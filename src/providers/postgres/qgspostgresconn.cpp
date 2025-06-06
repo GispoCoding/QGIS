@@ -2007,7 +2007,17 @@ QList<QgsVectorDataProvider::NativeType> QgsPostgresConn::nativeTypes()
     << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::Bool ), QStringLiteral( "bool" ), QMetaType::Type::Bool, -1, -1, -1, -1 )
 
     // binary (bytea)
-    << QgsVectorDataProvider::NativeType( tr( "Binary Object (bytea)" ), QStringLiteral( "bytea" ), QMetaType::Type::QByteArray, -1, -1, -1, -1 );
+    << QgsVectorDataProvider::NativeType( tr( "Binary Object (bytea)" ), QStringLiteral( "bytea" ), QMetaType::Type::QByteArray, -1, -1, -1, -1 )
+
+    // range temporal types
+    << QgsVectorDataProvider::NativeType( tr( "Time Range" ), QStringLiteral( "tsrange" ), QMetaType::Type::QVariantPair, -1, -1, -1, -1 )
+    << QgsVectorDataProvider::NativeType( tr( "Time Range (with timezone)" ), QStringLiteral( "tstzrange" ), QMetaType::Type::QVariantPair, -1, -1, -1, -1 )
+    << QgsVectorDataProvider::NativeType( tr( "Date Range" ), QStringLiteral( "daterange" ), QMetaType::Type::QVariantPair, -1, -1, -1, -1 );
+
+  // TODO: range numeric types
+  // << QgsVectorDataProvider::NativeType( tr( "Integer Range (integer - 32bit)" ), QStringLiteral( "int4range" ), QMetaType::Type::QVariantPair, -1, -1, -1, -1 )
+  // << QgsVectorDataProvider::NativeType( tr( "Integer Range (integer - 64bit)" ), QStringLiteral( "int8range" ), QMetaType::Type::QVariantPair, -1, -1, -1, -1 )
+  // << QgsVectorDataProvider::NativeType( tr( "Decimal Number Range (numeric) " ), QStringLiteral( "numrange" ), QMetaType::Type::QVariantPair, -1, -1, -1, -1 );
 
   if ( pgVersion() >= 90200 )
   {
